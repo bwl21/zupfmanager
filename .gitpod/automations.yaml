@@ -27,7 +27,7 @@ services:
       start: |
         wails dev
       ready: |
-        until curl -s http://localhost:34115 > /dev/null; do
+        until curl -s http://localhost:5173 > /dev/null; do
           echo "Waiting for Wails dev server..."
           sleep 2
-        done
+        done 

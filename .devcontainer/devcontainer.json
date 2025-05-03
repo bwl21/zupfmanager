@@ -1,5 +1,5 @@
 {
-  "name": "Zupfmanager",
+  "name": "github.com/bwl21/zupfmanager",
   "image": "mcr.microsoft.com/devcontainers/go:1.23",
   "features": {
     "ghcr.io/devcontainers/features/node:1": {}
