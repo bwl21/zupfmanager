@@ -1,0 +1,33 @@
+tasks:
+  installWails:
+    name: Install Wails
+    description: Install the Wails CLI
+    command: |
+      go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      echo "Wails CLI installed successfully"
+    triggeredBy:
+      - postDevcontainerStart
+
+  installDeps:
+    name: Install Dependencies
+    description: Install frontend dependencies
+    command: |
+      cd frontend
+      npm install
+    triggeredBy:
+      - postDevcontainerStart
+    dependsOn:
+      - installWails
+
+services:
+  wails-dev:
+    name: Wails Dev Server
+    description: Run Wails in development mode
+    commands:
+      start: |
+        wails dev
+      ready: |
+        until curl -s http://localhost:34115 > /dev/null; do
+          echo "Waiting for Wails dev server..."
+          sleep 2
+        done
