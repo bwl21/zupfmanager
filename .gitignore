@@ -6,3 +6,4 @@ zupfmanager.db
 pdf/
 output/
 x.json
+dist/
