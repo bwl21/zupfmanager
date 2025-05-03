@@ -1,0 +1,11 @@
+{
+    "extract": {
+        "0": {
+            "notes": {
+                "T01_number": {
+                    "text": "#{PREFIX}#{the_index}"
+                }
+            }
+        }
+    }
+}

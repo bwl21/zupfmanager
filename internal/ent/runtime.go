@@ -19,6 +19,10 @@ func init() {
 	projectDescTitle := projectFields[1].Descriptor()
 	// project.TitleValidator is a validator for the "title" field. It is called by the builders before save.
 	project.TitleValidator = projectDescTitle.Validators[0].(func(string) error)
+	// projectDescShortName is the schema descriptor for short_name field.
+	projectDescShortName := projectFields[2].Descriptor()
+	// project.ShortNameValidator is a validator for the "short_name" field. It is called by the builders before save.
+	project.ShortNameValidator = projectDescShortName.Validators[0].(func(string) error)
 	// projectDescID is the schema descriptor for id field.
 	projectDescID := projectFields[0].Descriptor()
 	// project.IDValidator is a validator for the "id" field. It is called by the builders before save.

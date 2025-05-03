@@ -12,6 +12,7 @@ var (
 	ProjectsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "title", Type: field.TypeString},
+		{Name: "short_name", Type: field.TypeString},
 		{Name: "config", Type: field.TypeJSON, Nullable: true},
 	}
 	// ProjectsTable holds the schema information for the "projects" table.

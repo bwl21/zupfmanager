@@ -3,3 +3,6 @@ node_modules
 frontend/dist
 testdata/
 zupfmanager.db
+pdf/
+output/
+x.json

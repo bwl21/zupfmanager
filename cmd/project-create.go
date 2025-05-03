@@ -26,6 +26,7 @@ var projectCreateCmd = &cobra.Command{
 		}
 
 		title, _ := cmd.Flags().GetString("title")
+		shortName, _ := cmd.Flags().GetString("short_name")
 		configStr, _ := cmd.Flags().GetString("config")
 
 		// Parse config JSON if provided
@@ -40,6 +41,7 @@ var projectCreateCmd = &cobra.Command{
 
 		project, err := client.Project.Create().
 			SetTitle(title).
+			SetShortName(shortName).
 			SetConfig(config).
 			Save(context.Background())
 
@@ -58,6 +60,8 @@ func init() {
 	// Required flags
 	projectCreateCmd.Flags().StringP("title", "t", "", "Title of the project (required)")
 	projectCreateCmd.MarkFlagRequired("title")
+	projectCreateCmd.Flags().StringP("short_name", "s", "", "Short name of the project (required)")
+	projectCreateCmd.MarkFlagRequired("short_name")
 
 	// Optional flags
 	projectCreateCmd.Flags().StringP("config", "c", "", "Project configuration as JSON string")

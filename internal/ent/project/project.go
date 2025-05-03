@@ -14,6 +14,8 @@ const (
 	FieldID = "id"
 	// FieldTitle holds the string denoting the title field in the database.
 	FieldTitle = "title"
+	// FieldShortName holds the string denoting the short_name field in the database.
+	FieldShortName = "short_name"
 	// FieldConfig holds the string denoting the config field in the database.
 	FieldConfig = "config"
 	// EdgeProjectSongs holds the string denoting the project_songs edge name in mutations.
@@ -33,6 +35,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldTitle,
+	FieldShortName,
 	FieldConfig,
 }
 
@@ -49,6 +52,8 @@ func ValidColumn(column string) bool {
 var (
 	// TitleValidator is a validator for the "title" field. It is called by the builders before save.
 	TitleValidator func(string) error
+	// ShortNameValidator is a validator for the "short_name" field. It is called by the builders before save.
+	ShortNameValidator func(string) error
 	// IDValidator is a validator for the "id" field. It is called by the builders before save.
 	IDValidator func(int) error
 )
@@ -64,6 +69,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByTitle orders the results by the title field.
 func ByTitle(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTitle, opts...).ToFunc()
+}
+
+// ByShortName orders the results by the short_name field.
+func ByShortName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldShortName, opts...).ToFunc()
 }
 
 // ByProjectSongsCount orders the results by project_songs count.

@@ -18,11 +18,10 @@ import (
 
 // projectEditSongCmd represents the edit-song-in-project command
 var projectEditSongCmd = &cobra.Command{
-	Use:     "edit-song <project-id> <song-id>",
-	Short:   "Edit a song entry in a project",
-	Long:    `Edit priority, difficulty, and comment for a song that is part of a project.`,
-	Aliases: []string{"edit", "es"},
-	Args:    cobra.ExactArgs(2),
+	Use:   "edit-song <project-id> <song-id>",
+	Short: "Edit a song entry in a project",
+	Long:  `Edit priority, difficulty, and comment for a song that is part of a project.`,
+	Args:  cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 

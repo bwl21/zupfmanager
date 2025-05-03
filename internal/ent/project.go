@@ -19,6 +19,8 @@ type Project struct {
 	ID int `json:"id,omitempty"`
 	// Title holds the value of the "title" field.
 	Title string `json:"title,omitempty"`
+	// ShortName holds the value of the "short_name" field.
+	ShortName string `json:"short_name,omitempty"`
 	// Config holds the value of the "config" field.
 	Config map[string]interface{} `json:"config,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -54,7 +56,7 @@ func (*Project) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case project.FieldID:
 			values[i] = new(sql.NullInt64)
-		case project.FieldTitle:
+		case project.FieldTitle, project.FieldShortName:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -82,6 +84,12 @@ func (pr *Project) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field title", values[i])
 			} else if value.Valid {
 				pr.Title = value.String
+			}
+		case project.FieldShortName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field short_name", values[i])
+			} else if value.Valid {
+				pr.ShortName = value.String
 			}
 		case project.FieldConfig:
 			if value, ok := values[i].(*[]byte); !ok {
@@ -134,6 +142,9 @@ func (pr *Project) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", pr.ID))
 	builder.WriteString("title=")
 	builder.WriteString(pr.Title)
+	builder.WriteString(", ")
+	builder.WriteString("short_name=")
+	builder.WriteString(pr.ShortName)
 	builder.WriteString(", ")
 	builder.WriteString("config=")
 	builder.WriteString(fmt.Sprintf("%v", pr.Config))

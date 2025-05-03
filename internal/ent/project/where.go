@@ -58,6 +58,11 @@ func Title(v string) predicate.Project {
 	return predicate.Project(sql.FieldEQ(FieldTitle, v))
 }
 
+// ShortName applies equality check predicate on the "short_name" field. It's identical to ShortNameEQ.
+func ShortName(v string) predicate.Project {
+	return predicate.Project(sql.FieldEQ(FieldShortName, v))
+}
+
 // TitleEQ applies the EQ predicate on the "title" field.
 func TitleEQ(v string) predicate.Project {
 	return predicate.Project(sql.FieldEQ(FieldTitle, v))
@@ -121,6 +126,71 @@ func TitleEqualFold(v string) predicate.Project {
 // TitleContainsFold applies the ContainsFold predicate on the "title" field.
 func TitleContainsFold(v string) predicate.Project {
 	return predicate.Project(sql.FieldContainsFold(FieldTitle, v))
+}
+
+// ShortNameEQ applies the EQ predicate on the "short_name" field.
+func ShortNameEQ(v string) predicate.Project {
+	return predicate.Project(sql.FieldEQ(FieldShortName, v))
+}
+
+// ShortNameNEQ applies the NEQ predicate on the "short_name" field.
+func ShortNameNEQ(v string) predicate.Project {
+	return predicate.Project(sql.FieldNEQ(FieldShortName, v))
+}
+
+// ShortNameIn applies the In predicate on the "short_name" field.
+func ShortNameIn(vs ...string) predicate.Project {
+	return predicate.Project(sql.FieldIn(FieldShortName, vs...))
+}
+
+// ShortNameNotIn applies the NotIn predicate on the "short_name" field.
+func ShortNameNotIn(vs ...string) predicate.Project {
+	return predicate.Project(sql.FieldNotIn(FieldShortName, vs...))
+}
+
+// ShortNameGT applies the GT predicate on the "short_name" field.
+func ShortNameGT(v string) predicate.Project {
+	return predicate.Project(sql.FieldGT(FieldShortName, v))
+}
+
+// ShortNameGTE applies the GTE predicate on the "short_name" field.
+func ShortNameGTE(v string) predicate.Project {
+	return predicate.Project(sql.FieldGTE(FieldShortName, v))
+}
+
+// ShortNameLT applies the LT predicate on the "short_name" field.
+func ShortNameLT(v string) predicate.Project {
+	return predicate.Project(sql.FieldLT(FieldShortName, v))
+}
+
+// ShortNameLTE applies the LTE predicate on the "short_name" field.
+func ShortNameLTE(v string) predicate.Project {
+	return predicate.Project(sql.FieldLTE(FieldShortName, v))
+}
+
+// ShortNameContains applies the Contains predicate on the "short_name" field.
+func ShortNameContains(v string) predicate.Project {
+	return predicate.Project(sql.FieldContains(FieldShortName, v))
+}
+
+// ShortNameHasPrefix applies the HasPrefix predicate on the "short_name" field.
+func ShortNameHasPrefix(v string) predicate.Project {
+	return predicate.Project(sql.FieldHasPrefix(FieldShortName, v))
+}
+
+// ShortNameHasSuffix applies the HasSuffix predicate on the "short_name" field.
+func ShortNameHasSuffix(v string) predicate.Project {
+	return predicate.Project(sql.FieldHasSuffix(FieldShortName, v))
+}
+
+// ShortNameEqualFold applies the EqualFold predicate on the "short_name" field.
+func ShortNameEqualFold(v string) predicate.Project {
+	return predicate.Project(sql.FieldEqualFold(FieldShortName, v))
+}
+
+// ShortNameContainsFold applies the ContainsFold predicate on the "short_name" field.
+func ShortNameContainsFold(v string) predicate.Project {
+	return predicate.Project(sql.FieldContainsFold(FieldShortName, v))
 }
 
 // ConfigIsNil applies the IsNil predicate on the "config" field.

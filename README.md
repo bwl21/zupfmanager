@@ -7,6 +7,8 @@ A desktop application built with Go, Wails, Vue, and ENT ORM with SQLite.
 - **Frontend**: Vue.js with Vite
 - **Backend**: Go with Wails
 - **Database**: SQLite with ENT ORM
+- **CLI**: Command Line Interface using Cobra
+- **TUI**: Terminal User Interface using Bubble Tea
 
 ## Development
 
@@ -25,6 +27,45 @@ To build a production package:
 ```bash
 wails build
 ```
+
+## Command Line Interface
+
+The application provides a CLI for managing projects and songs:
+
+```bash
+# Show help
+zupfmanager --help
+
+# List projects
+zupfmanager project list
+
+# List songs
+zupfmanager song list
+
+# Show project details
+zupfmanager project show <project-id>
+
+# Add a song to a project
+zupfmanager project add <project-id> <song-id> --priority 1 --difficulty medium
+```
+
+## Terminal User Interface
+
+The application also includes an interactive Terminal UI that provides the same functionality in a more interactive way:
+
+```bash
+# Launch the TUI
+zupfmanager ui
+```
+
+Navigate the interface using keyboard shortcuts:
+- Arrow keys or j/k: Navigate lists
+- Enter: Select/View item
+- q: Quit
+- Esc: Go back
+- a: Add item
+- e: Edit item
+- d: Delete item
 
 ## Database
 

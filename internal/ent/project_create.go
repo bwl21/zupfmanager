@@ -26,6 +26,12 @@ func (pc *ProjectCreate) SetTitle(s string) *ProjectCreate {
 	return pc
 }
 
+// SetShortName sets the "short_name" field.
+func (pc *ProjectCreate) SetShortName(s string) *ProjectCreate {
+	pc.mutation.SetShortName(s)
+	return pc
+}
+
 // SetConfig sets the "config" field.
 func (pc *ProjectCreate) SetConfig(m map[string]interface{}) *ProjectCreate {
 	pc.mutation.SetConfig(m)
@@ -95,6 +101,14 @@ func (pc *ProjectCreate) check() error {
 			return &ValidationError{Name: "title", err: fmt.Errorf(`ent: validator failed for field "Project.title": %w`, err)}
 		}
 	}
+	if _, ok := pc.mutation.ShortName(); !ok {
+		return &ValidationError{Name: "short_name", err: errors.New(`ent: missing required field "Project.short_name"`)}
+	}
+	if v, ok := pc.mutation.ShortName(); ok {
+		if err := project.ShortNameValidator(v); err != nil {
+			return &ValidationError{Name: "short_name", err: fmt.Errorf(`ent: validator failed for field "Project.short_name": %w`, err)}
+		}
+	}
 	if v, ok := pc.mutation.ID(); ok {
 		if err := project.IDValidator(v); err != nil {
 			return &ValidationError{Name: "id", err: fmt.Errorf(`ent: validator failed for field "Project.id": %w`, err)}
@@ -135,6 +149,10 @@ func (pc *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 	if value, ok := pc.mutation.Title(); ok {
 		_spec.SetField(project.FieldTitle, field.TypeString, value)
 		_node.Title = value
+	}
+	if value, ok := pc.mutation.ShortName(); ok {
+		_spec.SetField(project.FieldShortName, field.TypeString, value)
+		_node.ShortName = value
 	}
 	if value, ok := pc.mutation.Config(); ok {
 		_spec.SetField(project.FieldConfig, field.TypeJSON, value)

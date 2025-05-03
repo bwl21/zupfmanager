@@ -20,6 +20,8 @@ func (Project) Fields() []ent.Field {
 			StructTag(`json:"id,omitempty"`),
 		field.String("title").
 			NotEmpty(),
+		field.String("short_name").
+			NotEmpty(),
 		field.JSON("config", map[string]interface{}{}).
 			Optional(),
 	}

@@ -37,6 +37,7 @@ type ProjectMutation struct {
 	typ                  string
 	id                   *int
 	title                *string
+	short_name           *string
 	_config              *map[string]interface{}
 	clearedFields        map[string]struct{}
 	project_songs        map[int]struct{}
@@ -187,6 +188,42 @@ func (m *ProjectMutation) ResetTitle() {
 	m.title = nil
 }
 
+// SetShortName sets the "short_name" field.
+func (m *ProjectMutation) SetShortName(s string) {
+	m.short_name = &s
+}
+
+// ShortName returns the value of the "short_name" field in the mutation.
+func (m *ProjectMutation) ShortName() (r string, exists bool) {
+	v := m.short_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldShortName returns the old "short_name" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldShortName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldShortName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldShortName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldShortName: %w", err)
+	}
+	return oldValue.ShortName, nil
+}
+
+// ResetShortName resets all changes to the "short_name" field.
+func (m *ProjectMutation) ResetShortName() {
+	m.short_name = nil
+}
+
 // SetConfig sets the "config" field.
 func (m *ProjectMutation) SetConfig(value map[string]interface{}) {
 	m._config = &value
@@ -324,9 +361,12 @@ func (m *ProjectMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProjectMutation) Fields() []string {
-	fields := make([]string, 0, 2)
+	fields := make([]string, 0, 3)
 	if m.title != nil {
 		fields = append(fields, project.FieldTitle)
+	}
+	if m.short_name != nil {
+		fields = append(fields, project.FieldShortName)
 	}
 	if m._config != nil {
 		fields = append(fields, project.FieldConfig)
@@ -341,6 +381,8 @@ func (m *ProjectMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case project.FieldTitle:
 		return m.Title()
+	case project.FieldShortName:
+		return m.ShortName()
 	case project.FieldConfig:
 		return m.Config()
 	}
@@ -354,6 +396,8 @@ func (m *ProjectMutation) OldField(ctx context.Context, name string) (ent.Value,
 	switch name {
 	case project.FieldTitle:
 		return m.OldTitle(ctx)
+	case project.FieldShortName:
+		return m.OldShortName(ctx)
 	case project.FieldConfig:
 		return m.OldConfig(ctx)
 	}
@@ -371,6 +415,13 @@ func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetTitle(v)
+		return nil
+	case project.FieldShortName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetShortName(v)
 		return nil
 	case project.FieldConfig:
 		v, ok := value.(map[string]interface{})
@@ -439,6 +490,9 @@ func (m *ProjectMutation) ResetField(name string) error {
 	switch name {
 	case project.FieldTitle:
 		m.ResetTitle()
+		return nil
+	case project.FieldShortName:
+		m.ResetShortName()
 		return nil
 	case project.FieldConfig:
 		m.ResetConfig()

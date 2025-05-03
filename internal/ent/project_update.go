@@ -42,6 +42,20 @@ func (pu *ProjectUpdate) SetNillableTitle(s *string) *ProjectUpdate {
 	return pu
 }
 
+// SetShortName sets the "short_name" field.
+func (pu *ProjectUpdate) SetShortName(s string) *ProjectUpdate {
+	pu.mutation.SetShortName(s)
+	return pu
+}
+
+// SetNillableShortName sets the "short_name" field if the given value is not nil.
+func (pu *ProjectUpdate) SetNillableShortName(s *string) *ProjectUpdate {
+	if s != nil {
+		pu.SetShortName(*s)
+	}
+	return pu
+}
+
 // SetConfig sets the "config" field.
 func (pu *ProjectUpdate) SetConfig(m map[string]interface{}) *ProjectUpdate {
 	pu.mutation.SetConfig(m)
@@ -129,6 +143,11 @@ func (pu *ProjectUpdate) check() error {
 			return &ValidationError{Name: "title", err: fmt.Errorf(`ent: validator failed for field "Project.title": %w`, err)}
 		}
 	}
+	if v, ok := pu.mutation.ShortName(); ok {
+		if err := project.ShortNameValidator(v); err != nil {
+			return &ValidationError{Name: "short_name", err: fmt.Errorf(`ent: validator failed for field "Project.short_name": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -146,6 +165,9 @@ func (pu *ProjectUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if value, ok := pu.mutation.Title(); ok {
 		_spec.SetField(project.FieldTitle, field.TypeString, value)
+	}
+	if value, ok := pu.mutation.ShortName(); ok {
+		_spec.SetField(project.FieldShortName, field.TypeString, value)
 	}
 	if value, ok := pu.mutation.Config(); ok {
 		_spec.SetField(project.FieldConfig, field.TypeJSON, value)
@@ -228,6 +250,20 @@ func (puo *ProjectUpdateOne) SetTitle(s string) *ProjectUpdateOne {
 func (puo *ProjectUpdateOne) SetNillableTitle(s *string) *ProjectUpdateOne {
 	if s != nil {
 		puo.SetTitle(*s)
+	}
+	return puo
+}
+
+// SetShortName sets the "short_name" field.
+func (puo *ProjectUpdateOne) SetShortName(s string) *ProjectUpdateOne {
+	puo.mutation.SetShortName(s)
+	return puo
+}
+
+// SetNillableShortName sets the "short_name" field if the given value is not nil.
+func (puo *ProjectUpdateOne) SetNillableShortName(s *string) *ProjectUpdateOne {
+	if s != nil {
+		puo.SetShortName(*s)
 	}
 	return puo
 }
@@ -332,6 +368,11 @@ func (puo *ProjectUpdateOne) check() error {
 			return &ValidationError{Name: "title", err: fmt.Errorf(`ent: validator failed for field "Project.title": %w`, err)}
 		}
 	}
+	if v, ok := puo.mutation.ShortName(); ok {
+		if err := project.ShortNameValidator(v); err != nil {
+			return &ValidationError{Name: "short_name", err: fmt.Errorf(`ent: validator failed for field "Project.short_name": %w`, err)}
+		}
+	}
 	return nil
 }
 
@@ -366,6 +407,9 @@ func (puo *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err e
 	}
 	if value, ok := puo.mutation.Title(); ok {
 		_spec.SetField(project.FieldTitle, field.TypeString, value)
+	}
+	if value, ok := puo.mutation.ShortName(); ok {
+		_spec.SetField(project.FieldShortName, field.TypeString, value)
 	}
 	if value, ok := puo.mutation.Config(); ok {
 		_spec.SetField(project.FieldConfig, field.TypeJSON, value)
