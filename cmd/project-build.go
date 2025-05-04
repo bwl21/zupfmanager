@@ -56,6 +56,9 @@ var projectBuildCmd = &cobra.Command{
 			return fmt.Errorf("failed to find project with ID %d: %w", projectID, err)
 		}
 
+		projectBuildOutputDir = project.ShortName
+		cmd.Flags().StringVarP(&projectBuildOutputDir, "output-dir", "o", projectBuildOutputDir, "The directory to output the build results")
+
 		return buildProject(projectBuildAbcFileDir, projectBuildOutputDir, project)
 	},
 }
@@ -169,6 +172,5 @@ func extractConfigFromABCFile(abcFile []byte) (map[string]any, error) {
 func init() {
 	projectCmd.AddCommand(projectBuildCmd)
 
-	projectBuildCmd.Flags().StringVarP(&projectBuildOutputDir, "output-dir", "o", "output/", "The directory to output the build results")
 	projectBuildCmd.Flags().StringVarP(&projectBuildAbcFileDir, "abc-file-dir", "a", "", "The directory to find the ABC files")
 }
