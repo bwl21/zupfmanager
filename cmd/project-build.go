@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"dario.cat/mergo"
 	"github.com/bwl21/zupfmanager/internal/database"
@@ -87,39 +88,31 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 		return fmt.Errorf("failed to build songs: %w", err)
 	}
 
-	// copy PDF files to output dir
+	err2 := createToc(projectSongs, err, outputDir)
+	if err2 != nil {
+		return err2
+	}
+	//os.Remove(tempFile.Name())
 
 	return nil
 }
 
-func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int, song *ent.ProjectSong) error {
-	slog.Info("building song", "song", song.Edges.Song.Title)
-
-	abcFile, err := os.ReadFile(filepath.Join(abcFileDir, song.Edges.Song.Filename))
-	if err != nil {
-		return fmt.Errorf("failed to read ABC file: %w", err)
-	}
-	fileConfig, err := extractConfigFromABCFile(abcFile)
-	if err != nil {
-		return fmt.Errorf("failed to extract config from ABC file: %w", err)
+func createToc(projectSongs []*ent.ProjectSong, err error, outputDir string) error {
+	tocabc := ""
+	for id, song := range projectSongs {
+		tocabc += fmt.Sprintf("W:%d %s\n", id+1, song.Edges.Song.Title)
 	}
 
-	fc, err := json.Marshal(song.Edges.Project.Config)
+	toctemplateBytes, err := os.ReadFile(filepath.Join(outputDir, "999_inhaltsverzeichnis_template.abc"))
 	if err != nil {
-		return fmt.Errorf("failed to marshal project config: %w", err)
+		return fmt.Errorf("failed to read file: %w", err)
 	}
+	toctemplate := strings.Replace(string(toctemplateBytes), "W:{{TOC}}", tocabc, 1)
 
-	fc = bytes.ReplaceAll(fc, []byte("#{PREFIX}"), []byte(song.Edges.Project.ShortName))
-	fc = bytes.ReplaceAll(fc, []byte("#{the_index}"), []byte(fmt.Sprintf("%02d", songIndex)))
-
-	var finalConfig map[string]any
-	err = json.Unmarshal(fc, &finalConfig)
+	tocSongFilename := "00_inhaltsverzeichnis.abc"
+	err = os.WriteFile(filepath.Join(outputDir, "abc", tocSongFilename), []byte(toctemplate), 0644)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal project config: %w", err)
-	}
-	err = mergo.Merge(&finalConfig, fileConfig)
-	if err != nil {
-		return fmt.Errorf("failed to merge config: %w", err)
+		return fmt.Errorf("failed to write toc file: %w", err)
 	}
 
 	tempFile, err := os.CreateTemp("", "zupfnoter-*.json")
@@ -127,28 +120,103 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
 	// defer os.Remove(tempFile.Name())
-	json.NewEncoder(tempFile).Encode(finalConfig)
+	json.NewEncoder(tempFile).Encode("{}")
 	tempFile.Close()
 
-	// node "#{ZUPFNOTER}" "#{srcfile}" "#{workdir}/pdf" x.json
-	err = zupfnoter.Run(ctx, filepath.Join(abcFileDir, song.Edges.Song.Filename), filepath.Join(outputDir, "pdf"), tempFile.Name())
+	ctxb := context.Background()
+	err = zupfnoter.Run(ctxb, filepath.Join(outputDir, "abc", tocSongFilename), filepath.Join(outputDir, "pdf"))
+	if err != nil {
+		fmt.Println(filepath.Join(outputDir, "abc", tocSongFilename))
+		return fmt.Errorf("failed to run zupfnoter: %w", err)
+	}
+	return nil
+}
+
+// buildSong verarbeitet einen Song: Liest die ABC-Datei, kombiniert Konfigurationen,
+// ruft das externe Tool "zupfnoter" auf, kopiert die ABC-Datei ins Zielverzeichnis
+// und verschiebt das Logfile.
+func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int, song *ent.ProjectSong) error {
+	// 1. Logge den Start der Verarbeitung für diesen Song.
+	slog.Info("building song", "song", song.Edges.Song.Title)
+
+	// 2. Lese die ABC-Datei des Songs ein.
+	abcFile, err := os.ReadFile(filepath.Join(abcFileDir, song.Edges.Song.Filename))
+	if err != nil {
+		return fmt.Errorf("failed to read ABC file: %w", err)
+	}
+
+	// 3. Extrahiere Konfiguration aus der ABC-Datei (z.B. Metadaten).
+	fileConfig, err := extractConfigFromABCFile(abcFile)
+	if err != nil {
+		return fmt.Errorf("failed to extract config from ABC file: %w", err)
+	}
+
+	// 4. Serialisiere die Projekt-Konfiguration als JSON.
+	fc, err := json.Marshal(song.Edges.Project.Config)
+	if err != nil {
+		return fmt.Errorf("failed to marshal project config: %w", err)
+	}
+
+	// 5. Ersetze Platzhalter im JSON (z.B. #{PREFIX}, #{the_index}).
+	fc = bytes.ReplaceAll(fc, []byte("#{PREFIX}"), []byte(song.Edges.Project.ShortName))
+	fc = bytes.ReplaceAll(fc, []byte("#{the_index}"), []byte(fmt.Sprintf("%02d", songIndex)))
+
+	// 6. Deserialisiere das JSON wieder in eine Map für weitere Bearbeitung.
+	var finalConfig map[string]any
+	err = json.Unmarshal(fc, &finalConfig)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal project config: %w", err)
+	}
+
+	// 7. Führe die Konfiguration aus der Datei und dem Projekt zusammen.
+	err = mergo.Merge(&finalConfig, fileConfig)
+	if err != nil {
+		return fmt.Errorf("failed to merge config: %w", err)
+	}
+
+	// 8. Schreibe die finale Konfiguration in eine temporäre Datei.
+	tempConfigFile, err := os.CreateTemp("", "zupfnoter-*.json")
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	// Schreibe die finale Konfiguration als JSON in die Datei.
+	json.NewEncoder(tempConfigFile).Encode(finalConfig)
+	tempConfigFile.Close()
+
+	// 9. Rufe das externe Tool "zupfnoter" auf und übergebe die notwendigen Dateien.
+	err = zupfnoter.Run(
+		ctx,
+		filepath.Join(abcFileDir, song.Edges.Song.Filename), // Pfad zur ABC-Datei
+		filepath.Join(outputDir, "pdf"),                     // Ausgabeverzeichnis für PDF
+		tempConfigFile.Name(),                               // Pfad zur Konfigurationsdatei
+	)
 	if err != nil {
 		return fmt.Errorf("failed to run zupfnoter: %w", err)
 	}
-	os.Remove(tempFile.Name())
+	// 10. Lösche die temporäre Konfigurationsdatei.
+	os.Remove(tempConfigFile.Name())
 
-	// copy ABC file to the output dir
-	err = os.WriteFile(filepath.Join(outputDir, "abc", song.Edges.Song.Filename), abcFile, 0644)
+	// 11. Kopiere die ABC-Datei ins Zielverzeichnis (z.B. für das Archiv).
+	err = os.WriteFile(
+		filepath.Join(outputDir, "abc", song.Edges.Song.Filename),
+		abcFile,
+		0644,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to copy ABC file to output dir: %w", err)
 	}
 
+	// 12. Verschiebe das Logfile ins Log-Verzeichnis.
 	logFN := fmt.Sprintf("%s.err.log", song.Edges.Song.Filename)
-	err = os.Rename(filepath.Join(outputDir, "pdf", logFN), filepath.Join(outputDir, "log", logFN))
+	err = os.Rename(
+		filepath.Join(outputDir, "pdf", logFN),
+		filepath.Join(outputDir, "log", logFN),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to rename log file: %w", err)
 	}
 
+	// 13. Erfolgreich abgeschlossen.
 	return nil
 }
 
