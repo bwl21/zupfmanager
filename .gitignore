@@ -7,3 +7,4 @@ pdf/
 output/
 x.json
 dist/
+x/.DS_Store

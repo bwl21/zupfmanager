@@ -13,24 +13,24 @@ build:
 # Build for Linux (amd64)
 build-linux:
 	@echo "Building $(BINARY_NAME) for linux/amd64..."
-	@GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/$(BINARY_NAME)-linux-amd64 main.go
+	@GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -o dist/$(BINARY_NAME)-linux-amd64 main.go
 	@echo "Build complete: dist/$(BINARY_NAME)-linux-amd64"
 
 # Build for macOS (amd64)
 build-macos-amd64:
 	@echo "Building $(BINARY_NAME) for darwin/amd64..."
-	@GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -o dist/$(BINARY_NAME)-darwin-amd64 main.go
+	@GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -o dist/$(BINARY_NAME)-darwin-amd64 main.go
 	@echo "Build complete: dist/$(BINARY_NAME)-darwin-amd64"
 
 # Build for macOS (arm64 - Apple Silicon)
 build-macos-arm64:
 	@echo "Building $(BINARY_NAME) for darwin/arm64..."
-	@GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -o dist/$(BINARY_NAME)-darwin-arm64 main.go
+	@GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -o dist/$(BINARY_NAME)-darwin-arm64 main.go
 	@echo "Build complete: dist/$(BINARY_NAME)-darwin-arm64"
 
 build-windows:
 	@echo "Building $(BINARY_NAME) for windows/amd64..."
-	@GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -o dist/$(BINARY_NAME)-windows-amd64.exe main.go
+	@GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -o dist/$(BINARY_NAME)-windows-amd64.exe main.go
 	@echo "Build complete: dist/$(BINARY_NAME)-windows-amd64.exe"
 
 # Build for both macOS architectures

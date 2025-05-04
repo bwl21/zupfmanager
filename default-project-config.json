@@ -1,11 +1,53 @@
 {
     "extract": {
-        "0": {
-            "notes": {
-                "T01_number": {
-                    "text": "#{PREFIX}#{the_index}"
-                }
-            }
+      "0": {
+        "notes": {
+          "T01_number": {
+            "text": "MBT 25-#{the_index}"
+          },
+          "T04_to_order": {
+            "text": "Tischharfen-Kompaktseminar Monbachtal 2025",
+            "style": "small"
+          },
+          "T99_do_not_copy": {
+            "text": "Bitte nicht kopieren"
+          }
+        },
+        "sortmark": {
+          "show": false
+        },
+        "layout": {
+          "limit_a3": false
         }
+      },
+      "1": {
+        "layout": {
+          "limit_a3": false
+        }
+      },
+      "2": {
+        "layout": {
+          "limit_a3": false
+        },
+        "printer": {
+          "a3_offset": [0, 0]
+        }
+      },
+      "3": {
+        "layout": {
+          "limit_a3": false
+        }
+      },
+      "4": {
+        "layout": {
+          "limit_a3": false
+        }
+      },
+      "5": {
+        "layout": {
+          "limit_a3": false
+        }
+      }
     }
-}
+  }
+  

@@ -107,7 +107,7 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 	}
 
 	fc = bytes.ReplaceAll(fc, []byte("#{PREFIX}"), []byte(song.Edges.Project.ShortName))
-	fc = bytes.ReplaceAll(fc, []byte("#{the_index}"), []byte(fmt.Sprintf("%03d", songIndex)))
+	fc = bytes.ReplaceAll(fc, []byte("#{the_index}"), []byte(fmt.Sprintf("%02d", songIndex)))
 
 	var finalConfig map[string]any
 	err = json.Unmarshal(fc, &finalConfig)
