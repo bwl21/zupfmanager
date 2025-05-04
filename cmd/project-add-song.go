@@ -10,7 +10,6 @@ import (
 	"strconv"
 
 	"github.com/bwl21/zupfmanager/internal/database"
-	"github.com/bwl21/zupfmanager/internal/ent/project"
 	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
 	"github.com/bwl21/zupfmanager/internal/ent/song"
 	"github.com/spf13/cobra"
@@ -37,32 +36,51 @@ var projectAddSongCmd = &cobra.Command{
 			return fmt.Errorf("invalid project ID: %v", err)
 		}
 
-		// Parse song ID
-		songID, err := strconv.Atoi(args[1])
-		if err != nil {
-			return fmt.Errorf("invalid song ID: %v", err)
-		}
+		var songID int
+		var songExists bool
 
-		// Verify project exists
-		projectExists, err := client.Project.Query().
-			Where(project.ID(projectID)).
-			Exist(context.Background())
-		if err != nil {
-			return err
-		}
-		if !projectExists {
-			return fmt.Errorf("project with ID %d not found", projectID)
-		}
+		// Check if the --id flag is set
+		idFlag := cmd.Flags().Lookup("id").Value.String() == "true"
 
-		// Verify song exists
-		songExists, err := client.Song.Query().
-			Where(song.ID(songID)).
-			Exist(context.Background())
-		if err != nil {
-			return err
-		}
-		if !songExists {
-			return fmt.Errorf("song with ID %d not found", songID)
+		if idFlag {
+			// If the --id flag is set, treat arg as song ID
+			songID, err = strconv.Atoi(args[1])
+			if err != nil {
+				return fmt.Errorf("invalid song ID: %v", err)
+			}
+
+			songExists, err = client.Song.Query().
+				Where(song.ID(songID)).
+				Exist(context.Background())
+			if err != nil {
+				return err
+			}
+			if !songExists {
+				return fmt.Errorf("song with ID %d not found", songID)
+			}
+		} else {
+			// If the --id flag is not set, treat arg as filename
+			songs, err := client.Song.Query().
+				Where(song.FilenameContains(args[1])).
+				All(context.Background())
+			if err != nil {
+				return fmt.Errorf("error searching for songs with filename containing %s: %v", args[1], err)
+			}
+
+			if len(songs) == 0 {
+				return fmt.Errorf("no songs found with filename containing %s", args[1])
+			}
+
+			if len(songs) > 1 {
+				fmt.Println("Multiple songs found:")
+				for _, s := range songs {
+					fmt.Printf("ID: %d, Filename: %s\n", s.ID, s.Filename)
+				}
+				return fmt.Errorf("multiple songs found with filename containing %s, please specify the ID", args[1])
+			}
+
+			songID = songs[0].ID
+			songExists = true
 		}
 
 		// Get flags
@@ -82,9 +100,16 @@ var projectAddSongCmd = &cobra.Command{
 			return err
 		}
 
+		// Get song filename
+		songResult, err := client.Song.Get(context.Background(), songID)
+		if err != nil {
+			return fmt.Errorf("failed to get song: %w", err)
+		}
+
 		slog.Info("Added song to project",
 			"project_id", projectID,
 			"song_id", songID,
+			"song_filename", songResult.Filename,
 			"priority", projectSong.Priority,
 			"difficulty", projectSong.Difficulty)
 
@@ -101,4 +126,7 @@ func init() {
 
 	// Optional flags
 	projectAddSongCmd.Flags().StringP("comment", "c", "", "Optional comment")
+
+	// Flag to specify searching by ID
+	projectAddSongCmd.Flags().Bool("id", false, "Search for song by ID")
 }
