@@ -4,7 +4,9 @@ frontend/dist
 testdata/
 zupfmanager.db
 pdf/
+abc/
+log/
 output/
 x.json
 dist/
-x/.DS_Store
+.DS_Store
