@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"io"
 
 	"dario.cat/mergo"
 	"github.com/bwl21/zupfmanager/internal/database"
@@ -68,11 +69,13 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 	os.RemoveAll(filepath.Join(outputDir, "pdf"))
 	os.RemoveAll(filepath.Join(outputDir, "abc"))
 	os.RemoveAll(filepath.Join(outputDir, "log"))
+	os.RemoveAll(filepath.Join(outputDir, "druckdateien"))
 
 	_ = os.MkdirAll(outputDir, 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "pdf"), 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "abc"), 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "log"), 0755)
+	_ = os.MkdirAll(filepath.Join(outputDir, "druckdateien"), 0755)
 
 	eg, ctx := errgroup.WithContext(context.Background())
 	eg.SetLimit(5)
@@ -84,7 +87,7 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 	for id, song := range projectSongs {
 		song := song
 		eg.Go(func() error {
-			return buildSong(ctx, abcFileDir, outputDir, id, song)
+			return buildSong(ctx, abcFileDir, outputDir, id+1, song)
 		})
 	}
 	err := eg.Wait()
@@ -133,6 +136,13 @@ func createToc(projectSongs []*ent.ProjectSong, err error, outputDir string) err
 		fmt.Println(filepath.Join(outputDir, "abc", tocSongFilename))
 		return fmt.Errorf("failed to run zupfnoter: %w", err)
 	}
+
+	// Distribute the table of contents PDF to the print files directories.
+	err = distributeZupfnoterOutput(tocSongFilename, outputDir, 0)
+	if err != nil {
+		return fmt.Errorf("failed to distribute Zupfnoter output: %w", err)
+	}
+
 	return nil
 }
 
@@ -200,7 +210,13 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 	// 10. Lösche die temporäre Konfigurationsdatei.
 	os.Remove(tempConfigFile.Name())
 
-	// 11. Kopiere die ABC-Datei ins Zielverzeichnis (z.B. für das Archiv).
+	// 11. Distribute the Zupfnoter output to the print files directories.
+	err = distributeZupfnoterOutput(song.Edges.Song.Filename, outputDir, songIndex)
+	if err != nil {
+		return fmt.Errorf("failed to distribute Zupfnoter output: %w", err)
+	}
+
+	// 12. Kopiere die ABC-Datei ins Zielverzeichnis (z.B. für das Archiv).
 	err = os.WriteFile(
 		filepath.Join(outputDir, "abc", song.Edges.Song.Filename),
 		abcFile,
@@ -245,4 +261,84 @@ func init() {
 	projectCmd.AddCommand(projectBuildCmd)
 
 	projectBuildCmd.Flags().StringVarP(&projectBuildAbcFileDir, "abc-file-dir", "a", "", "The directory to find the ABC files")
+}
+
+func distributeZupfnoterOutput(baseFilename string, outputDir string, songIndex int) error {
+	pdfDir := filepath.Join(outputDir, "pdf")
+	baseFilenameWithoutExt := strings.TrimSuffix(baseFilename, ".abc")
+	pattern := filepath.Join(pdfDir, filepath.Base(baseFilenameWithoutExt) + "*.pdf")
+	files, err := filepath.Glob(pattern)
+	if err != nil {
+		return fmt.Errorf("failed to glob PDF files: %w", err)
+	}
+
+	folderPatterns := map[string]string{
+		"*_-A*_a3.pdf": "klein",
+		"*_-M*_a3.pdf": "klein",
+		"*_-O*_a3.pdf": "klein",
+		"*_-B*_a3.pdf": "gross",
+		"*_-X*_a3.pdf": "gross",
+	}
+
+	for _, pdfFile := range files {
+		filename := filepath.Base(pdfFile)
+		newFilename := fmt.Sprintf("%02d_%s", songIndex, filename)
+		var targetDir string
+
+		for pattern, folder := range folderPatterns {
+			matched, err := filepath.Match(pattern, filename)
+			if err != nil {
+				return fmt.Errorf("failed to match pattern: %w", err)
+			}
+			if matched {
+				targetDir = filepath.Join(outputDir, "druckdateien", folder)
+				break
+			}
+		}
+
+		if targetDir == "" {
+			slog.Info("skipping file", "filename", filename)
+			continue
+		}
+
+		slog.Info("target directory", "targetDir", targetDir)
+		err := os.MkdirAll(targetDir, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create target directory: %w", err)
+		}
+
+		targetFile := filepath.Join(targetDir, newFilename)
+		slog.Info("copying file", "source", pdfFile, "target", targetFile)
+		err = copyFile(pdfFile, targetFile)
+		if err != nil {
+			return fmt.Errorf("failed to copy file: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	sourceFileStat, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	if !sourceFileStat.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a regular file", src)
+	}
+
+	source, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
+
+	destination, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+	_, err = io.Copy(destination, source)
+	return err
 }
