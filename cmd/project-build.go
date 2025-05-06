@@ -65,6 +65,10 @@ var projectBuildCmd = &cobra.Command{
 }
 
 func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
+	os.RemoveAll(filepath.Join(outputDir, "pdf"))
+	os.RemoveAll(filepath.Join(outputDir, "abc"))
+	os.RemoveAll(filepath.Join(outputDir, "log"))
+
 	_ = os.MkdirAll(outputDir, 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "pdf"), 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "abc"), 0755)
