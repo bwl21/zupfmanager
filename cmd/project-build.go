@@ -6,13 +6,13 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-	"io"
 
 	"dario.cat/mergo"
 	"github.com/bwl21/zupfmanager/internal/database"
@@ -21,6 +21,8 @@ import (
 	"github.com/bwl21/zupfmanager/internal/zupfnoter"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/pdfcpu/pdfcpu/pkg/api"
 )
 
 const (
@@ -75,7 +77,12 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 	_ = os.MkdirAll(filepath.Join(outputDir, "pdf"), 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "abc"), 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "log"), 0755)
-	_ = os.MkdirAll(filepath.Join(outputDir, "druckdateien"), 0755)
+	druckdateienDir := filepath.Join(outputDir, "druckdateien")
+	_ = os.MkdirAll(druckdateienDir, 0755)
+	grossDir := filepath.Join(druckdateienDir, "gross")
+	_ = os.MkdirAll(grossDir, 0755)
+	kleinDir := filepath.Join(druckdateienDir, "klein")
+	_ = os.MkdirAll(kleinDir, 0755)
 
 	eg, ctx := errgroup.WithContext(context.Background())
 	eg.SetLimit(5)
@@ -100,6 +107,19 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 		return err2
 	}
 	//os.Remove(tempFile.Name())
+
+	grossDir = filepath.Join(outputDir, "druckdateien", "gross")
+	kleinDir = filepath.Join(outputDir, "druckdateien", "klein")
+
+	err = mergePDFs(grossDir, filepath.Join(outputDir, "druckdateien", "gross.pdf"))
+	if err != nil {
+		return fmt.Errorf("failed to merge PDFs in gross directory: %w", err)
+	}
+
+	err = mergePDFs(kleinDir, filepath.Join(outputDir, "druckdateien", "klein.pdf"))
+	if err != nil {
+		return fmt.Errorf("failed to merge PDFs in klein directory: %w", err)
+	}
 
 	return nil
 }
@@ -166,13 +186,11 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 	}
 
 	// 4. Serialisiere die Projekt-Konfiguration als JSON.
-	fc, err := json.Marshal(song.Edges.Project.Config)
+	projectConfigBytes, err := json.Marshal(song.Edges.Project.Config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal project config: %w", err)
 	}
-
-	// 5. Ersetze Platzhalter im JSON (z.B. #{PREFIX}, #{the_index}).
-	fc = bytes.ReplaceAll(fc, []byte("#{PREFIX}"), []byte(song.Edges.Project.ShortName))
+	fc := bytes.ReplaceAll(projectConfigBytes, []byte("#{PREFIX}"), []byte(song.Edges.Project.ShortName))
 	fc = bytes.ReplaceAll(fc, []byte("#{the_index}"), []byte(fmt.Sprintf("%02d", songIndex)))
 
 	// 6. Deserialisiere das JSON wieder in eine Map für weitere Bearbeitung.
@@ -341,4 +359,31 @@ func copyFile(src, dst string) error {
 	defer destination.Close()
 	_, err = io.Copy(destination, source)
 	return err
+}
+
+func mergePDFs(dir, dest string) error {
+	slog.Info("merging pdf files", "dir", dir, "dest", dest)
+
+	var files []string
+
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.ToLower(filepath.Ext(path)) == ".pdf" {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("failed to walk directory: %w", err)
+	}
+
+
+	err = api.MergeCreateFile(files, dest, false, nil)
+	if err != nil {
+		return fmt.Errorf("failed to merge pdf files: %w", err)
+	}
+
+	return nil
 }
