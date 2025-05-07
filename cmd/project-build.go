@@ -284,7 +284,7 @@ func init() {
 func distributeZupfnoterOutput(baseFilename string, outputDir string, songIndex int) error {
 	pdfDir := filepath.Join(outputDir, "pdf")
 	baseFilenameWithoutExt := strings.TrimSuffix(baseFilename, ".abc")
-	pattern := filepath.Join(pdfDir, filepath.Base(baseFilenameWithoutExt) + "*.pdf")
+	pattern := filepath.Join(pdfDir, filepath.Base(baseFilenameWithoutExt)+"*.pdf")
 	files, err := filepath.Glob(pattern)
 	if err != nil {
 		return fmt.Errorf("failed to glob PDF files: %w", err)
@@ -378,7 +378,6 @@ func mergePDFs(dir, dest string) error {
 	if err != nil {
 		return fmt.Errorf("failed to walk directory: %w", err)
 	}
-
 
 	err = api.MergeCreateFile(files, dest, false, nil)
 	if err != nil {
