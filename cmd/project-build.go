@@ -63,6 +63,10 @@ var projectBuildCmd = &cobra.Command{
 		projectBuildOutputDir = project.ShortName
 		cmd.Flags().StringVarP(&projectBuildOutputDir, "output-dir", "o", projectBuildOutputDir, "The directory to output the build results")
 
+		if (projectBuildAbcFileDir == "") {
+			projectBuildAbcFileDir = project.Config["abc_file_dir"].(string)
+		}
+
 		return buildProject(projectBuildAbcFileDir, projectBuildOutputDir, project)
 	},
 }
