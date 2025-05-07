@@ -7,8 +7,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/bwl21/zupfmanager/internal/ent"
+	"github.com/bwl21/zupfmanager/internal/ent/project"
 	"context"
 	"strconv"
+	"text/tabwriter"
 )
 
 var projectDeleteCmd = &cobra.Command{
@@ -21,15 +23,6 @@ var projectDeleteCmd = &cobra.Command{
 			os.Exit(1)
 		}
 		projectID := args[0]
-
-		fmt.Printf("Are you sure you want to delete project with ID %s? (y/N): ", projectID)
-		var confirmation string
-		fmt.Scanln(&confirmation)
-
-		if confirmation != "y" {
-			fmt.Println("Deletion cancelled.")
-			return
-		}
 
 		// Convert projectID to int
 		id, err := strconv.Atoi(projectID)
@@ -44,6 +37,62 @@ var projectDeleteCmd = &cobra.Command{
 			log.Fatalf("failed to open sqlite3 connection: %v", err)
 		}
 		defer client.Close()
+
+		// Query project with associated songs
+		proj, err := client.Project.Query().
+			Where(project.ID(id)).
+			WithProjectSongs(func(q *ent.ProjectSongQuery) {
+				q.WithSong()
+			}).
+			First(context.Background())
+
+		if err != nil {
+			fmt.Printf("Failed to find project with ID %s: %v\n", projectID, err)
+			os.Exit(1)
+		}
+
+		// Display project details
+		fmt.Printf("Project: %s (ID: %d)\n", proj.Title, proj.ID)
+
+		if len(proj.Config) > 0 {
+			fmt.Println("\nConfiguration:")
+			for k, v := range proj.Config {
+				fmt.Printf("  %s: %v\n", k, v)
+			}
+		}
+
+		// Display associated songs if any
+		if len(proj.Edges.ProjectSongs) > 0 {
+			fmt.Println("\nSongs:")
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.TabIndent)
+			fmt.Fprintln(w, "ID\tTITLE\tPRIORITY\tDIFFICULTY\tCOMMENT")
+			fmt.Fprintln(w, "--\t-----\t--------\t----------\t-------")
+
+			for _, ps := range proj.Edges.ProjectSongs {
+				comment := ps.Comment
+				if comment == "" {
+					comment = "-"
+				}
+				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\n",
+					ps.Edges.Song.ID,
+					ps.Edges.Song.Title,
+					ps.Priority,
+					ps.Difficulty,
+					comment)
+			}
+			w.Flush()
+		} else {
+			fmt.Println("\nNo songs associated with this project.")
+		}
+
+		fmt.Printf("Are you sure you want to delete project with ID %s? (y/N): ", projectID)
+		var confirmation string
+		fmt.Scanln(&confirmation)
+
+		if confirmation != "y" {
+			fmt.Println("Deletion cancelled.")
+			return
+		}
 
 		// Delete the project
 		err = client.Project.DeleteOneID(id).Exec(context.Background())

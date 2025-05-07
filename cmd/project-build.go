@@ -63,8 +63,15 @@ var projectBuildCmd = &cobra.Command{
 		projectBuildOutputDir = project.ShortName
 		cmd.Flags().StringVarP(&projectBuildOutputDir, "output-dir", "o", projectBuildOutputDir, "The directory to output the build results")
 
-		if (projectBuildAbcFileDir == "") {
-			projectBuildAbcFileDir = project.Config["abc_file_dir"].(string)
+		if projectBuildAbcFileDir == "" {
+			// Check if abc_file_dir exists and is a string
+			abcFileDir, ok := project.Config["abc_file_dir"].(string)
+			if ok {
+				projectBuildAbcFileDir = abcFileDir
+			} else {
+				// Provide a default value or handle the error appropriately
+				projectBuildAbcFileDir = ""
+			}
 		}
 
 		return buildProject(projectBuildAbcFileDir, projectBuildOutputDir, project)
