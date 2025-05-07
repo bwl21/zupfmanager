@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"strconv"
 
@@ -14,66 +13,60 @@ import (
 
 // projectUpdateCmd represents the project edit config command
 var projectUpdateCmd = &cobra.Command{
-	Use:   "update PROJECT_ID <filename|->",
-	Short: "Update the config JSON for a project from a file or STDIN",
-	Long: `Updates the 'config' field of a project specified by its ID.
-The configuration should be provided as a JSON object.
-Input can be read from a file using the --input flag or from STDIN if the flag is omitted.`,
-	Args: cobra.ExactArgs(2),
+	Use:   "update",
+	Short: "Update an existing project",
+	Long:  `Update an existing project in the database with specified attributes.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		projectID, err := strconv.Atoi(args[0])
-		if err != nil {
-			return fmt.Errorf("invalid project ID: %w", err)
-		}
-
-		projectEditConfigInputFile := args[1]
-
-		var reader io.Reader
-		if projectEditConfigInputFile == "-" {
-			fmt.Println("Reading project config JSON from STDIN. Press Ctrl+D when finished.")
-			reader = os.Stdin
-		} else {
-			file, err := os.Open(projectEditConfigInputFile)
-			if err != nil {
-				return fmt.Errorf("failed to open input file %s: %w", projectEditConfigInputFile, err)
-			}
-			defer file.Close()
-			reader = file
-		}
-
-		jsonData, err := io.ReadAll(reader)
-		if err != nil {
-			return fmt.Errorf("failed to read input: %w", err)
-		}
-
-		var configData map[string]interface{}
-		if err := json.Unmarshal(jsonData, &configData); err != nil {
-			return fmt.Errorf("failed to parse JSON input: %w", err)
-		}
+		cmd.SilenceUsage = true
 
 		client, err := database.New()
 		if err != nil {
 			return err
 		}
-		defer client.Close()
 
-		project, err := client.Project.Get(context.Background(), projectID)
+		projectIDStr, _ := cmd.Flags().GetString("id")
+		projectID, err := strconv.Atoi(projectIDStr)
 		if err != nil {
-			return fmt.Errorf("failed to find project with ID %d: %w", projectID, err)
+			return fmt.Errorf("invalid project ID: %w", err)
 		}
 
-		_, err = project.Update().
-			SetConfig(configData).
-			Save(context.Background())
-		if err != nil {
-			return fmt.Errorf("failed to update project config for ID %d: %w", projectID, err)
+		title, _ := cmd.Flags().GetString("title")
+		shortName, _ := cmd.Flags().GetString("short_name")
+		configStr, _ := cmd.Flags().GetString("config")
+
+		// Parse config JSON if provided
+		var config map[string]interface{}
+		if configStr != "" {
+			// Read config from file
+			configFile, err := os.ReadFile(configStr)
+			if err != nil {
+				return fmt.Errorf("failed to read config file: %w", err)
+			}
+			if err := json.Unmarshal(configFile, &config); err != nil {
+				return fmt.Errorf("failed to parse config JSON: %w", err)
+			}
+		} else {
+			config = map[string]interface{}{}
 		}
 
-		fmt.Printf("Successfully updated config for project ID %d\n", projectID)
+		_, err = client.CreateOrUpdateProject(context.Background(), projectID, title, shortName, config)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	},
 }
 
 func init() {
 	projectCmd.AddCommand(projectUpdateCmd)
+
+	// Required flags
+	projectUpdateCmd.Flags().StringP("id", "i", "", "ID of the project to update (required)")
+	projectUpdateCmd.MarkFlagRequired("id")
+
+	// Optional flags
+	projectUpdateCmd.Flags().StringP("title", "t", "", "New title of the project")
+	projectUpdateCmd.Flags().StringP("short_name", "s", "", "New short name of the project")
+	projectUpdateCmd.Flags().StringP("config", "c", "", "Project configuration as JSON string")
 }

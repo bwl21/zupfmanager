@@ -6,7 +6,8 @@ package cmd
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
+	"fmt"
+	"os"
 
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/spf13/cobra"
@@ -32,24 +33,34 @@ var projectCreateCmd = &cobra.Command{
 		// Parse config JSON if provided
 		var config map[string]interface{}
 		if configStr != "" {
-			if err := json.Unmarshal([]byte(configStr), &config); err != nil {
-				return err
+			// Read config from file
+			configFile, err := os.ReadFile(configStr)
+			if err != nil {
+				return fmt.Errorf("failed to read config file: %w", err)
+			}
+			if err := json.Unmarshal(configFile, &config); err != nil {
+				return fmt.Errorf("failed to parse config JSON: %w", err)
 			}
 		} else {
 			config = map[string]interface{}{}
+			if defaultCfg, _ := cmd.Flags().GetBool("default_config"); defaultCfg {
+				// Load default config from file
+				configFile, err := os.ReadFile("default-project-config.json")
+				if err != nil {
+					return fmt.Errorf("failed to read default config file: %w", err)
+				}
+				if err := json.Unmarshal(configFile, &config); err != nil {
+					return fmt.Errorf("failed to parse default config JSON: %w", err)
+				}
+			}
 		}
 
-		project, err := client.Project.Create().
-			SetTitle(title).
-			SetShortName(shortName).
-			SetConfig(config).
-			Save(context.Background())
+		_, err = client.CreateOrUpdateProject(context.Background(), 0, title, shortName, config)
 
 		if err != nil {
 			return err
 		}
 
-		slog.Info("Created new project", "id", project.ID, "title", project.Title)
 		return nil
 	},
 }
@@ -65,4 +76,5 @@ func init() {
 
 	// Optional flags
 	projectCreateCmd.Flags().StringP("config", "c", "", "Project configuration as JSON string")
+	projectCreateCmd.Flags().BoolP("default_config", "d", false, "Load default project configuration from file")
 }
