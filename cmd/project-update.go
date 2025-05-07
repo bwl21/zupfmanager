@@ -12,9 +12,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// projectEditConfigCmd represents the project edit config command
-var projectEditConfigCmd = &cobra.Command{
-	Use:   "edit-config PROJECT_ID <filename|->",
+// projectUpdateCmd represents the project edit config command
+var projectUpdateCmd = &cobra.Command{
+	Use:   "update PROJECT_ID <filename|->",
 	Short: "Update the config JSON for a project from a file or STDIN",
 	Long: `Updates the 'config' field of a project specified by its ID.
 The configuration should be provided as a JSON object.
@@ -75,5 +75,5 @@ Input can be read from a file using the --input flag or from STDIN if the flag i
 }
 
 func init() {
-	projectCmd.AddCommand(projectEditConfigCmd)
+	projectCmd.AddCommand(projectUpdateCmd)
 }
