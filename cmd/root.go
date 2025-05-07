@@ -18,7 +18,13 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Run: func(cmd *cobra.Command, args []string) {
+		version, _ := cmd.Flags().GetBool("version")
+		if version {
+			println("zupfmanager v0.0.1")
+			os.Exit(0)
+		}
+	},
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -31,5 +37,5 @@ func Execute() {
 }
 
 func init() {
-
+	rootCmd.Flags().BoolP("version", "v", false, "Print the version number")
 }

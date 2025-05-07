@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"log/slog"
 
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/spf13/cobra"
@@ -56,10 +57,19 @@ var projectCreateCmd = &cobra.Command{
 		}
 
 		_, err = client.CreateOrUpdateProject(context.Background(), 0, title, shortName, config)
-
 		if err != nil {
 			return err
 		}
+
+		// Create directory with shortName and tpl subdirectory
+		projectDir := shortName
+		tplDir := projectDir + "/tpl"
+		err = os.MkdirAll(tplDir, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create directory: %w", err)
+		}
+
+		slog.Info("Created project directory", "path", projectDir)
 
 		return nil
 	},

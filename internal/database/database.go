@@ -52,6 +52,39 @@ func (c *Client) Init() error {
 	return nil
 }
 
+// CreateOrUpdateProject creates a new project or updates an existing project
+func (c *Client) CreateOrUpdateProject(ctx context.Context, projectID int, title, shortName string, config map[string]interface{}) (*ent.Project, error) {
+	if projectID == 0 {
+		// Create a new project
+		project, err := c.Project.Create().
+			SetTitle(title).
+			SetShortName(shortName).
+			SetConfig(config).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		slog.Info("Created new project", "id", project.ID, "title", project.Title)
+		return project, nil
+	} else {
+		// Update an existing project
+		project, err := c.Project.Get(ctx, projectID)
+		if err != nil {
+			return nil, err
+		}
+		project, err = project.Update().
+			SetTitle(title).
+			SetShortName(shortName).
+			SetConfig(config).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		slog.Info("Updated project", "id", projectID, "title", project.Title)
+		return project, nil
+	}
+}
+
 // Close closes the database connection
 func (c *Client) Close() error {
 	return c.Client.Close()

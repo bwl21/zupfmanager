@@ -113,7 +113,7 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 		return fmt.Errorf("failed to build songs: %w", err)
 	}
 
-	err2 := createToc(projectSongs, err, outputDir)
+	err2 := createToc(project, projectSongs, err, outputDir)
 	if err2 != nil {
 		return err2
 	}
@@ -135,15 +135,22 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 	return nil
 }
 
-func createToc(projectSongs []*ent.ProjectSong, err error, outputDir string) error {
+func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, err error, outputDir string) error {
 	tocabc := ""
 	for id, song := range projectSongs {
 		tocabc += fmt.Sprintf("W:%d %s\n", id+1, song.Edges.Song.Title)
 	}
 
-	toctemplateBytes, err := os.ReadFile(filepath.Join(outputDir, "999_inhaltsverzeichnis_template.abc"))
+	templateFile := filepath.Join(project.ShortName, "tpl", "999_inhaltsverzeichnis_template.abc")
+	toctemplateBytes, err := os.ReadFile(templateFile)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+		slog.Warn("failed to read template file, using default", "path", templateFile, "error", err)
+		defaultTemplateFile := "x/MBT-2025/999_inhaltsverzeichnis_template.abc"
+		toctemplateBytes, err = os.ReadFile(defaultTemplateFile)
+		if err != nil {
+			return fmt.Errorf("failed to read default template file: %w", err)
+		}
+		slog.Warn("using default template file", "path", defaultTemplateFile)
 	}
 	toctemplate := strings.Replace(string(toctemplateBytes), "W:{{TOC}}", tocabc, 1)
 
