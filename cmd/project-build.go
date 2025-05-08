@@ -18,6 +18,7 @@ import (
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/bwl21/zupfmanager/internal/ent"
 	"github.com/bwl21/zupfmanager/internal/ent/project"
+	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
 	"github.com/bwl21/zupfmanager/internal/zupfnoter"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -32,6 +33,7 @@ const (
 var (
 	projectBuildOutputDir  string
 	projectBuildAbcFileDir string
+	projectBuildPriorityThreshold int
 )
 
 var projectBuildCmd = &cobra.Command{
@@ -51,11 +53,12 @@ var projectBuildCmd = &cobra.Command{
 		}
 		defer client.Close()
 
-		project, err := client.Project.Query().Where(project.ID(projectID)).WithProjectSongs(
-			func(psq *ent.ProjectSongQuery) {
+		project, err := client.Project.Query().Where(project.ID(projectID)).
+			WithProjectSongs(func(psq *ent.ProjectSongQuery) {
+				psq.Where(projectsong.PriorityLTE(projectBuildPriorityThreshold))
 				psq.WithProject().WithSong()
-			},
-		).First(context.Background())
+			}).
+			First(context.Background())
 		if err != nil {
 			return fmt.Errorf("failed to find project with ID %d: %w", projectID, err)
 		}
@@ -300,6 +303,7 @@ func init() {
 	projectCmd.AddCommand(projectBuildCmd)
 
 	projectBuildCmd.Flags().StringVarP(&projectBuildAbcFileDir, "abc-file-dir", "a", "", "The directory to find the ABC files")
+	projectBuildCmd.Flags().IntVarP(&projectBuildPriorityThreshold, "priority-threshold", "p", 1, "The maximum priority of songs to include in the build")
 }
 
 func distributeZupfnoterOutput(baseFilename string, outputDir string, songIndex int) error {
