@@ -1,14 +1,22 @@
 # Output binary name
 BINARY_NAME=zupfmanager
 
-# Default target: build for the current OS/Arch
-all: build-linux build-macos build-windows
 
-# Build for the current system
+# Makefile
+BINARY_NAME := zupfmanager
+VERSION := $(shell git describe --tags --always --dirty)
+COMMIT := $(shell git rev-parse HEAD)
+MODULE := $(shell grep "^module " go.mod | awk '{print $$2}')
+GO_LDFLAGS := -X $(MODULE)/cmd.Version=$(VERSION) -X $(MODULE)/cmd.GitCommit=$(COMMIT)
+
+# Standardziel
+all: build
+
+# Build für aktuelles System
 build:
-	@echo "Building $(BINARY_NAME) for $(shell go env GOOS)/$(shell go env GOARCH)..."
-	@go build -o dist/$(BINARY_NAME) main.go
-	@echo "Build complete: dist/$(BINARY_NAME)"
+	@echo "Building $(BINARY_NAME) für $(shell go env GOOS)/$(shell go env GOARCH)..."
+	@go build -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)
+	@echo "Build abgeschlossen: dist/$(BINARY_NAME) $(VERSION) $(COMMIT)"
 
 # Build for Linux (amd64)
 build-linux:
