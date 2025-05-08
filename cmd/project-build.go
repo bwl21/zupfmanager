@@ -100,7 +100,7 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 
 	projectSongs := project.Edges.ProjectSongs
 	sort.Slice(projectSongs, func(i, j int) bool {
-		return projectSongs[i].Edges.Song.Title < projectSongs[j].Edges.Song.Title
+		return strings.ToLower(projectSongs[i].Edges.Song.Title) < strings.ToLower(projectSongs[j].Edges.Song.Title)
 	})
 	for id, song := range projectSongs {
 		song := song
