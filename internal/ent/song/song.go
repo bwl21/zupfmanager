@@ -18,6 +18,8 @@ const (
 	FieldFilename = "filename"
 	// FieldGenre holds the string denoting the genre field in the database.
 	FieldGenre = "genre"
+	// FieldCopyright holds the string denoting the copyright field in the database.
+	FieldCopyright = "copyright"
 	// EdgeProjectSongs holds the string denoting the project_songs edge name in mutations.
 	EdgeProjectSongs = "project_songs"
 	// Table holds the table name of the song in the database.
@@ -37,6 +39,7 @@ var Columns = []string{
 	FieldTitle,
 	FieldFilename,
 	FieldGenre,
+	FieldCopyright,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -79,6 +82,11 @@ func ByFilename(opts ...sql.OrderTermOption) OrderOption {
 // ByGenre orders the results by the genre field.
 func ByGenre(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldGenre, opts...).ToFunc()
+}
+
+// ByCopyright orders the results by the copyright field.
+func ByCopyright(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCopyright, opts...).ToFunc()
 }
 
 // ByProjectSongsCount orders the results by project_songs count.

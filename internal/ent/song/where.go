@@ -68,6 +68,11 @@ func Genre(v string) predicate.Song {
 	return predicate.Song(sql.FieldEQ(FieldGenre, v))
 }
 
+// Copyright applies equality check predicate on the "copyright" field. It's identical to CopyrightEQ.
+func Copyright(v string) predicate.Song {
+	return predicate.Song(sql.FieldEQ(FieldCopyright, v))
+}
+
 // TitleEQ applies the EQ predicate on the "title" field.
 func TitleEQ(v string) predicate.Song {
 	return predicate.Song(sql.FieldEQ(FieldTitle, v))
@@ -271,6 +276,81 @@ func GenreEqualFold(v string) predicate.Song {
 // GenreContainsFold applies the ContainsFold predicate on the "genre" field.
 func GenreContainsFold(v string) predicate.Song {
 	return predicate.Song(sql.FieldContainsFold(FieldGenre, v))
+}
+
+// CopyrightEQ applies the EQ predicate on the "copyright" field.
+func CopyrightEQ(v string) predicate.Song {
+	return predicate.Song(sql.FieldEQ(FieldCopyright, v))
+}
+
+// CopyrightNEQ applies the NEQ predicate on the "copyright" field.
+func CopyrightNEQ(v string) predicate.Song {
+	return predicate.Song(sql.FieldNEQ(FieldCopyright, v))
+}
+
+// CopyrightIn applies the In predicate on the "copyright" field.
+func CopyrightIn(vs ...string) predicate.Song {
+	return predicate.Song(sql.FieldIn(FieldCopyright, vs...))
+}
+
+// CopyrightNotIn applies the NotIn predicate on the "copyright" field.
+func CopyrightNotIn(vs ...string) predicate.Song {
+	return predicate.Song(sql.FieldNotIn(FieldCopyright, vs...))
+}
+
+// CopyrightGT applies the GT predicate on the "copyright" field.
+func CopyrightGT(v string) predicate.Song {
+	return predicate.Song(sql.FieldGT(FieldCopyright, v))
+}
+
+// CopyrightGTE applies the GTE predicate on the "copyright" field.
+func CopyrightGTE(v string) predicate.Song {
+	return predicate.Song(sql.FieldGTE(FieldCopyright, v))
+}
+
+// CopyrightLT applies the LT predicate on the "copyright" field.
+func CopyrightLT(v string) predicate.Song {
+	return predicate.Song(sql.FieldLT(FieldCopyright, v))
+}
+
+// CopyrightLTE applies the LTE predicate on the "copyright" field.
+func CopyrightLTE(v string) predicate.Song {
+	return predicate.Song(sql.FieldLTE(FieldCopyright, v))
+}
+
+// CopyrightContains applies the Contains predicate on the "copyright" field.
+func CopyrightContains(v string) predicate.Song {
+	return predicate.Song(sql.FieldContains(FieldCopyright, v))
+}
+
+// CopyrightHasPrefix applies the HasPrefix predicate on the "copyright" field.
+func CopyrightHasPrefix(v string) predicate.Song {
+	return predicate.Song(sql.FieldHasPrefix(FieldCopyright, v))
+}
+
+// CopyrightHasSuffix applies the HasSuffix predicate on the "copyright" field.
+func CopyrightHasSuffix(v string) predicate.Song {
+	return predicate.Song(sql.FieldHasSuffix(FieldCopyright, v))
+}
+
+// CopyrightIsNil applies the IsNil predicate on the "copyright" field.
+func CopyrightIsNil() predicate.Song {
+	return predicate.Song(sql.FieldIsNull(FieldCopyright))
+}
+
+// CopyrightNotNil applies the NotNil predicate on the "copyright" field.
+func CopyrightNotNil() predicate.Song {
+	return predicate.Song(sql.FieldNotNull(FieldCopyright))
+}
+
+// CopyrightEqualFold applies the EqualFold predicate on the "copyright" field.
+func CopyrightEqualFold(v string) predicate.Song {
+	return predicate.Song(sql.FieldEqualFold(FieldCopyright, v))
+}
+
+// CopyrightContainsFold applies the ContainsFold predicate on the "copyright" field.
+func CopyrightContainsFold(v string) predicate.Song {
+	return predicate.Song(sql.FieldContainsFold(FieldCopyright, v))
 }
 
 // HasProjectSongs applies the HasEdge predicate on the "project_songs" edge.

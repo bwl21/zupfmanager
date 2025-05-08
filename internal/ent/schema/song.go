@@ -26,6 +26,8 @@ func (Song) Fields() []ent.Field {
 			Unique(),
 		field.String("genre").
 			Optional(),
+		field.String("copyright").
+			Optional(),
 	}
 }
 

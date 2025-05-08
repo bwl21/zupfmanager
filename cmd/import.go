@@ -28,8 +28,19 @@ var importCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
+		replaceAttr := func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			return a
+		}
+
+		handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{ReplaceAttr: replaceAttr})
+		slog.SetDefault(slog.New(handler))
+
 		client, err := database.New()
 		if err != nil {
+			slog.Error("Failed to create database client", "error", err)
 			return err
 		}
 
@@ -60,7 +71,9 @@ func importFile(client *database.Client, file string) error {
 	}
 
 	var (
-		title string
+		title     string
+		genre     string
+		copyright string
 	)
 	scanner := bufio.NewScanner(bytes.NewReader(content))
 	for scanner.Scan() {
@@ -68,7 +81,12 @@ func importFile(client *database.Client, file string) error {
 		if strings.HasPrefix(line, "T:") {
 			title = strings.TrimPrefix(line, "T:")
 			title = strings.TrimSpace(title)
-			break
+		} else if strings.HasPrefix(line, "Z:genre") {
+			genre = strings.TrimPrefix(line, "Z:genre")
+			genre = strings.TrimSpace(genre)
+		} else if strings.HasPrefix(line, "Z:copyright") {
+			copyright = strings.TrimPrefix(line, "Z:copyright")
+			copyright = strings.TrimSpace(copyright)
 		}
 	}
 	if title == "" {
@@ -76,28 +94,39 @@ func importFile(client *database.Client, file string) error {
 	}
 
 	filename := filepath.Base(file)
-	_, err = client.Song.Create().SetFilename(filename).SetTitle(title).Save(context.Background())
-	if ent.IsConstraintError(err) {
-		sng, err := client.Song.Query().Where(song.Filename(filename)).First(context.Background())
-		if err != nil {
-			return err
-		}
-		if sng.Title == title {
-			return nil
-		}
 
-		sng.Title = title
-		_, err = sng.Update().Save(context.Background())
-		if err != nil {
-			return err
-		}
-		slog.Info("Updated from file", "file", file)
+	sng, err := client.Song.Query().Where(song.Filename(filename)).First(context.Background())
+	if err != nil && !ent.IsNotFound(err) {
+		return fmt.Errorf("failed to query song: %w", err)
+	}
 
-		return nil
-	} else if err != nil {
-		return err
+	if sng == nil {
+		// Create a new song
+		_, err = client.Song.Create().
+			SetFilename(filename).
+			SetTitle(title).
+			SetGenre(genre).
+			SetCopyright(copyright).
+			Save(context.Background())
+		if err != nil {
+			slog.Error("Failed to create song", "filename", filename, "error", err)
+			return fmt.Errorf("failed to create song: %w", err)
+		}
 	} else {
-		slog.Info("Imported from file", "file", file)
+		// Update an existing song
+		if sng.Title != title || sng.Genre != genre || sng.Copyright != copyright {
+			_, err = sng.Update().
+				SetTitle(title).
+				SetGenre(genre).
+				SetCopyright(copyright).
+				Save(context.Background())
+			if err != nil {
+				slog.Error("Failed to update song", "filename", filename, "error", err)
+				return fmt.Errorf("failed to update song: %w", err)
+			}
+		} else {
+			// Song already exists and is up to date, no need to log
+		}
 	}
 
 	return nil

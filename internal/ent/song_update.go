@@ -76,6 +76,26 @@ func (su *SongUpdate) ClearGenre() *SongUpdate {
 	return su
 }
 
+// SetCopyright sets the "copyright" field.
+func (su *SongUpdate) SetCopyright(s string) *SongUpdate {
+	su.mutation.SetCopyright(s)
+	return su
+}
+
+// SetNillableCopyright sets the "copyright" field if the given value is not nil.
+func (su *SongUpdate) SetNillableCopyright(s *string) *SongUpdate {
+	if s != nil {
+		su.SetCopyright(*s)
+	}
+	return su
+}
+
+// ClearCopyright clears the value of the "copyright" field.
+func (su *SongUpdate) ClearCopyright() *SongUpdate {
+	su.mutation.ClearCopyright()
+	return su
+}
+
 // AddProjectSongIDs adds the "project_songs" edge to the ProjectSong entity by IDs.
 func (su *SongUpdate) AddProjectSongIDs(ids ...int) *SongUpdate {
 	su.mutation.AddProjectSongIDs(ids...)
@@ -182,6 +202,12 @@ func (su *SongUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if su.mutation.GenreCleared() {
 		_spec.ClearField(song.FieldGenre, field.TypeString)
+	}
+	if value, ok := su.mutation.Copyright(); ok {
+		_spec.SetField(song.FieldCopyright, field.TypeString, value)
+	}
+	if su.mutation.CopyrightCleared() {
+		_spec.ClearField(song.FieldCopyright, field.TypeString)
 	}
 	if su.mutation.ProjectSongsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -293,6 +319,26 @@ func (suo *SongUpdateOne) SetNillableGenre(s *string) *SongUpdateOne {
 // ClearGenre clears the value of the "genre" field.
 func (suo *SongUpdateOne) ClearGenre() *SongUpdateOne {
 	suo.mutation.ClearGenre()
+	return suo
+}
+
+// SetCopyright sets the "copyright" field.
+func (suo *SongUpdateOne) SetCopyright(s string) *SongUpdateOne {
+	suo.mutation.SetCopyright(s)
+	return suo
+}
+
+// SetNillableCopyright sets the "copyright" field if the given value is not nil.
+func (suo *SongUpdateOne) SetNillableCopyright(s *string) *SongUpdateOne {
+	if s != nil {
+		suo.SetCopyright(*s)
+	}
+	return suo
+}
+
+// ClearCopyright clears the value of the "copyright" field.
+func (suo *SongUpdateOne) ClearCopyright() *SongUpdateOne {
+	suo.mutation.ClearCopyright()
 	return suo
 }
 
@@ -432,6 +478,12 @@ func (suo *SongUpdateOne) sqlSave(ctx context.Context) (_node *Song, err error) 
 	}
 	if suo.mutation.GenreCleared() {
 		_spec.ClearField(song.FieldGenre, field.TypeString)
+	}
+	if value, ok := suo.mutation.Copyright(); ok {
+		_spec.SetField(song.FieldCopyright, field.TypeString, value)
+	}
+	if suo.mutation.CopyrightCleared() {
+		_spec.ClearField(song.FieldCopyright, field.TypeString)
 	}
 	if suo.mutation.ProjectSongsCleared() {
 		edge := &sqlgraph.EdgeSpec{

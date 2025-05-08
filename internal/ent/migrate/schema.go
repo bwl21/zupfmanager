@@ -63,6 +63,7 @@ var (
 		{Name: "title", Type: field.TypeString},
 		{Name: "filename", Type: field.TypeString, Unique: true},
 		{Name: "genre", Type: field.TypeString, Nullable: true},
+		{Name: "copyright", Type: field.TypeString, Nullable: true},
 	}
 	// SongsTable holds the schema information for the "songs" table.
 	SongsTable = &schema.Table{
