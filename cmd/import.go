@@ -28,6 +28,7 @@ var importCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
+		// Customize the slog output format to remove the timestamp
 		replaceAttr := func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.TimeKey {
 				return slog.Attr{}
@@ -102,6 +103,7 @@ func importFile(client *database.Client, file string) error {
 
 	if sng == nil {
 		// Create a new song
+		slog.Info("Creating new song", "filename", filename, "title", title, "genre", genre, "copyright", copyright)
 		_, err = client.Song.Create().
 			SetFilename(filename).
 			SetTitle(title).
@@ -112,9 +114,25 @@ func importFile(client *database.Client, file string) error {
 			slog.Error("Failed to create song", "filename", filename, "error", err)
 			return fmt.Errorf("failed to create song: %w", err)
 		}
+		slog.Info("Successfully created song", "filename", filename, "title", title, "genre", genre, "copyright", copyright)
 	} else {
 		// Update an existing song
-		if sng.Title != title || sng.Genre != genre || sng.Copyright != copyright {
+		changes := make([]string, 0)
+		if sng.Title != title {
+			changes = append(changes, fmt.Sprintf("title: %s -> %s", sng.Title, title))
+			sng.Title = title
+		}
+		if sng.Genre != genre {
+			changes = append(changes, fmt.Sprintf("genre: %s -> %s", sng.Genre, genre))
+			sng.Genre = genre
+		}
+		if sng.Copyright != copyright {
+			changes = append(changes, fmt.Sprintf("copyright: %s -> %s", sng.Copyright, copyright))
+			sng.Copyright = copyright
+		}
+
+		if len(changes) > 0 {
+			slog.Info("Updating existing song", "filename", filename, "changes", strings.Join(changes, ", "))
 			_, err = sng.Update().
 				SetTitle(title).
 				SetGenre(genre).
@@ -124,8 +142,7 @@ func importFile(client *database.Client, file string) error {
 				slog.Error("Failed to update song", "filename", filename, "error", err)
 				return fmt.Errorf("failed to update song: %w", err)
 			}
-		} else {
-			// Song already exists and is up to date, no need to log
+			slog.Info("Successfully updated song", "filename", filename, "changes", strings.Join(changes, ", "))
 		}
 	}
 
