@@ -75,20 +75,22 @@ var projectShowCmd = &cobra.Command{
 		if len(proj.Edges.ProjectSongs) > 0 {
 			fmt.Println("\nSongs:")
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.TabIndent)
-			fmt.Fprintln(w, "ID\tTITLE\tPRIORITY\tDIFFICULTY\tCOMMENT")
-			fmt.Fprintln(w, "--\t-----\t--------\t----------\t-------")
-
+			fmt.Fprintln(w, "ID\tFILENAME\tPRIORITY\tDIFFICULTY\tCOPYRIGHT\tGENRE")
+			fmt.Fprintln(w, "--\t--------\t--------\t----------\t---------\t-----")
 			for _, ps := range proj.Edges.ProjectSongs {
 				comment := ps.Comment
 				if comment == "" {
 					comment = "-"
 				}
-				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\n",
+				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s\n",
 					ps.Edges.Song.ID,
-					ps.Edges.Song.Title,
+					ps.Edges.Song.Filename,
 					ps.Priority,
 					ps.Difficulty,
-					comment)
+					ps.Edges.Song.Copyright,
+					ps.Edges.Song.Genre,
+				)
+
 			}
 			w.Flush()
 		} else {
