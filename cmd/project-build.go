@@ -169,10 +169,11 @@ func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, err error,
 	tempFile.Close()
 
 	ctxb := context.Background()
-	err = zupfnoter.Run(ctxb, filepath.Join(outputDir, "abc", tocSongFilename), filepath.Join(outputDir, "pdf"))
+
+	_, _, err =  zupfnoter.Run(ctxb, filepath.Join(outputDir, "abc", tocSongFilename), filepath.Join(outputDir, "pdf"))
 	if err != nil {
 		fmt.Println(filepath.Join(outputDir, "abc", tocSongFilename))
-		return fmt.Errorf("failed to run zupfnoter: %w", err)
+		return fmt.Errorf("failed to run zupfnoter: %w [%s]", err, tocSongFilename)
 	}
 
 	// Distribute the table of contents PDF to the print files directories.
@@ -234,13 +235,15 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 	tempConfigFile.Close()
 
 	// 9. Rufe das externe Tool "zupfnoter" auf und übergebe die notwendigen Dateien.
-	err = zupfnoter.Run(
+	stdOutBuf, _, err := zupfnoter.Run(
 		ctx,
 		filepath.Join(abcFileDir, song.Edges.Song.Filename), // Pfad zur ABC-Datei
 		filepath.Join(outputDir, "pdf"),                     // Ausgabeverzeichnis für PDF
 		tempConfigFile.Name(),                               // Pfad zur Konfigurationsdatei
 	)
 	if err != nil {
+		fmt.Println(stdOutBuf)
+		fmt.Println(filepath.Join(outputDir, "abc", song.Edges.Song.Filename))
 		return fmt.Errorf("failed to run zupfnoter: %w", err)
 	}
 	// 10. Lösche die temporäre Konfigurationsdatei.

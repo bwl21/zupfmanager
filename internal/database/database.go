@@ -85,6 +85,15 @@ func (c *Client) CreateOrUpdateProject(ctx context.Context, projectID int, title
 	}
 }
 
+// GetProject gets a project by ID
+func (c *Client) GetProject(ctx context.Context, projectID int) (*ent.Project, error) {
+	project, err := c.Project.Get(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	return project, nil
+}
+
 // Close closes the database connection
 func (c *Client) Close() error {
 	return c.Client.Close()

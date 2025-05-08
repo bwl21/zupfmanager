@@ -2,8 +2,13 @@ package cmd
 
 import (
 	"os"
-
+	"fmt"
 	"github.com/spf13/cobra"
+)
+
+var (
+    Version   = "dev"    // Standardwert für lokale Builds
+    GitCommit = "dirty"  // Standardwert für uncommitted changes
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -21,7 +26,8 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		version, _ := cmd.Flags().GetBool("version")
 		if version {
-			println("zupfmanager v0.0.1")
+			fmt.Printf("zupfmanager %s\nCommit: %s\n", Version, GitCommit)
+			println("zupfmanager v0.0.2")
 			os.Exit(0)
 		}
 	},

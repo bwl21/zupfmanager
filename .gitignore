@@ -10,3 +10,5 @@ output/
 x.json
 dist/
 .DS_Store
+.idea
+x

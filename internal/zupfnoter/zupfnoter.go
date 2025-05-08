@@ -1,6 +1,7 @@
 package zupfnoter
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"log/slog"
@@ -30,7 +31,9 @@ func init() {
 	}
 }
 
-func Run(ctx context.Context, args ...string) error {
+func Run(ctx context.Context, args ...string) (string, string, error) {
+	var stdoutBuf, stderrBuf bytes.Buffer
+
 	if os.Getenv("ZUPFNOTER_DEBUG") != "" {
 		var files []string
 		for _, arg := range args {
@@ -38,11 +41,13 @@ func Run(ctx context.Context, args ...string) error {
 			files = append(files, string(fc))
 		}
 		slog.Info("running zupfnoter", "args", args, "files", files)
-		return nil
+		return "", "", nil
 	}
 
 	cmd := exec.CommandContext(ctx, "node", append([]string{ZupfnoterPath}, args...)...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	err := cmd.Run()
+	return stdoutBuf.String(), stderrBuf.String(), err
 }
