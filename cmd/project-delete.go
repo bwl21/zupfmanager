@@ -2,13 +2,13 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"log"
+	"os"
 
-	"github.com/spf13/cobra"
+	"context"
 	"github.com/bwl21/zupfmanager/internal/ent"
 	"github.com/bwl21/zupfmanager/internal/ent/project"
-	"context"
+	"github.com/spf13/cobra"
 	"strconv"
 	"text/tabwriter"
 )

@@ -2,8 +2,8 @@ package database
 
 import (
 	"context"
-	"os"
 	"log/slog"
+	"os"
 
 	"github.com/bwl21/zupfmanager/internal/ent"
 	"github.com/bwl21/zupfmanager/internal/ent/migrate"

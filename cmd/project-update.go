@@ -99,5 +99,5 @@ func init() {
 	projectUpdateCmd.Flags().StringP("title", "t", "", "New title of the project")
 	projectUpdateCmd.Flags().StringP("short_name", "s", "", "New short name of the project")
 	projectUpdateCmd.Flags().StringP("config", "c", "", "Project configuration as JSON string")
-    projectUpdateCmd.Flags().StringP("default_config", "d", "", "Load default project configuration from file")
+	projectUpdateCmd.Flags().StringP("default_config", "d", "", "Load default project configuration from file")
 }

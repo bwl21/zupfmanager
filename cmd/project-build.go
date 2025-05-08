@@ -31,8 +31,8 @@ const (
 )
 
 var (
-	projectBuildOutputDir  string
-	projectBuildAbcFileDir string
+	projectBuildOutputDir         string
+	projectBuildAbcFileDir        string
 	projectBuildPriorityThreshold int
 )
 
@@ -198,7 +198,7 @@ func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, err error,
 
 	ctxb := context.Background()
 
-	_, _, err =  zupfnoter.Run(ctxb, filepath.Join(outputDir, "abc", tocSongFilename), filepath.Join(outputDir, "pdf"))
+	_, _, err = zupfnoter.Run(ctxb, filepath.Join(outputDir, "abc", tocSongFilename), filepath.Join(outputDir, "pdf"))
 	if err != nil {
 		fmt.Println(filepath.Join(outputDir, "abc", tocSongFilename))
 		return fmt.Errorf("failed to run zupfnoter: %w [%s]", err, tocSongFilename)
@@ -461,64 +461,64 @@ func createCopyrightDirectories(copyrightNames []string) error {
 }
 
 func copyPdfsToCopyrightDirectories(project *ent.Project, outputDir string) error {
-    // Sicherstellen, dass die Projekt-Songs geladen sind
-    if project.Edges.ProjectSongs == nil {
-        return fmt.Errorf("project songs not loaded")
-    }
+	// Sicherstellen, dass die Projekt-Songs geladen sind
+	if project.Edges.ProjectSongs == nil {
+		return fmt.Errorf("project songs not loaded")
+	}
 
-    // Map zur Gruppierung nach Copyright (vermeidet doppelte Verzeichniserstellung)
-    copyrightMap := make(map[string][]*ent.ProjectSong)
+	// Map zur Gruppierung nach Copyright (vermeidet doppelte Verzeichniserstellung)
+	copyrightMap := make(map[string][]*ent.ProjectSong)
 
-    // Songs nach Copyright gruppieren
-    for _, ps := range project.Edges.ProjectSongs {
-        if ps.Edges.Song == nil {
-            continue
-        }
-        copyright := ps.Edges.Song.Copyright
-        if copyright == "" {
-            continue
-        }
-        copyrightMap[copyright] = append(copyrightMap[copyright], ps)
-    }
+	// Songs nach Copyright gruppieren
+	for _, ps := range project.Edges.ProjectSongs {
+		if ps.Edges.Song == nil {
+			continue
+		}
+		copyright := ps.Edges.Song.Copyright
+		if copyright == "" {
+			continue
+		}
+		copyrightMap[copyright] = append(copyrightMap[copyright], ps)
+	}
 
-    // PDFs pro Copyright-Verzeichnis kopieren
-    for copyright, songs := range copyrightMap {
-        destDir := filepath.Join(outputDir, "referenz", copyright)
-        if err := os.MkdirAll(destDir, 0755); err != nil {
-            return fmt.Errorf("failed to create directory %s: %w", destDir, err)
-        }
+	// PDFs pro Copyright-Verzeichnis kopieren
+	for copyright, songs := range copyrightMap {
+		destDir := filepath.Join(outputDir, "referenz", copyright)
+		if err := os.MkdirAll(destDir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", destDir, err)
+		}
 
-        // Einmaliges Durchsuchen des PDF-Verzeichnisses
-        pdfDir := filepath.Join(outputDir, "pdf")
-        err := filepath.Walk(pdfDir, func(path string, info os.FileInfo, err error) error {
-            if err != nil {
-                return err
-            }
+		// Einmaliges Durchsuchen des PDF-Verzeichnisses
+		pdfDir := filepath.Join(outputDir, "pdf")
+		err := filepath.Walk(pdfDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
 
-            if info.IsDir() || !strings.HasSuffix(info.Name(), ".pdf") {
-                return nil
-            }
+			if info.IsDir() || !strings.HasSuffix(info.Name(), ".pdf") {
+				return nil
+			}
 
-            // Prüfe auf Übereinstimmung mit einem der Songs
-            for _, ps := range songs {
-                if ps.Edges.Song == nil || ps.Edges.Song.Filename == "" {
-                    continue
-                }
+			// Prüfe auf Übereinstimmung mit einem der Songs
+			for _, ps := range songs {
+				if ps.Edges.Song == nil || ps.Edges.Song.Filename == "" {
+					continue
+				}
 
-                baseName := strings.TrimSuffix(ps.Edges.Song.Filename, ".abc")
-                if strings.Contains(info.Name(), baseName) {
-                    destPath := filepath.Join(destDir, info.Name())
-                    if err := copyFile(path, destPath); err != nil {
-                        return fmt.Errorf("failed to copy %s to %s: %w", path, destPath, err)
-                    }
-                }
-            }
-            return nil
-        })
+				baseName := strings.TrimSuffix(ps.Edges.Song.Filename, ".abc")
+				if strings.Contains(info.Name(), baseName) {
+					destPath := filepath.Join(destDir, info.Name())
+					if err := copyFile(path, destPath); err != nil {
+						return fmt.Errorf("failed to copy %s to %s: %w", path, destPath, err)
+					}
+				}
+			}
+			return nil
+		})
 
-        if err != nil {
-            return err
-        }
-    }
-    return nil
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

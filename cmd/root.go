@@ -1,14 +1,14 @@
 package cmd
 
 import (
-	"os"
 	"fmt"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 var (
-    Version   = "dev"    // Standardwert für lokale Builds
-    GitCommit = "dirty"  // Standardwert für uncommitted changes
+	Version   = "dev"   // Standardwert für lokale Builds
+	GitCommit = "dirty" // Standardwert für uncommitted changes
 )
 
 // rootCmd represents the base command when called without any subcommands

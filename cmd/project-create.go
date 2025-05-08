@@ -7,8 +7,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"log/slog"
+	"os"
 
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/spf13/cobra"
