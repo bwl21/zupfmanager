@@ -411,3 +411,62 @@ func mergePDFs(dir, dest string) error {
 
 	return nil
 }
+
+// createCopyrightDirectory creates a directory for a given copyright name under the "referenz" directory.
+func createCopyrightDirectory(copyrightName string) error {
+	dirPath := filepath.Join("referenz", copyrightName)
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		err := os.MkdirAll(dirPath, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// createCopyrightDirectories creates directories for a given list of copyright names under the "referenz" directory.
+func createCopyrightDirectories(copyrightNames []string) error {
+	for _, copyrightName := range copyrightNames {
+		err := createCopyrightDirectory(copyrightName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func copyPdfsToCopyrightDirectories(project *ent.Project, outputDir string) error {
+	for _, ps := range project.Edges.ProjectSongs {
+		copyrightName := ps.Edges.Song.Copyright
+		if copyrightName == "" {
+			continue
+		}
+
+		srcDir := filepath.Join(outputDir, "druckdateien")
+		destDir := filepath.Join("referenz", copyrightName)
+
+		err := os.MkdirAll(destDir, 0755)
+		if err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", destDir, err)
+		}
+
+		err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() && strings.HasSuffix(info.Name(), ".pdf") && strings.Contains(info.Name(), strings.ReplaceAll(ps.Edges.Song.Filename, ".abc", "")) {
+				destPath := filepath.Join(destDir, info.Name())
+				err = copyFile(path, destPath)
+				if err != nil {
+					return fmt.Errorf("failed to copy %s to %s: %w", path, destPath, err)
+				}
+			}
+			return nil
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
