@@ -86,6 +86,7 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 	os.RemoveAll(filepath.Join(outputDir, "abc"))
 	os.RemoveAll(filepath.Join(outputDir, "log"))
 	os.RemoveAll(filepath.Join(outputDir, "druckdateien"))
+	os.RemoveAll(filepath.Join(outputDir, "referenz"))
 
 	_ = os.MkdirAll(outputDir, 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "pdf"), 0755)
@@ -116,6 +117,19 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 		return fmt.Errorf("failed to build songs: %w", err)
 	}
 
+	copyrightNames := getCopyrightNames(project)
+	fmt.Println("Copyright Names:", copyrightNames)
+
+	err = createCopyrightDirectories(copyrightNames)
+	if err != nil {
+		return fmt.Errorf("failed to create copyright directories: %w", err)
+	}
+
+	err = copyPdfsToCopyrightDirectories(project, outputDir)
+	if err != nil {
+		return fmt.Errorf("failed to copy PDFs to copyright directories: %w", err)
+	}
+
 	err2 := createToc(project, projectSongs, err, outputDir)
 	if err2 != nil {
 		return err2
@@ -136,6 +150,17 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 	}
 
 	return nil
+}
+
+// getCopyrightNames returns a slice of copyright names used in the project.
+func getCopyrightNames(project *ent.Project) []string {
+	copyrightNames := make([]string, 0)
+	for _, ps := range project.Edges.ProjectSongs {
+		if ps.Edges.Song.Copyright != "" {
+			copyrightNames = append(copyrightNames, ps.Edges.Song.Copyright)
+		}
+	}
+	return copyrightNames
 }
 
 func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, err error, outputDir string) error {
@@ -340,7 +365,7 @@ func distributeZupfnoterOutput(baseFilename string, outputDir string, songIndex 
 		}
 
 		if targetDir == "" {
-			slog.Info("skipping file", "filename", filename)
+			slog.Error("no target folder found: ", "filename", filename)
 			continue
 		}
 
@@ -436,37 +461,64 @@ func createCopyrightDirectories(copyrightNames []string) error {
 }
 
 func copyPdfsToCopyrightDirectories(project *ent.Project, outputDir string) error {
-	for _, ps := range project.Edges.ProjectSongs {
-		copyrightName := ps.Edges.Song.Copyright
-		if copyrightName == "" {
-			continue
-		}
+    // Sicherstellen, dass die Projekt-Songs geladen sind
+    if project.Edges.ProjectSongs == nil {
+        return fmt.Errorf("project songs not loaded")
+    }
 
-		srcDir := filepath.Join(outputDir, "druckdateien")
-		destDir := filepath.Join("referenz", copyrightName)
+    // Map zur Gruppierung nach Copyright (vermeidet doppelte Verzeichniserstellung)
+    copyrightMap := make(map[string][]*ent.ProjectSong)
 
-		err := os.MkdirAll(destDir, 0755)
-		if err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", destDir, err)
-		}
+    // Songs nach Copyright gruppieren
+    for _, ps := range project.Edges.ProjectSongs {
+        if ps.Edges.Song == nil {
+            continue
+        }
+        copyright := ps.Edges.Song.Copyright
+        if copyright == "" {
+            continue
+        }
+        copyrightMap[copyright] = append(copyrightMap[copyright], ps)
+    }
 
-		err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if !info.IsDir() && strings.HasSuffix(info.Name(), ".pdf") && strings.Contains(info.Name(), strings.ReplaceAll(ps.Edges.Song.Filename, ".abc", "")) {
-				destPath := filepath.Join(destDir, info.Name())
-				err = copyFile(path, destPath)
-				if err != nil {
-					return fmt.Errorf("failed to copy %s to %s: %w", path, destPath, err)
-				}
-			}
-			return nil
-		})
+    // PDFs pro Copyright-Verzeichnis kopieren
+    for copyright, songs := range copyrightMap {
+        destDir := filepath.Join(outputDir, "referenz", copyright)
+        if err := os.MkdirAll(destDir, 0755); err != nil {
+            return fmt.Errorf("failed to create directory %s: %w", destDir, err)
+        }
 
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+        // Einmaliges Durchsuchen des PDF-Verzeichnisses
+        pdfDir := filepath.Join(outputDir, "pdf")
+        err := filepath.Walk(pdfDir, func(path string, info os.FileInfo, err error) error {
+            if err != nil {
+                return err
+            }
+
+            if info.IsDir() || !strings.HasSuffix(info.Name(), ".pdf") {
+                return nil
+            }
+
+            // Prüfe auf Übereinstimmung mit einem der Songs
+            for _, ps := range songs {
+                if ps.Edges.Song == nil || ps.Edges.Song.Filename == "" {
+                    continue
+                }
+
+                baseName := strings.TrimSuffix(ps.Edges.Song.Filename, ".abc")
+                if strings.Contains(info.Name(), baseName) {
+                    destPath := filepath.Join(destDir, info.Name())
+                    if err := copyFile(path, destPath); err != nil {
+                        return fmt.Errorf("failed to copy %s to %s: %w", path, destPath, err)
+                    }
+                }
+            }
+            return nil
+        })
+
+        if err != nil {
+            return err
+        }
+    }
+    return nil
 }
