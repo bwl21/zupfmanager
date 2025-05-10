@@ -6,6 +6,7 @@ Zupfmanager is a specialized tool for managing and building music projects for z
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Features
+# Features - This section describes the main features of the Zupfmanager.
 
 - Manage music projects with customizable configurations
 - Organize songs in projects with priority and difficulty settings
@@ -15,6 +16,7 @@ Zupfmanager is a specialized tool for managing and building music projects for z
 - Terminal user interface (TUI) for interactive usage
 
 ## Installation
+# Installation - This section describes how to install the Zupfmanager.
 
 ### Prerequisites
 
@@ -37,6 +39,7 @@ make build
 Download the latest binary for your platform from the [Releases](https://github.com/bwl21/zupfmanager/releases) page.
 
 ## Usage
+# Usage - This section describes how to use the Zupfmanager.
 
 ### Command Line Interface
 
@@ -101,6 +104,7 @@ This will:
 4. Save output files to the specified directory
 
 ## Data Model
+# Data Model - This section describes the data model used by Zupfmanager.
 
 Zupfmanager uses a simple data model with three main entities:
 
@@ -109,10 +113,12 @@ Zupfmanager uses a simple data model with three main entities:
 3. **ProjectSong**: A join entity that connects projects and songs with additional attributes like priority and difficulty
 
 ## Configuration
+# Configuration - This section describes how to configure projects.
 
 Projects can be configured with custom settings that override or extend the default configurations in ABC files. The configuration is stored in JSON format and can be edited using the `project edit-config` command.
 
 ## ABC File Format
+# ABC File Format - This section describes the ABC file format used by Zupfmanager.
 
 Zupfmanager works with ABC notation files that include Zupfnoter-specific configuration. A typical ABC file structure:
 
@@ -138,6 +144,7 @@ T:Song Title
 ```
 
 ## Development
+# Development - This section describes the project structure and how to build from source.
 
 ### Project Structure
 
@@ -160,5 +167,6 @@ make release
 ```
 
 ## License
+# License - This section describes the license for the Zupfmanager.
 
 This project is licensed under the MIT License - see the LICENSE file for details.

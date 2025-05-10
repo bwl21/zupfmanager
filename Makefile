@@ -12,6 +12,12 @@ GO_LDFLAGS := -X $(MODULE)/cmd.Version=$(VERSION) -X $(MODULE)/cmd.GitCommit=$(C
 # Standardziel
 all: build
 
+# install completions
+completion:
+	@echo "building completions"	
+	@zupfmanager completion > ~/.zsh/completions/_zupfmanager
+	@echo please execute 'source ~/.zshrc to activate the completions'
+
 # Build für aktuelles System
 build:
 	@echo "Building $(BINARY_NAME) für $(shell go env GOOS)/$(shell go env GOARCH)..."
