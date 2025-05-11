@@ -34,6 +34,7 @@ var (
 	projectBuildOutputDir         string
 	projectBuildAbcFileDir        string
 	projectBuildPriorityThreshold int
+	projectSampleId               string
 )
 
 var projectBuildCmd = &cobra.Command{
@@ -77,11 +78,11 @@ var projectBuildCmd = &cobra.Command{
 			}
 		}
 
-		return buildProject(projectBuildAbcFileDir, projectBuildOutputDir, project)
+		return buildProject(projectBuildAbcFileDir, projectBuildOutputDir, project, projectSampleId)
 	},
 }
 
-func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
+func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId string) error {
 	os.RemoveAll(filepath.Join(outputDir, "pdf"))
 	os.RemoveAll(filepath.Join(outputDir, "abc"))
 	os.RemoveAll(filepath.Join(outputDir, "log"))
@@ -109,7 +110,7 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project) error {
 	for id, song := range projectSongs {
 		song := song
 		eg.Go(func() error {
-			return buildSong(ctx, abcFileDir, outputDir, id+1, song)
+			return buildSong(ctx, abcFileDir, outputDir, id+1, song, projectSampleId)
 		})
 	}
 	err := eg.Wait()
@@ -216,7 +217,7 @@ func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, err error,
 // buildSong verarbeitet einen Song: Liest die ABC-Datei, kombiniert Konfigurationen,
 // ruft das externe Tool "zupfnoter" auf, kopiert die ABC-Datei ins Zielverzeichnis
 // und verschiebt das Logfile.
-func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int, song *ent.ProjectSong) error {
+func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int, song *ent.ProjectSong, projectSampleId string) error {
 	// 1. Logge den Start der Verarbeitung für diesen Song.
 	slog.Info("building song", "song", song.Edges.Song.Title)
 
@@ -239,6 +240,7 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 	}
 	fc := bytes.ReplaceAll(projectConfigBytes, []byte("#{PREFIX}"), []byte(song.Edges.Project.ShortName))
 	fc = bytes.ReplaceAll(fc, []byte("#{the_index}"), []byte(fmt.Sprintf("%02d", songIndex)))
+	fc = bytes.ReplaceAll(fc, []byte("#{sampleId}"), []byte(projectSampleId))
 
 	// 6. Deserialisiere das JSON wieder in eine Map für weitere Bearbeitung.
 	var finalConfig map[string]any
@@ -329,6 +331,8 @@ func init() {
 
 	projectBuildCmd.Flags().StringVarP(&projectBuildAbcFileDir, "abc-file-dir", "a", "", "The directory to find the ABC files")
 	projectBuildCmd.Flags().IntVarP(&projectBuildPriorityThreshold, "priority-threshold", "p", 1, "The maximum priority of songs to include in the build")
+	projectBuildCmd.Flags().StringVarP(&projectSampleId, "sampleId", "s", projectSampleId, "A string to indentify the sample stage. Will be injected to the project config")
+
 }
 
 func distributeZupfnoterOutput(baseFilename string, outputDir string, songIndex int) error {
