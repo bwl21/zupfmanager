@@ -14,3 +14,5 @@ dist/ # Ignore dist directory
 x # Ignore x directory
 x
 dist
+.idea
+.DS_Store
