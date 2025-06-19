@@ -26,6 +26,8 @@ type ProjectSongQuery struct {
 	predicates  []predicate.ProjectSong
 	withProject *ProjectQuery
 	withSong    *SongQuery
+	withFKs     bool
+	modifiers   []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -301,8 +303,9 @@ func (psq *ProjectSongQuery) Clone() *ProjectSongQuery {
 		withProject: psq.withProject.Clone(),
 		withSong:    psq.withSong.Clone(),
 		// clone intermediate query.
-		sql:  psq.sql.Clone(),
-		path: psq.path,
+		sql:       psq.sql.Clone(),
+		path:      psq.path,
+		modifiers: append([]func(*sql.Selector){}, psq.modifiers...),
 	}
 }
 
@@ -405,12 +408,16 @@ func (psq *ProjectSongQuery) prepareQuery(ctx context.Context) error {
 func (psq *ProjectSongQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*ProjectSong, error) {
 	var (
 		nodes       = []*ProjectSong{}
+		withFKs     = psq.withFKs
 		_spec       = psq.querySpec()
 		loadedTypes = [2]bool{
 			psq.withProject != nil,
 			psq.withSong != nil,
 		}
 	)
+	if withFKs {
+		_spec.Node.Columns = append(_spec.Node.Columns, projectsong.ForeignKeys...)
+	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
 		return (*ProjectSong).scanValues(nil, columns)
 	}
@@ -419,6 +426,9 @@ func (psq *ProjectSongQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
+	}
+	if len(psq.modifiers) > 0 {
+		_spec.Modifiers = psq.modifiers
 	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
@@ -505,6 +515,9 @@ func (psq *ProjectSongQuery) loadSong(ctx context.Context, query *SongQuery, nod
 
 func (psq *ProjectSongQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := psq.querySpec()
+	if len(psq.modifiers) > 0 {
+		_spec.Modifiers = psq.modifiers
+	}
 	_spec.Node.Columns = psq.ctx.Fields
 	if len(psq.ctx.Fields) > 0 {
 		_spec.Unique = psq.ctx.Unique != nil && *psq.ctx.Unique
@@ -573,6 +586,9 @@ func (psq *ProjectSongQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if psq.ctx.Unique != nil && *psq.ctx.Unique {
 		selector.Distinct()
 	}
+	for _, m := range psq.modifiers {
+		m(selector)
+	}
 	for _, p := range psq.predicates {
 		p(selector)
 	}
@@ -588,6 +604,12 @@ func (psq *ProjectSongQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (psq *ProjectSongQuery) Modify(modifiers ...func(s *sql.Selector)) *ProjectSongSelect {
+	psq.modifiers = append(psq.modifiers, modifiers...)
+	return psq.Select()
 }
 
 // ProjectSongGroupBy is the group-by builder for ProjectSong entities.
@@ -678,4 +700,10 @@ func (pss *ProjectSongSelect) sqlScan(ctx context.Context, root *ProjectSongQuer
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (pss *ProjectSongSelect) Modify(modifiers ...func(s *sql.Selector)) *ProjectSongSelect {
+	pss.modifiers = append(pss.modifiers, modifiers...)
+	return pss
 }

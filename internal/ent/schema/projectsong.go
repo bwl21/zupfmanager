@@ -31,13 +31,6 @@ func (ProjectSong) Fields() []ent.Field {
 	}
 }
 
-func (ProjectSong) Indexes() []ent.Index {
-	return []ent.Index{
-		index.Fields("project_id", "song_id").
-			Unique(),
-	}
-}
-
 // Edges of the ProjectSong.
 func (ProjectSong) Edges() []ent.Edge {
 	return []ent.Edge{
@@ -49,5 +42,13 @@ func (ProjectSong) Edges() []ent.Edge {
 			Field("song_id").
 			Unique().
 			Required(),
+	}
+}
+
+// Indexes of the ProjectSong.
+func (ProjectSong) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("project_id", "song_id").
+			Unique(),
 	}
 }

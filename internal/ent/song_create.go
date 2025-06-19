@@ -60,6 +60,20 @@ func (sc *SongCreate) SetNillableCopyright(s *string) *SongCreate {
 	return sc
 }
 
+// SetTocinfo sets the "tocinfo" field.
+func (sc *SongCreate) SetTocinfo(s string) *SongCreate {
+	sc.mutation.SetTocinfo(s)
+	return sc
+}
+
+// SetNillableTocinfo sets the "tocinfo" field if the given value is not nil.
+func (sc *SongCreate) SetNillableTocinfo(s *string) *SongCreate {
+	if s != nil {
+		sc.SetTocinfo(*s)
+	}
+	return sc
+}
+
 // SetID sets the "id" field.
 func (sc *SongCreate) SetID(i int) *SongCreate {
 	sc.mutation.SetID(i)
@@ -183,6 +197,10 @@ func (sc *SongCreate) createSpec() (*Song, *sqlgraph.CreateSpec) {
 	if value, ok := sc.mutation.Copyright(); ok {
 		_spec.SetField(song.FieldCopyright, field.TypeString, value)
 		_node.Copyright = value
+	}
+	if value, ok := sc.mutation.Tocinfo(); ok {
+		_spec.SetField(song.FieldTocinfo, field.TypeString, value)
+		_node.Tocinfo = value
 	}
 	if nodes := sc.mutation.ProjectSongsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

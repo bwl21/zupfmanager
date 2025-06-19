@@ -28,7 +28,7 @@ const (
 	// It exists in this package in order to avoid circular dependency with the "projectsong" package.
 	ProjectSongsInverseTable = "project_songs"
 	// ProjectSongsColumn is the table column denoting the project_songs relation/edge.
-	ProjectSongsColumn = "project_id"
+	ProjectSongsColumn = "project_project_songs"
 )
 
 // Columns holds all SQL columns for project fields.
@@ -93,6 +93,6 @@ func newProjectSongsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ProjectSongsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, true, ProjectSongsTable, ProjectSongsColumn),
+		sqlgraph.Edge(sqlgraph.O2M, false, ProjectSongsTable, ProjectSongsColumn),
 	)
 }

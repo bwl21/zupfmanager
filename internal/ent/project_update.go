@@ -18,8 +18,9 @@ import (
 // ProjectUpdate is the builder for updating Project entities.
 type ProjectUpdate struct {
 	config
-	hooks    []Hook
-	mutation *ProjectMutation
+	hooks     []Hook
+	mutation  *ProjectMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the ProjectUpdate builder.
@@ -151,6 +152,12 @@ func (pu *ProjectUpdate) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (pu *ProjectUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ProjectUpdate {
+	pu.modifiers = append(pu.modifiers, modifiers...)
+	return pu
+}
+
 func (pu *ProjectUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := pu.check(); err != nil {
 		return n, err
@@ -178,7 +185,7 @@ func (pu *ProjectUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if pu.mutation.ProjectSongsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: true,
+			Inverse: false,
 			Table:   project.ProjectSongsTable,
 			Columns: []string{project.ProjectSongsColumn},
 			Bidi:    false,
@@ -191,7 +198,7 @@ func (pu *ProjectUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if nodes := pu.mutation.RemovedProjectSongsIDs(); len(nodes) > 0 && !pu.mutation.ProjectSongsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: true,
+			Inverse: false,
 			Table:   project.ProjectSongsTable,
 			Columns: []string{project.ProjectSongsColumn},
 			Bidi:    false,
@@ -207,7 +214,7 @@ func (pu *ProjectUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if nodes := pu.mutation.ProjectSongsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: true,
+			Inverse: false,
 			Table:   project.ProjectSongsTable,
 			Columns: []string{project.ProjectSongsColumn},
 			Bidi:    false,
@@ -220,6 +227,7 @@ func (pu *ProjectUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(pu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, pu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{project.Label}
@@ -235,9 +243,10 @@ func (pu *ProjectUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // ProjectUpdateOne is the builder for updating a single Project entity.
 type ProjectUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *ProjectMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *ProjectMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetTitle sets the "title" field.
@@ -376,6 +385,12 @@ func (puo *ProjectUpdateOne) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (puo *ProjectUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ProjectUpdateOne {
+	puo.modifiers = append(puo.modifiers, modifiers...)
+	return puo
+}
+
 func (puo *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err error) {
 	if err := puo.check(); err != nil {
 		return _node, err
@@ -420,7 +435,7 @@ func (puo *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err e
 	if puo.mutation.ProjectSongsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: true,
+			Inverse: false,
 			Table:   project.ProjectSongsTable,
 			Columns: []string{project.ProjectSongsColumn},
 			Bidi:    false,
@@ -433,7 +448,7 @@ func (puo *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err e
 	if nodes := puo.mutation.RemovedProjectSongsIDs(); len(nodes) > 0 && !puo.mutation.ProjectSongsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: true,
+			Inverse: false,
 			Table:   project.ProjectSongsTable,
 			Columns: []string{project.ProjectSongsColumn},
 			Bidi:    false,
@@ -449,7 +464,7 @@ func (puo *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err e
 	if nodes := puo.mutation.ProjectSongsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: true,
+			Inverse: false,
 			Table:   project.ProjectSongsTable,
 			Columns: []string{project.ProjectSongsColumn},
 			Bidi:    false,
@@ -462,6 +477,7 @@ func (puo *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err e
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(puo.modifiers...)
 	_node = &Project{config: puo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

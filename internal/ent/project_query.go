@@ -25,6 +25,7 @@ type ProjectQuery struct {
 	inters           []Interceptor
 	predicates       []predicate.Project
 	withProjectSongs *ProjectSongQuery
+	modifiers        []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -75,7 +76,7 @@ func (pq *ProjectQuery) QueryProjectSongs() *ProjectSongQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(project.Table, project.FieldID, selector),
 			sqlgraph.To(projectsong.Table, projectsong.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, project.ProjectSongsTable, project.ProjectSongsColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.ProjectSongsTable, project.ProjectSongsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(pq.driver.Dialect(), step)
 		return fromU, nil
@@ -277,8 +278,9 @@ func (pq *ProjectQuery) Clone() *ProjectQuery {
 		predicates:       append([]predicate.Project{}, pq.predicates...),
 		withProjectSongs: pq.withProjectSongs.Clone(),
 		// clone intermediate query.
-		sql:  pq.sql.Clone(),
-		path: pq.path,
+		sql:       pq.sql.Clone(),
+		path:      pq.path,
+		modifiers: append([]func(*sql.Selector){}, pq.modifiers...),
 	}
 }
 
@@ -384,6 +386,9 @@ func (pq *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(pq.modifiers) > 0 {
+		_spec.Modifiers = pq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -413,9 +418,7 @@ func (pq *ProjectQuery) loadProjectSongs(ctx context.Context, query *ProjectSong
 			init(nodes[i])
 		}
 	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(projectsong.FieldProjectID)
-	}
+	query.withFKs = true
 	query.Where(predicate.ProjectSong(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(project.ProjectSongsColumn), fks...))
 	}))
@@ -424,10 +427,13 @@ func (pq *ProjectQuery) loadProjectSongs(ctx context.Context, query *ProjectSong
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.ProjectID
-		node, ok := nodeids[fk]
+		fk := n.project_project_songs
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "project_project_songs" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "project_project_songs" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}
@@ -436,6 +442,9 @@ func (pq *ProjectQuery) loadProjectSongs(ctx context.Context, query *ProjectSong
 
 func (pq *ProjectQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := pq.querySpec()
+	if len(pq.modifiers) > 0 {
+		_spec.Modifiers = pq.modifiers
+	}
 	_spec.Node.Columns = pq.ctx.Fields
 	if len(pq.ctx.Fields) > 0 {
 		_spec.Unique = pq.ctx.Unique != nil && *pq.ctx.Unique
@@ -498,6 +507,9 @@ func (pq *ProjectQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if pq.ctx.Unique != nil && *pq.ctx.Unique {
 		selector.Distinct()
 	}
+	for _, m := range pq.modifiers {
+		m(selector)
+	}
 	for _, p := range pq.predicates {
 		p(selector)
 	}
@@ -513,6 +525,12 @@ func (pq *ProjectQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (pq *ProjectQuery) Modify(modifiers ...func(s *sql.Selector)) *ProjectSelect {
+	pq.modifiers = append(pq.modifiers, modifiers...)
+	return pq.Select()
 }
 
 // ProjectGroupBy is the group-by builder for Project entities.
@@ -603,4 +621,10 @@ func (ps *ProjectSelect) sqlScan(ctx context.Context, root *ProjectQuery, v any)
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (ps *ProjectSelect) Modify(modifiers ...func(s *sql.Selector)) *ProjectSelect {
+	ps.modifiers = append(ps.modifiers, modifiers...)
+	return ps
 }

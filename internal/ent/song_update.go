@@ -18,8 +18,9 @@ import (
 // SongUpdate is the builder for updating Song entities.
 type SongUpdate struct {
 	config
-	hooks    []Hook
-	mutation *SongMutation
+	hooks     []Hook
+	mutation  *SongMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the SongUpdate builder.
@@ -93,6 +94,26 @@ func (su *SongUpdate) SetNillableCopyright(s *string) *SongUpdate {
 // ClearCopyright clears the value of the "copyright" field.
 func (su *SongUpdate) ClearCopyright() *SongUpdate {
 	su.mutation.ClearCopyright()
+	return su
+}
+
+// SetTocinfo sets the "tocinfo" field.
+func (su *SongUpdate) SetTocinfo(s string) *SongUpdate {
+	su.mutation.SetTocinfo(s)
+	return su
+}
+
+// SetNillableTocinfo sets the "tocinfo" field if the given value is not nil.
+func (su *SongUpdate) SetNillableTocinfo(s *string) *SongUpdate {
+	if s != nil {
+		su.SetTocinfo(*s)
+	}
+	return su
+}
+
+// ClearTocinfo clears the value of the "tocinfo" field.
+func (su *SongUpdate) ClearTocinfo() *SongUpdate {
+	su.mutation.ClearTocinfo()
 	return su
 }
 
@@ -179,6 +200,12 @@ func (su *SongUpdate) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (su *SongUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SongUpdate {
+	su.modifiers = append(su.modifiers, modifiers...)
+	return su
+}
+
 func (su *SongUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := su.check(); err != nil {
 		return n, err
@@ -208,6 +235,12 @@ func (su *SongUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if su.mutation.CopyrightCleared() {
 		_spec.ClearField(song.FieldCopyright, field.TypeString)
+	}
+	if value, ok := su.mutation.Tocinfo(); ok {
+		_spec.SetField(song.FieldTocinfo, field.TypeString, value)
+	}
+	if su.mutation.TocinfoCleared() {
+		_spec.ClearField(song.FieldTocinfo, field.TypeString)
 	}
 	if su.mutation.ProjectSongsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -254,6 +287,7 @@ func (su *SongUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(su.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, su.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{song.Label}
@@ -269,9 +303,10 @@ func (su *SongUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // SongUpdateOne is the builder for updating a single Song entity.
 type SongUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *SongMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *SongMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetTitle sets the "title" field.
@@ -339,6 +374,26 @@ func (suo *SongUpdateOne) SetNillableCopyright(s *string) *SongUpdateOne {
 // ClearCopyright clears the value of the "copyright" field.
 func (suo *SongUpdateOne) ClearCopyright() *SongUpdateOne {
 	suo.mutation.ClearCopyright()
+	return suo
+}
+
+// SetTocinfo sets the "tocinfo" field.
+func (suo *SongUpdateOne) SetTocinfo(s string) *SongUpdateOne {
+	suo.mutation.SetTocinfo(s)
+	return suo
+}
+
+// SetNillableTocinfo sets the "tocinfo" field if the given value is not nil.
+func (suo *SongUpdateOne) SetNillableTocinfo(s *string) *SongUpdateOne {
+	if s != nil {
+		suo.SetTocinfo(*s)
+	}
+	return suo
+}
+
+// ClearTocinfo clears the value of the "tocinfo" field.
+func (suo *SongUpdateOne) ClearTocinfo() *SongUpdateOne {
+	suo.mutation.ClearTocinfo()
 	return suo
 }
 
@@ -438,6 +493,12 @@ func (suo *SongUpdateOne) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (suo *SongUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *SongUpdateOne {
+	suo.modifiers = append(suo.modifiers, modifiers...)
+	return suo
+}
+
 func (suo *SongUpdateOne) sqlSave(ctx context.Context) (_node *Song, err error) {
 	if err := suo.check(); err != nil {
 		return _node, err
@@ -485,6 +546,12 @@ func (suo *SongUpdateOne) sqlSave(ctx context.Context) (_node *Song, err error) 
 	if suo.mutation.CopyrightCleared() {
 		_spec.ClearField(song.FieldCopyright, field.TypeString)
 	}
+	if value, ok := suo.mutation.Tocinfo(); ok {
+		_spec.SetField(song.FieldTocinfo, field.TypeString, value)
+	}
+	if suo.mutation.TocinfoCleared() {
+		_spec.ClearField(song.FieldTocinfo, field.TypeString)
+	}
 	if suo.mutation.ProjectSongsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -530,6 +597,7 @@ func (suo *SongUpdateOne) sqlSave(ctx context.Context) (_node *Song, err error) 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(suo.modifiers...)
 	_node = &Song{config: suo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

@@ -333,7 +333,7 @@ func (c *ProjectClient) QueryProjectSongs(pr *Project) *ProjectSongQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(project.Table, project.FieldID, id),
 			sqlgraph.To(projectsong.Table, projectsong.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, project.ProjectSongsTable, project.ProjectSongsColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.ProjectSongsTable, project.ProjectSongsColumn),
 		)
 		fromV = sqlgraph.Neighbors(pr.driver.Dialect(), step)
 		return fromV, nil

@@ -1301,6 +1301,7 @@ type SongMutation struct {
 	filename             *string
 	genre                *string
 	copyright            *string
+	tocinfo              *string
 	clearedFields        map[string]struct{}
 	project_songs        map[int]struct{}
 	removedproject_songs map[int]struct{}
@@ -1584,6 +1585,55 @@ func (m *SongMutation) ResetCopyright() {
 	delete(m.clearedFields, song.FieldCopyright)
 }
 
+// SetTocinfo sets the "tocinfo" field.
+func (m *SongMutation) SetTocinfo(s string) {
+	m.tocinfo = &s
+}
+
+// Tocinfo returns the value of the "tocinfo" field in the mutation.
+func (m *SongMutation) Tocinfo() (r string, exists bool) {
+	v := m.tocinfo
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTocinfo returns the old "tocinfo" field's value of the Song entity.
+// If the Song object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SongMutation) OldTocinfo(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTocinfo is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTocinfo requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTocinfo: %w", err)
+	}
+	return oldValue.Tocinfo, nil
+}
+
+// ClearTocinfo clears the value of the "tocinfo" field.
+func (m *SongMutation) ClearTocinfo() {
+	m.tocinfo = nil
+	m.clearedFields[song.FieldTocinfo] = struct{}{}
+}
+
+// TocinfoCleared returns if the "tocinfo" field was cleared in this mutation.
+func (m *SongMutation) TocinfoCleared() bool {
+	_, ok := m.clearedFields[song.FieldTocinfo]
+	return ok
+}
+
+// ResetTocinfo resets all changes to the "tocinfo" field.
+func (m *SongMutation) ResetTocinfo() {
+	m.tocinfo = nil
+	delete(m.clearedFields, song.FieldTocinfo)
+}
+
 // AddProjectSongIDs adds the "project_songs" edge to the ProjectSong entity by ids.
 func (m *SongMutation) AddProjectSongIDs(ids ...int) {
 	if m.project_songs == nil {
@@ -1672,7 +1722,7 @@ func (m *SongMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SongMutation) Fields() []string {
-	fields := make([]string, 0, 4)
+	fields := make([]string, 0, 5)
 	if m.title != nil {
 		fields = append(fields, song.FieldTitle)
 	}
@@ -1684,6 +1734,9 @@ func (m *SongMutation) Fields() []string {
 	}
 	if m.copyright != nil {
 		fields = append(fields, song.FieldCopyright)
+	}
+	if m.tocinfo != nil {
+		fields = append(fields, song.FieldTocinfo)
 	}
 	return fields
 }
@@ -1701,6 +1754,8 @@ func (m *SongMutation) Field(name string) (ent.Value, bool) {
 		return m.Genre()
 	case song.FieldCopyright:
 		return m.Copyright()
+	case song.FieldTocinfo:
+		return m.Tocinfo()
 	}
 	return nil, false
 }
@@ -1718,6 +1773,8 @@ func (m *SongMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldGenre(ctx)
 	case song.FieldCopyright:
 		return m.OldCopyright(ctx)
+	case song.FieldTocinfo:
+		return m.OldTocinfo(ctx)
 	}
 	return nil, fmt.Errorf("unknown Song field %s", name)
 }
@@ -1755,6 +1812,13 @@ func (m *SongMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCopyright(v)
 		return nil
+	case song.FieldTocinfo:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTocinfo(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Song field %s", name)
 }
@@ -1791,6 +1855,9 @@ func (m *SongMutation) ClearedFields() []string {
 	if m.FieldCleared(song.FieldCopyright) {
 		fields = append(fields, song.FieldCopyright)
 	}
+	if m.FieldCleared(song.FieldTocinfo) {
+		fields = append(fields, song.FieldTocinfo)
+	}
 	return fields
 }
 
@@ -1811,6 +1878,9 @@ func (m *SongMutation) ClearField(name string) error {
 	case song.FieldCopyright:
 		m.ClearCopyright()
 		return nil
+	case song.FieldTocinfo:
+		m.ClearTocinfo()
+		return nil
 	}
 	return fmt.Errorf("unknown Song nullable field %s", name)
 }
@@ -1830,6 +1900,9 @@ func (m *SongMutation) ResetField(name string) error {
 		return nil
 	case song.FieldCopyright:
 		m.ResetCopyright()
+		return nil
+	case song.FieldTocinfo:
+		m.ResetTocinfo()
 		return nil
 	}
 	return fmt.Errorf("unknown Song field %s", name)

@@ -28,14 +28,8 @@ func (Song) Fields() []ent.Field {
 			Optional(),
 		field.String("copyright").
 			Optional(),
-	}
-}
-
-func (Song) Indexes() []ent.Index {
-	return []ent.Index{
-		index.Fields("filename").Unique(),
-		index.Fields("title"),
-		index.Fields("genre"),
+		field.String("tocinfo").
+			Optional(),
 	}
 }
 
@@ -44,5 +38,14 @@ func (Song) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("project_songs", ProjectSong.Type).
 			Ref("song"),
+	}
+}
+
+// Indexes of the Song.
+func (Song) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("filename").Unique(),
+		index.Fields("title"),
+		index.Fields("genre"),
 	}
 }

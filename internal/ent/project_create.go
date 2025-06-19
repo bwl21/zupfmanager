@@ -161,7 +161,7 @@ func (pc *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 	if nodes := pc.mutation.ProjectSongsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
-			Inverse: true,
+			Inverse: false,
 			Table:   project.ProjectSongsTable,
 			Columns: []string{project.ProjectSongsColumn},
 			Bidi:    false,

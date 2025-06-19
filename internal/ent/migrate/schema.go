@@ -27,6 +27,7 @@ var (
 		{Name: "priority", Type: field.TypeInt},
 		{Name: "difficulty", Type: field.TypeEnum, Enums: []string{"easy", "medium", "hard", "expert"}, Default: "medium"},
 		{Name: "comment", Type: field.TypeString, Nullable: true},
+		{Name: "project_project_songs", Type: field.TypeInt, Nullable: true},
 		{Name: "project_id", Type: field.TypeInt},
 		{Name: "song_id", Type: field.TypeInt},
 	}
@@ -37,14 +38,20 @@ var (
 		PrimaryKey: []*schema.Column{ProjectSongsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "project_songs_projects_project",
+				Symbol:     "project_songs_projects_project_songs",
 				Columns:    []*schema.Column{ProjectSongsColumns[4]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+			{
+				Symbol:     "project_songs_projects_project",
+				Columns:    []*schema.Column{ProjectSongsColumns[5]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "project_songs_songs_song",
-				Columns:    []*schema.Column{ProjectSongsColumns[5]},
+				Columns:    []*schema.Column{ProjectSongsColumns[6]},
 				RefColumns: []*schema.Column{SongsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -53,7 +60,7 @@ var (
 			{
 				Name:    "projectsong_project_id_song_id",
 				Unique:  true,
-				Columns: []*schema.Column{ProjectSongsColumns[4], ProjectSongsColumns[5]},
+				Columns: []*schema.Column{ProjectSongsColumns[5], ProjectSongsColumns[6]},
 			},
 		},
 	}
@@ -64,6 +71,7 @@ var (
 		{Name: "filename", Type: field.TypeString, Unique: true},
 		{Name: "genre", Type: field.TypeString, Nullable: true},
 		{Name: "copyright", Type: field.TypeString, Nullable: true},
+		{Name: "tocinfo", Type: field.TypeString, Nullable: true},
 	}
 	// SongsTable holds the schema information for the "songs" table.
 	SongsTable = &schema.Table{
@@ -98,5 +106,6 @@ var (
 
 func init() {
 	ProjectSongsTable.ForeignKeys[0].RefTable = ProjectsTable
-	ProjectSongsTable.ForeignKeys[1].RefTable = SongsTable
+	ProjectSongsTable.ForeignKeys[1].RefTable = ProjectsTable
+	ProjectSongsTable.ForeignKeys[2].RefTable = SongsTable
 }

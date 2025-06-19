@@ -208,7 +208,7 @@ func HasProjectSongs() predicate.Project {
 	return predicate.Project(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, true, ProjectSongsTable, ProjectSongsColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, ProjectSongsTable, ProjectSongsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})

@@ -25,6 +25,7 @@ type SongQuery struct {
 	inters           []Interceptor
 	predicates       []predicate.Song
 	withProjectSongs *ProjectSongQuery
+	modifiers        []func(*sql.Selector)
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -277,8 +278,9 @@ func (sq *SongQuery) Clone() *SongQuery {
 		predicates:       append([]predicate.Song{}, sq.predicates...),
 		withProjectSongs: sq.withProjectSongs.Clone(),
 		// clone intermediate query.
-		sql:  sq.sql.Clone(),
-		path: sq.path,
+		sql:       sq.sql.Clone(),
+		path:      sq.path,
+		modifiers: append([]func(*sql.Selector){}, sq.modifiers...),
 	}
 }
 
@@ -384,6 +386,9 @@ func (sq *SongQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Song, e
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
 	}
+	if len(sq.modifiers) > 0 {
+		_spec.Modifiers = sq.modifiers
+	}
 	for i := range hooks {
 		hooks[i](ctx, _spec)
 	}
@@ -413,6 +418,7 @@ func (sq *SongQuery) loadProjectSongs(ctx context.Context, query *ProjectSongQue
 			init(nodes[i])
 		}
 	}
+	query.withFKs = true
 	if len(query.ctx.Fields) > 0 {
 		query.ctx.AppendFieldOnce(projectsong.FieldSongID)
 	}
@@ -436,6 +442,9 @@ func (sq *SongQuery) loadProjectSongs(ctx context.Context, query *ProjectSongQue
 
 func (sq *SongQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := sq.querySpec()
+	if len(sq.modifiers) > 0 {
+		_spec.Modifiers = sq.modifiers
+	}
 	_spec.Node.Columns = sq.ctx.Fields
 	if len(sq.ctx.Fields) > 0 {
 		_spec.Unique = sq.ctx.Unique != nil && *sq.ctx.Unique
@@ -498,6 +507,9 @@ func (sq *SongQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	if sq.ctx.Unique != nil && *sq.ctx.Unique {
 		selector.Distinct()
 	}
+	for _, m := range sq.modifiers {
+		m(selector)
+	}
 	for _, p := range sq.predicates {
 		p(selector)
 	}
@@ -513,6 +525,12 @@ func (sq *SongQuery) sqlQuery(ctx context.Context) *sql.Selector {
 		selector.Limit(*limit)
 	}
 	return selector
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (sq *SongQuery) Modify(modifiers ...func(s *sql.Selector)) *SongSelect {
+	sq.modifiers = append(sq.modifiers, modifiers...)
+	return sq.Select()
 }
 
 // SongGroupBy is the group-by builder for Song entities.
@@ -603,4 +621,10 @@ func (ss *SongSelect) sqlScan(ctx context.Context, root *SongQuery, v any) error
 	}
 	defer rows.Close()
 	return sql.ScanSlice(rows, v)
+}
+
+// Modify adds a query modifier for attaching custom logic to queries.
+func (ss *SongSelect) Modify(modifiers ...func(s *sql.Selector)) *SongSelect {
+	ss.modifiers = append(ss.modifiers, modifiers...)
+	return ss
 }

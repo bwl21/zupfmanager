@@ -30,7 +30,6 @@ func (Project) Fields() []ent.Field {
 // Edges of the Project.
 func (Project) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("project_songs", ProjectSong.Type).
-			Ref("project"),
+		edge.To("project_songs", ProjectSong.Type),
 	}
 }

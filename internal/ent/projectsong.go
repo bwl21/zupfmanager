@@ -30,8 +30,9 @@ type ProjectSong struct {
 	SongID int `json:"song_id,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ProjectSongQuery when eager-loading is set.
-	Edges        ProjectSongEdges `json:"edges"`
-	selectValues sql.SelectValues
+	Edges                 ProjectSongEdges `json:"edges"`
+	project_project_songs *int
+	selectValues          sql.SelectValues
 }
 
 // ProjectSongEdges holds the relations/edges for other nodes in the graph.
@@ -76,6 +77,8 @@ func (*ProjectSong) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case projectsong.FieldDifficulty, projectsong.FieldComment:
 			values[i] = new(sql.NullString)
+		case projectsong.ForeignKeys[0]: // project_project_songs
+			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -126,6 +129,13 @@ func (ps *ProjectSong) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field song_id", values[i])
 			} else if value.Valid {
 				ps.SongID = int(value.Int64)
+			}
+		case projectsong.ForeignKeys[0]:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for edge-field project_project_songs", value)
+			} else if value.Valid {
+				ps.project_project_songs = new(int)
+				*ps.project_project_songs = int(value.Int64)
 			}
 		default:
 			ps.selectValues.Set(columns[i], values[i])

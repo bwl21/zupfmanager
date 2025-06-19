@@ -3,10 +3,8 @@ package database
 import (
 	"context"
 	"log/slog"
-	"os"
 
 	"github.com/bwl21/zupfmanager/internal/ent"
-	"github.com/bwl21/zupfmanager/internal/ent/migrate"
 
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
@@ -40,20 +38,15 @@ func New() (*Client, error) {
 
 // Init initializes the database
 func (c *Client) Init() error {
-	// Check if the database file exists
-	if _, err := os.Stat("zupfmanager.db"); os.IsNotExist(err) {
-		// Run migrations only if the database file does not exist
-		if err := c.Schema.Create(
-			context.Background(),
-			migrate.WithDropIndex(true),
-			migrate.WithDropColumn(true),
-		); err != nil {
-			return err
-		}
-		slog.Info("Database initialized successfully")
-	} else {
-		slog.Info("Database already exists, skipping initialization")
+	// Run migrations
+	slog.Info("Running database migrations")
+	if err := c.Schema.Create(
+		context.Background(),
+	); err != nil {
+		slog.Error("Database migration failed", "error", err)
+		return err
 	}
+	slog.Info("Database initialized/migrated successfully")
 
 	return nil
 }

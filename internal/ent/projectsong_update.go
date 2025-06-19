@@ -19,8 +19,9 @@ import (
 // ProjectSongUpdate is the builder for updating ProjectSong entities.
 type ProjectSongUpdate struct {
 	config
-	hooks    []Hook
-	mutation *ProjectSongMutation
+	hooks     []Hook
+	mutation  *ProjectSongMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // Where appends a list predicates to the ProjectSongUpdate builder.
@@ -187,6 +188,12 @@ func (psu *ProjectSongUpdate) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (psu *ProjectSongUpdate) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ProjectSongUpdate {
+	psu.modifiers = append(psu.modifiers, modifiers...)
+	return psu
+}
+
 func (psu *ProjectSongUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if err := psu.check(); err != nil {
 		return n, err
@@ -272,6 +279,7 @@ func (psu *ProjectSongUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(psu.modifiers...)
 	if n, err = sqlgraph.UpdateNodes(ctx, psu.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{projectsong.Label}
@@ -287,9 +295,10 @@ func (psu *ProjectSongUpdate) sqlSave(ctx context.Context) (n int, err error) {
 // ProjectSongUpdateOne is the builder for updating a single ProjectSong entity.
 type ProjectSongUpdateOne struct {
 	config
-	fields   []string
-	hooks    []Hook
-	mutation *ProjectSongMutation
+	fields    []string
+	hooks     []Hook
+	mutation  *ProjectSongMutation
+	modifiers []func(*sql.UpdateBuilder)
 }
 
 // SetPriority sets the "priority" field.
@@ -463,6 +472,12 @@ func (psuo *ProjectSongUpdateOne) check() error {
 	return nil
 }
 
+// Modify adds a statement modifier for attaching custom logic to the UPDATE statement.
+func (psuo *ProjectSongUpdateOne) Modify(modifiers ...func(u *sql.UpdateBuilder)) *ProjectSongUpdateOne {
+	psuo.modifiers = append(psuo.modifiers, modifiers...)
+	return psuo
+}
+
 func (psuo *ProjectSongUpdateOne) sqlSave(ctx context.Context) (_node *ProjectSong, err error) {
 	if err := psuo.check(); err != nil {
 		return _node, err
@@ -565,6 +580,7 @@ func (psuo *ProjectSongUpdateOne) sqlSave(ctx context.Context) (_node *ProjectSo
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	_spec.AddModifiers(psuo.modifiers...)
 	_node = &ProjectSong{config: psuo.config}
 	_spec.Assign = _node.assignValues
 	_spec.ScanValues = _node.scanValues

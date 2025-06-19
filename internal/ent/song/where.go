@@ -73,6 +73,11 @@ func Copyright(v string) predicate.Song {
 	return predicate.Song(sql.FieldEQ(FieldCopyright, v))
 }
 
+// Tocinfo applies equality check predicate on the "tocinfo" field. It's identical to TocinfoEQ.
+func Tocinfo(v string) predicate.Song {
+	return predicate.Song(sql.FieldEQ(FieldTocinfo, v))
+}
+
 // TitleEQ applies the EQ predicate on the "title" field.
 func TitleEQ(v string) predicate.Song {
 	return predicate.Song(sql.FieldEQ(FieldTitle, v))
@@ -351,6 +356,81 @@ func CopyrightEqualFold(v string) predicate.Song {
 // CopyrightContainsFold applies the ContainsFold predicate on the "copyright" field.
 func CopyrightContainsFold(v string) predicate.Song {
 	return predicate.Song(sql.FieldContainsFold(FieldCopyright, v))
+}
+
+// TocinfoEQ applies the EQ predicate on the "tocinfo" field.
+func TocinfoEQ(v string) predicate.Song {
+	return predicate.Song(sql.FieldEQ(FieldTocinfo, v))
+}
+
+// TocinfoNEQ applies the NEQ predicate on the "tocinfo" field.
+func TocinfoNEQ(v string) predicate.Song {
+	return predicate.Song(sql.FieldNEQ(FieldTocinfo, v))
+}
+
+// TocinfoIn applies the In predicate on the "tocinfo" field.
+func TocinfoIn(vs ...string) predicate.Song {
+	return predicate.Song(sql.FieldIn(FieldTocinfo, vs...))
+}
+
+// TocinfoNotIn applies the NotIn predicate on the "tocinfo" field.
+func TocinfoNotIn(vs ...string) predicate.Song {
+	return predicate.Song(sql.FieldNotIn(FieldTocinfo, vs...))
+}
+
+// TocinfoGT applies the GT predicate on the "tocinfo" field.
+func TocinfoGT(v string) predicate.Song {
+	return predicate.Song(sql.FieldGT(FieldTocinfo, v))
+}
+
+// TocinfoGTE applies the GTE predicate on the "tocinfo" field.
+func TocinfoGTE(v string) predicate.Song {
+	return predicate.Song(sql.FieldGTE(FieldTocinfo, v))
+}
+
+// TocinfoLT applies the LT predicate on the "tocinfo" field.
+func TocinfoLT(v string) predicate.Song {
+	return predicate.Song(sql.FieldLT(FieldTocinfo, v))
+}
+
+// TocinfoLTE applies the LTE predicate on the "tocinfo" field.
+func TocinfoLTE(v string) predicate.Song {
+	return predicate.Song(sql.FieldLTE(FieldTocinfo, v))
+}
+
+// TocinfoContains applies the Contains predicate on the "tocinfo" field.
+func TocinfoContains(v string) predicate.Song {
+	return predicate.Song(sql.FieldContains(FieldTocinfo, v))
+}
+
+// TocinfoHasPrefix applies the HasPrefix predicate on the "tocinfo" field.
+func TocinfoHasPrefix(v string) predicate.Song {
+	return predicate.Song(sql.FieldHasPrefix(FieldTocinfo, v))
+}
+
+// TocinfoHasSuffix applies the HasSuffix predicate on the "tocinfo" field.
+func TocinfoHasSuffix(v string) predicate.Song {
+	return predicate.Song(sql.FieldHasSuffix(FieldTocinfo, v))
+}
+
+// TocinfoIsNil applies the IsNil predicate on the "tocinfo" field.
+func TocinfoIsNil() predicate.Song {
+	return predicate.Song(sql.FieldIsNull(FieldTocinfo))
+}
+
+// TocinfoNotNil applies the NotNil predicate on the "tocinfo" field.
+func TocinfoNotNil() predicate.Song {
+	return predicate.Song(sql.FieldNotNull(FieldTocinfo))
+}
+
+// TocinfoEqualFold applies the EqualFold predicate on the "tocinfo" field.
+func TocinfoEqualFold(v string) predicate.Song {
+	return predicate.Song(sql.FieldEqualFold(FieldTocinfo, v))
+}
+
+// TocinfoContainsFold applies the ContainsFold predicate on the "tocinfo" field.
+func TocinfoContainsFold(v string) predicate.Song {
+	return predicate.Song(sql.FieldContainsFold(FieldTocinfo, v))
 }
 
 // HasProjectSongs applies the HasEdge predicate on the "project_songs" edge.

@@ -24,6 +24,8 @@ type Song struct {
 	Genre string `json:"genre,omitempty"`
 	// Copyright holds the value of the "copyright" field.
 	Copyright string `json:"copyright,omitempty"`
+	// Tocinfo holds the value of the "tocinfo" field.
+	Tocinfo string `json:"tocinfo,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the SongQuery when eager-loading is set.
 	Edges        SongEdges `json:"edges"`
@@ -55,7 +57,7 @@ func (*Song) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case song.FieldID:
 			values[i] = new(sql.NullInt64)
-		case song.FieldTitle, song.FieldFilename, song.FieldGenre, song.FieldCopyright:
+		case song.FieldTitle, song.FieldFilename, song.FieldGenre, song.FieldCopyright, song.FieldTocinfo:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -101,6 +103,12 @@ func (s *Song) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field copyright", values[i])
 			} else if value.Valid {
 				s.Copyright = value.String
+			}
+		case song.FieldTocinfo:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field tocinfo", values[i])
+			} else if value.Valid {
+				s.Tocinfo = value.String
 			}
 		default:
 			s.selectValues.Set(columns[i], values[i])
@@ -154,6 +162,9 @@ func (s *Song) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("copyright=")
 	builder.WriteString(s.Copyright)
+	builder.WriteString(", ")
+	builder.WriteString("tocinfo=")
+	builder.WriteString(s.Tocinfo)
 	builder.WriteByte(')')
 	return builder.String()
 }
