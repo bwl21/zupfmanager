@@ -191,7 +191,7 @@ func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, outputDir 
 	for id, song := range projectSongs {
 		tocinfo := ""
 		if song.Edges.Song.Tocinfo != "" {
-			tocinfo = " (" + song.Edges.Song.Tocinfo + ")"
+			tocinfo = " - " + song.Edges.Song.Tocinfo
 		}
 		tocabc += fmt.Sprintf("W:%d %s%s\n", id+1, song.Edges.Song.Title, tocinfo)
 	}
