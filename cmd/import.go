@@ -75,6 +75,7 @@ func importFile(client *database.Client, file string) error {
 		title     string
 		genre     string
 		copyright string
+		tocinfo   string
 	)
 	scanner := bufio.NewScanner(bytes.NewReader(content))
 	for scanner.Scan() {
@@ -88,6 +89,23 @@ func importFile(client *database.Client, file string) error {
 		} else if strings.HasPrefix(line, "Z:copyright") {
 			copyright = strings.TrimPrefix(line, "Z:copyright")
 			copyright = strings.TrimSpace(copyright)
+		} else if tocinfo == "" {
+			// Überprüfe auf C:M: Muster
+			if strings.HasPrefix(line, "C:M: ") {
+				tocinfo = strings.TrimSpace(strings.TrimPrefix(line, "C:M: "))
+			} else if strings.HasPrefix(line, "C:M:") {
+				tocinfo = strings.TrimSpace(strings.TrimPrefix(line, "C:M:"))
+			} else if strings.HasPrefix(line, "C:M+T: ") {
+				// Überprüfe auf C:M+T: Muster
+				tocinfo = strings.TrimSpace(strings.TrimPrefix(line, "C:M+T: "))
+			} else if strings.HasPrefix(line, "C:M+T:") {
+				tocinfo = strings.TrimSpace(strings.TrimPrefix(line, "C:M+T:"))
+			} else if strings.HasPrefix(line, "C:T+M: ") {
+				// Überprüfe auf C:T+M: Muster
+				tocinfo = strings.TrimSpace(strings.TrimPrefix(line, "C:T+M: "))
+			} else if strings.HasPrefix(line, "C:T+M:") {
+				tocinfo = strings.TrimSpace(strings.TrimPrefix(line, "C:T+M:"))
+			}
 		}
 	}
 	if title == "" {
@@ -105,10 +123,11 @@ func importFile(client *database.Client, file string) error {
 		// Create a new song
 		slog.Info("Creating new song", "filename", filename, "title", title, "genre", genre, "copyright", copyright)
 		_, err = client.Song.Create().
-			SetFilename(filename).
 			SetTitle(title).
+			SetFilename(filename).
 			SetGenre(genre).
 			SetCopyright(copyright).
+			SetTocinfo(tocinfo).
 			Save(context.Background())
 		if err != nil {
 			slog.Error("Failed to create song", "filename", filename, "error", err)
@@ -130,6 +149,10 @@ func importFile(client *database.Client, file string) error {
 			changes = append(changes, fmt.Sprintf("copyright: %s -> %s", sng.Copyright, copyright))
 			sng.Copyright = copyright
 		}
+		if sng.Tocinfo != tocinfo {
+			changes = append(changes, fmt.Sprintf("tocinfo: %s -> %s", sng.Tocinfo, tocinfo))
+			sng.Tocinfo = tocinfo
+		}
 
 		if len(changes) > 0 {
 			slog.Info("Updating existing song", "filename", filename, "changes", strings.Join(changes, ", "))
@@ -137,6 +160,7 @@ func importFile(client *database.Client, file string) error {
 				SetTitle(title).
 				SetGenre(genre).
 				SetCopyright(copyright).
+				SetTocinfo(tocinfo).
 				Save(context.Background())
 			if err != nil {
 				slog.Error("Failed to update song", "filename", filename, "error", err)
