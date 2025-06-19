@@ -14,6 +14,7 @@ import (
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/bwl21/zupfmanager/internal/ent"
 	"github.com/bwl21/zupfmanager/internal/ent/project"
+	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
 	"github.com/spf13/cobra"
 )
 
@@ -38,17 +39,27 @@ var projectShowCmd = &cobra.Command{
 			return fmt.Errorf("invalid project ID: %v", err)
 		}
 
-		// Query project with associated songs
-		proj, err := client.Project.Query().
-			Where(project.ID(projectID)).
-			WithProjectSongs(func(q *ent.ProjectSongQuery) {
-				q.WithSong()
-			}).
-			First(context.Background())
-
-		if err != nil {
-			return err
+		// First, get the project to ensure it exists
+		proj, err := client.Project.Get(context.Background(), projectID)
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("project with ID %d not found", projectID)
 		}
+		if err != nil {
+			return fmt.Errorf("error fetching project: %w", err)
+		}
+
+		// Then query the project songs separately
+		projectSongs, err := client.ProjectSong.Query().
+			Where(projectsong.HasProjectWith(project.ID(projectID))).
+			WithSong().
+			Order(ent.Asc("priority")).
+			All(context.Background())
+		if err != nil {
+			return fmt.Errorf("error fetching project songs: %w", err)
+		}
+
+		// Attach the songs to the project for compatibility with the rest of the code
+		proj.Edges.ProjectSongs = projectSongs
 
 		// Check if json output is requested
 		jsonOutput, _ := cmd.Flags().GetBool("json")
@@ -63,6 +74,7 @@ var projectShowCmd = &cobra.Command{
 
 		// Display project details
 		fmt.Printf("Project: %s (ID: %d)\n", proj.Title, proj.ID)
+		fmt.Printf("Number of songs: %d\n", len(proj.Edges.ProjectSongs))
 
 		if len(proj.Config) > 0 {
 			fmt.Println("\nConfiguration:")
@@ -75,20 +87,21 @@ var projectShowCmd = &cobra.Command{
 		if len(proj.Edges.ProjectSongs) > 0 {
 			fmt.Println("\nSongs:")
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.TabIndent)
-			fmt.Fprintln(w, "ID\tFILENAME\tPRIORITY\tDIFFICULTY\tCOPYRIGHT\tGENRE")
-			fmt.Fprintln(w, "--\t--------\t--------\t----------\t---------\t-----")
+			fmt.Fprintln(w, "ID\tFILENAME\tPRIORITY\tDIFFICULTY\tCOPYRIGHT\tGENRE\tTOCINFO")
+			fmt.Fprintln(w, "--\t--------\t--------\t----------\t---------\t-----\t-------")
 			for _, ps := range proj.Edges.ProjectSongs {
 				comment := ps.Comment
 				if comment == "" {
 					comment = "-"
 				}
-				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s\n",
+				fmt.Fprintf(w, "%d\t%s\t%d\t%s\t%s\t%s\t%s\n",
 					ps.Edges.Song.ID,
 					ps.Edges.Song.Filename,
 					ps.Priority,
 					ps.Difficulty,
 					ps.Edges.Song.Copyright,
 					ps.Edges.Song.Genre,
+					ps.Edges.Song.Tocinfo,
 				)
 
 			}

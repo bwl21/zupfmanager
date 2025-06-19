@@ -17,7 +17,6 @@ import (
 	"dario.cat/mergo"
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/bwl21/zupfmanager/internal/ent"
-	"github.com/bwl21/zupfmanager/internal/ent/project"
 	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
 	"github.com/bwl21/zupfmanager/internal/zupfnoter"
 	"github.com/spf13/cobra"
@@ -54,15 +53,30 @@ var projectBuildCmd = &cobra.Command{
 		}
 		defer client.Close()
 
-		project, err := client.Project.Query().Where(project.ID(projectID)).
-			WithProjectSongs(func(psq *ent.ProjectSongQuery) {
-				psq.Where(projectsong.PriorityLTE(projectBuildPriorityThreshold))
-				psq.WithProject().WithSong()
-			}).
-			First(context.Background())
+		// First, get the project to ensure it exists
+		project, err := client.Project.Get(context.Background(), projectID)
 		if err != nil {
 			return fmt.Errorf("failed to find project with ID %d: %w", projectID, err)
 		}
+
+		// Then query the project songs separately with the priority filter
+		projectSongs, err := client.ProjectSong.Query().
+			Where(
+				projectsong.And(
+					projectsong.ProjectID(projectID),
+					projectsong.PriorityLTE(projectBuildPriorityThreshold),
+				),
+			).
+			WithSong().
+			WithProject().
+			Order(ent.Asc("priority")).
+			All(context.Background())
+		if err != nil {
+			return fmt.Errorf("failed to query project songs: %w", err)
+		}
+
+		// Attach the songs to the project for compatibility with the rest of the code
+		project.Edges.ProjectSongs = projectSongs
 
 		projectBuildOutputDir = project.ShortName
 		cmd.Flags().StringVarP(&projectBuildOutputDir, "output-dir", "o", projectBuildOutputDir, "The directory to output the build results")
@@ -104,6 +118,15 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 	eg.SetLimit(5)
 
 	projectSongs := project.Edges.ProjectSongs
+
+	// Ensure all songs are loaded
+	for _, ps := range projectSongs {
+		if ps.Edges.Song == nil {
+			return fmt.Errorf("song not loaded for project song %d", ps.ID)
+		}
+	}
+
+	// Sort the songs by title
 	sort.Slice(projectSongs, func(i, j int) bool {
 		return strings.ToLower(projectSongs[i].Edges.Song.Title) < strings.ToLower(projectSongs[j].Edges.Song.Title)
 	})
@@ -131,9 +154,8 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 		return fmt.Errorf("failed to copy PDFs to copyright directories: %w", err)
 	}
 
-	err2 := createToc(project, projectSongs, err, outputDir)
-	if err2 != nil {
-		return err2
+	if err := createToc(project, projectSongs, outputDir); err != nil {
+		return fmt.Errorf("failed to create table of contents: %w", err)
 	}
 	//os.Remove(tempFile.Name())
 
@@ -164,10 +186,14 @@ func getCopyrightNames(project *ent.Project) []string {
 	return copyrightNames
 }
 
-func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, err error, outputDir string) error {
+func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, outputDir string) error {
 	tocabc := ""
 	for id, song := range projectSongs {
-		tocabc += fmt.Sprintf("W:%d %s\n", id+1, song.Edges.Song.Title)
+		tocinfo := ""
+		if song.Edges.Song.Tocinfo != "" {
+			tocinfo = " (" + song.Edges.Song.Tocinfo + ")"
+		}
+		tocabc += fmt.Sprintf("W:%d %s%s\n", id+1, song.Edges.Song.Title, tocinfo)
 	}
 
 	templateFile := filepath.Join(project.ShortName, "tpl", "999_inhaltsverzeichnis_template.abc")
