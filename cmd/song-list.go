@@ -47,8 +47,8 @@ var songListCmd = &cobra.Command{
 
 		// Setup tabwriter for aligned output
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.TabIndent)
-		fmt.Fprintln(w, "ID\tTITLE\tFILENAME\tCOPYRIGHT\tGENRE")
-		fmt.Fprintln(w, "--\t-----\t--------\t---------\t-----")
+		fmt.Fprintln(w, "ID\tTITLE\tFILENAME\tCOPYRIGHT\tGENRE\tTOCINFO")
+		fmt.Fprintln(w, "--\t-----\t--------\t---------\t-----\t------")
 
 		for _, s := range songs {
 			genre := s.Genre
@@ -59,7 +59,11 @@ var songListCmd = &cobra.Command{
 			if copyright == "" {
 				copyright = "-"
 			}
-			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\n", s.ID, s.Title, s.Filename, copyright, genre)
+			tocinfo := s.Tocinfo
+			if tocinfo == "" {
+				tocinfo = "-"
+			}
+			fmt.Fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\n", s.ID, s.Title, s.Filename, copyright, genre, tocinfo)
 		}
 
 		return w.Flush()
