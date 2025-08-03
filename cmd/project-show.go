@@ -76,6 +76,23 @@ var projectShowCmd = &cobra.Command{
 		fmt.Printf("Project: %s (ID: %d)\n", proj.Title, proj.ID)
 		fmt.Printf("Number of songs: %d\n", len(proj.Edges.ProjectSongs))
 
+		// Display folder patterns
+		fmt.Println("\nFolder Patterns:")
+		folderPatterns, hasFolderPatterns := proj.Config["folderPatterns"].(map[string]interface{})
+		if hasFolderPatterns && len(folderPatterns) > 0 {
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.TabIndent)
+			fmt.Fprintln(w, "PATTERN\tFOLDER")
+			fmt.Fprintln(w, "-------\t------")
+			for pattern, folder := range folderPatterns {
+				if folderStr, ok := folder.(string); ok {
+					fmt.Fprintf(w, "%s\t%s\n", pattern, folderStr)
+				}
+			}
+			w.Flush()
+		} else {
+			fmt.Println("  Using default folder patterns")
+		}
+
 		if len(proj.Config) > 0 {
 			fmt.Println("\nConfiguration:")
 			for k, v := range proj.Config {
