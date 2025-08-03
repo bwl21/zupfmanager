@@ -103,16 +103,26 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 	os.RemoveAll(filepath.Join(outputDir, "druckdateien"))
 	os.RemoveAll(filepath.Join(outputDir, "referenz"))
 
+	// Create base directories
 	_ = os.MkdirAll(outputDir, 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "pdf"), 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "abc"), 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "log"), 0755)
+	
+	// Create druckdateien directory
 	druckdateienDir := filepath.Join(outputDir, "druckdateien")
 	_ = os.MkdirAll(druckdateienDir, 0755)
-	grossDir := filepath.Join(druckdateienDir, "gross")
-	_ = os.MkdirAll(grossDir, 0755)
-	kleinDir := filepath.Join(druckdateienDir, "klein")
-	_ = os.MkdirAll(kleinDir, 0755)
+	
+	// Create target directories based on folder patterns
+	folderPatterns := getFolderPatterns(project)
+	folderSet := make(map[string]bool)
+	for _, folder := range folderPatterns {
+		if !folderSet[folder] {
+			targetDir := filepath.Join(druckdateienDir, folder)
+			_ = os.MkdirAll(targetDir, 0755)
+			folderSet[folder] = true
+		}
+	}
 
 	eg, ctx := errgroup.WithContext(context.Background())
 	eg.SetLimit(5)
@@ -157,19 +167,27 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 	if err := createToc(project, projectSongs, outputDir); err != nil {
 		return fmt.Errorf("failed to create table of contents: %w", err)
 	}
-	//os.Remove(tempFile.Name())
 
-	grossDir = filepath.Join(outputDir, "druckdateien", "gross")
-	kleinDir = filepath.Join(outputDir, "druckdateien", "klein")
+	// Get folder patterns from project config or use defaults
+	folderPatterns = getFolderPatterns(project)
 
-	err = mergePDFs(grossDir, filepath.Join(outputDir, "druckdateien", "gross.pdf"))
-	if err != nil {
-		return fmt.Errorf("failed to merge PDFs in gross directory: %w", err)
+	// Get unique target folders
+	folderSet = make(map[string]bool)
+	for _, targetFolder := range folderPatterns {
+		folderSet[targetFolder] = true
 	}
 
-	err = mergePDFs(kleinDir, filepath.Join(outputDir, "druckdateien", "klein.pdf"))
-	if err != nil {
-		return fmt.Errorf("failed to merge PDFs in klein directory: %w", err)
+	// Merge PDFs for each target folder
+	for folder := range folderSet {
+		sourceDir := filepath.Join(outputDir, "druckdateien", folder)
+		destFile := filepath.Join(outputDir, "druckdateien", folder+".pdf")
+		
+		slog.Info("Merging PDFs for folder", "folder", folder, "source", sourceDir, "dest", destFile)
+		
+		err = mergePDFs(sourceDir, destFile)
+		if err != nil {
+			return fmt.Errorf("failed to merge PDFs in %s directory: %w", folder, err)
+		}
 	}
 
 	return nil
@@ -363,6 +381,30 @@ func init() {
 
 }
 
+// getFolderPatterns returns the folder patterns from the project config or the default patterns
+func getFolderPatterns(project *ent.Project) map[string]string {
+	// Define default folder patterns
+	folderPatterns := map[string]string{
+		"*_-A*_a3.pdf": "klein",
+		"*_-M*_a3.pdf": "klein",
+		"*_-O*_a3.pdf": "klein",
+		"*_-B*_a3.pdf": "gross",
+		"*_-X*_a3.pdf": "gross",
+	}
+
+	// Override with project config if available
+	if configPatterns, ok := project.Config["folderPatterns"].(map[string]interface{}); ok {
+		folderPatterns = make(map[string]string)
+		for pattern, folder := range configPatterns {
+			if folderStr, ok := folder.(string); ok {
+				folderPatterns[pattern] = folderStr
+			}
+		}
+	}
+
+	return folderPatterns
+}
+
 func distributeZupfnoterOutput(project *ent.Project, baseFilename string, outputDir string, songIndex int) error {
 	pdfDir := filepath.Join(outputDir, "pdf")
 	baseFilenameWithoutExt := strings.TrimSuffix(baseFilename, ".abc")
@@ -372,25 +414,7 @@ func distributeZupfnoterOutput(project *ent.Project, baseFilename string, output
 		return fmt.Errorf("failed to glob PDF files: %w", err)
 	}
 
-	// First, define the default folder patterns
-	folderPatterns := map[string]string{
-		"*_-A*_a3.pdf": "klein",
-		"*_-M*_a3.pdf": "klein",
-		"*_-O*_a3.pdf": "klein",
-		"*_-B*_a3.pdf": "gross",
-		"*_-X*_a3.pdf": "gross",
-	}
-
-	// Check if there are folder patterns in the project config
-	if configPatterns, ok := project.Config["folderPatterns"].(map[string]interface{}); ok {
-		// Clear the default patterns if there are custom ones
-		folderPatterns = make(map[string]string)
-		for pattern, folder := range configPatterns {
-			if folderStr, ok := folder.(string); ok {
-				folderPatterns[pattern] = folderStr
-			}
-		}
-	}
+	folderPatterns := getFolderPatterns(project)
 
 	for _, pdfFile := range files {
 		filename := filepath.Base(pdfFile)
