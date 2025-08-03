@@ -133,7 +133,7 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 	for id, song := range projectSongs {
 		song := song
 		eg.Go(func() error {
-			return buildSong(ctx, abcFileDir, outputDir, id+1, song, projectSampleId)
+			return buildSong(ctx, abcFileDir, outputDir, id+1, song, projectSampleId, project)
 		})
 	}
 	err := eg.Wait()
@@ -233,7 +233,8 @@ func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, outputDir 
 	}
 
 	// Distribute the table of contents PDF to the print files directories.
-	err = distributeZupfnoterOutput(tocSongFilename, outputDir, 0)
+	err = distributeZupfnoterOutput(project, tocSongFilename, outputDir, 0)
+
 	if err != nil {
 		return fmt.Errorf("failed to distribute Zupfnoter output: %w", err)
 	}
@@ -244,7 +245,7 @@ func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, outputDir 
 // buildSong verarbeitet einen Song: Liest die ABC-Datei, kombiniert Konfigurationen,
 // ruft das externe Tool "zupfnoter" auf, kopiert die ABC-Datei ins Zielverzeichnis
 // und verschiebt das Logfile.
-func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int, song *ent.ProjectSong, projectSampleId string) error {
+func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int, song *ent.ProjectSong, projectSampleId string, project *ent.Project) error {
 	// 1. Logge den Start der Verarbeitung für diesen Song.
 	slog.Info("building song", "song", song.Edges.Song.Title)
 
@@ -307,7 +308,7 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 	os.Remove(tempConfigFile.Name())
 
 	// 11. Distribute the Zupfnoter output to the print files directories.
-	err = distributeZupfnoterOutput(song.Edges.Song.Filename, outputDir, songIndex)
+	err = distributeZupfnoterOutput(project, song.Edges.Song.Filename, outputDir, songIndex)
 	if err != nil {
 		return fmt.Errorf("failed to distribute Zupfnoter output: %w", err)
 	}
@@ -362,7 +363,7 @@ func init() {
 
 }
 
-func distributeZupfnoterOutput(baseFilename string, outputDir string, songIndex int) error {
+func distributeZupfnoterOutput(project *ent.Project, baseFilename string, outputDir string, songIndex int) error {
 	pdfDir := filepath.Join(outputDir, "pdf")
 	baseFilenameWithoutExt := strings.TrimSuffix(baseFilename, ".abc")
 	pattern := filepath.Join(pdfDir, filepath.Base(baseFilenameWithoutExt)+"*.pdf")
@@ -371,12 +372,24 @@ func distributeZupfnoterOutput(baseFilename string, outputDir string, songIndex 
 		return fmt.Errorf("failed to glob PDF files: %w", err)
 	}
 
+	// First, define the default folder patterns
 	folderPatterns := map[string]string{
 		"*_-A*_a3.pdf": "klein",
 		"*_-M*_a3.pdf": "klein",
 		"*_-O*_a3.pdf": "klein",
 		"*_-B*_a3.pdf": "gross",
 		"*_-X*_a3.pdf": "gross",
+	}
+
+	// Check if there are folder patterns in the project config
+	if configPatterns, ok := project.Config["folderPatterns"].(map[string]interface{}); ok {
+		// Clear the default patterns if there are custom ones
+		folderPatterns = make(map[string]string)
+		for pattern, folder := range configPatterns {
+			if folderStr, ok := folder.(string); ok {
+				folderPatterns[pattern] = folderStr
+			}
+		}
 	}
 
 	for _, pdfFile := range files {
@@ -445,6 +458,12 @@ func copyFile(src, dst string) error {
 func mergePDFs(dir, dest string) error {
 	slog.Info("merging pdf files", "dir", dir, "dest", dest)
 
+	// Check if directory exists
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		slog.Warn("directory does not exist, skipping merge", "dir", dir)
+		return nil
+	}
+
 	var files []string
 
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -460,11 +479,19 @@ func mergePDFs(dir, dest string) error {
 		return fmt.Errorf("failed to walk directory: %w", err)
 	}
 
+	// Check if we found any PDF files
+	if len(files) == 0 {
+		slog.Warn("no PDF files found to merge", "dir", dir)
+		return nil
+	}
+
+	slog.Info(fmt.Sprintf("merging %d PDF files from %s to %s", len(files), dir, dest))
 	err = api.MergeCreateFile(files, dest, false, nil)
 	if err != nil {
 		return fmt.Errorf("failed to merge pdf files: %w", err)
 	}
 
+	slog.Info("successfully merged PDF files", "dest", dest)
 	return nil
 }
 

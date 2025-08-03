@@ -1,5 +1,5 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
+Copyright 2025 NAME HERE <EMAIL ADDRESS>
 */
 package cmd
 
@@ -47,11 +47,11 @@ var listProjectsCmd = &cobra.Command{
 
 		// Setup tabwriter for aligned output
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 3, ' ', tabwriter.TabIndent)
-		fmt.Fprintln(w, "ID\tTITLE")
-		fmt.Fprintln(w, "--\t-----")
+		fmt.Fprintln(w, "ID\tSHORT NAME\tTITLE")
+		fmt.Fprintln(w, "--\t----------\t-----")
 
 		for _, p := range projects {
-			fmt.Fprintf(w, "%d\t%s\n", p.ID, p.Title)
+			fmt.Fprintf(w, "%d\t%s\t%s\n", p.ID, p.ShortName, p.Title)
 		}
 
 		return w.Flush()

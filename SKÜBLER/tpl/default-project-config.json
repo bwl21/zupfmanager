@@ -1,0 +1,57 @@
+	{
+      "folderPatterns": {
+        "*_-*_a3.pdf": "klein"
+      },
+    "abc_file_dir": "/Users/beweiche/Dropbox/RuthVeehNoten",
+    "extract": {
+      "0": {
+        "notes": {
+          "T01_number": {
+            "text": "SB-FE1 - #{the_index}"
+          },
+          "T04_to_order": {
+            "text": "Fröhliches Ensemblespiel - Schönblickausgabe 2025",
+            "style": "small"
+          },
+          "T99_do_not_copy": {
+            "text": "Bitte nicht kopieren #{sampleId}"
+          }
+        },
+        "sortmark": {
+          "show": false
+        },
+        "layout": {
+          "limit_a3": false
+        }
+      },
+      "1": {
+        "layout": {
+          "limit_a3": false
+        }
+      },
+      "2": {
+        "layout": {
+          "limit_a3": false
+        },
+        "printer": {
+          "a3_offset": [0, 0]
+        }
+      },
+      "3": {
+        "layout": {
+          "limit_a3": false
+        }
+      },
+      "4": {
+        "layout": {
+          "limit_a3": false
+        }
+      },
+      "5": {
+        "layout": {
+          "limit_a3": false
+        }
+      }
+    }
+  }
+  
