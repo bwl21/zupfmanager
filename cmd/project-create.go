@@ -19,11 +19,11 @@ var projectCreateCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		service, err := core.NewProjectService()
+		services, err := core.NewServices()
 		if err != nil {
 			return err
 		}
-		defer service.Close()
+		defer services.Close()
 
 		title, _ := cmd.Flags().GetString("title")
 		shortName, _ := cmd.Flags().GetString("short_name")
@@ -37,7 +37,7 @@ var projectCreateCmd = &cobra.Command{
 			DefaultConfig: defaultConfig,
 		}
 
-		_, err = service.CreateProject(context.Background(), req)
+		_, err = services.Project.Create(context.Background(), req)
 		if err != nil {
 			return err
 		}

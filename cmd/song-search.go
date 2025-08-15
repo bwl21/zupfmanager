@@ -24,11 +24,11 @@ var songSearchCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		service, err := core.NewSongService()
+		services, err := core.NewServices()
 		if err != nil {
 			return err
 		}
-		defer service.Close()
+		defer services.Close()
 
 		// Get the search query
 		searchQuery := args[0]
@@ -39,7 +39,12 @@ var songSearchCmd = &cobra.Command{
 		searchGenre, _ := cmd.Flags().GetBool("genre")
 
 		// Query matching songs
-		songs, err := service.SearchSongsAdvanced(context.Background(), searchQuery, searchTitle, searchFilename, searchGenre)
+		searchOptions := core.SearchOptions{
+			SearchTitle:    searchTitle,
+			SearchFilename: searchFilename,
+			SearchGenre:    searchGenre,
+		}
+		songs, err := services.Song.SearchAdvanced(context.Background(), searchQuery, searchOptions)
 		if err != nil {
 			return err
 		}

@@ -7,8 +7,31 @@ import (
 	"testing"
 )
 
+func setupImportTest(t *testing.T) (*Services, func()) {
+	tempDir := t.TempDir()
+	oldWd, _ := os.Getwd()
+	cleanup := func() {
+		os.Chdir(oldWd)
+	}
+	os.Chdir(tempDir)
+
+	services, err := NewServices()
+	if err != nil {
+		t.Fatalf("Failed to create services: %v", err)
+	}
+
+	return services, func() {
+		services.Close()
+		cleanup()
+	}
+}
+
 func TestImportService_parseABCMetadata(t *testing.T) {
-	service := &ImportService{}
+	services, cleanup := setupImportTest(t)
+	defer cleanup()
+
+	// Get the import service implementation to test internal method
+	importSvc := services.Import.(*importService)
 
 	tests := []struct {
 		name     string
@@ -49,7 +72,7 @@ C:M+T: Mixed Info`,
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := service.parseABCMetadata([]byte(tt.content))
+			result := importSvc.parseABCMetadata([]byte(tt.content))
 			if result.Title != tt.expected.Title {
 				t.Errorf("Expected title %s, got %s", tt.expected.Title, result.Title)
 			}
@@ -67,16 +90,8 @@ C:M+T: Mixed Info`,
 }
 
 func TestImportService_ImportFile(t *testing.T) {
-	tempDir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tempDir)
-
-	service, err := NewImportService()
-	if err != nil {
-		t.Fatalf("Failed to create import service: %v", err)
-	}
-	defer service.Close()
+	services, cleanup := setupImportTest(t)
+	defer cleanup()
 
 	// Create test ABC file
 	testContent := `T:Test Import Song
@@ -86,14 +101,14 @@ C:M: Test Tocinfo
 K:C
 CDEF|`
 
-	testFile := filepath.Join(tempDir, "test.abc")
-	err = os.WriteFile(testFile, []byte(testContent), 0644)
+	testFile := "test.abc"
+	err := os.WriteFile(testFile, []byte(testContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
 	// Test first import (create)
-	result := service.ImportFile(context.Background(), testFile)
+	result := services.Import.ImportFile(context.Background(), testFile)
 	if result.Error != nil {
 		t.Fatalf("ImportFile() error = %v", result.Error)
 	}
@@ -105,7 +120,7 @@ CDEF|`
 	}
 
 	// Test second import (unchanged)
-	result = service.ImportFile(context.Background(), testFile)
+	result = services.Import.ImportFile(context.Background(), testFile)
 	if result.Error != nil {
 		t.Fatalf("ImportFile() error = %v", result.Error)
 	}
@@ -126,7 +141,7 @@ CDEF|`
 		t.Fatalf("Failed to update test file: %v", err)
 	}
 
-	result = service.ImportFile(context.Background(), testFile)
+	result = services.Import.ImportFile(context.Background(), testFile)
 	if result.Error != nil {
 		t.Fatalf("ImportFile() error = %v", result.Error)
 	}
@@ -139,20 +154,12 @@ CDEF|`
 }
 
 func TestImportService_ImportDirectory(t *testing.T) {
-	tempDir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tempDir)
-
-	service, err := NewImportService()
-	if err != nil {
-		t.Fatalf("Failed to create import service: %v", err)
-	}
-	defer service.Close()
+	services, cleanup := setupImportTest(t)
+	defer cleanup()
 
 	// Create test directory with ABC files
-	testDir := filepath.Join(tempDir, "testdir")
-	err = os.MkdirAll(testDir, 0755)
+	testDir := "testdir"
+	err := os.MkdirAll(testDir, 0755)
 	if err != nil {
 		t.Fatalf("Failed to create test directory: %v", err)
 	}
@@ -183,7 +190,7 @@ K:G`,
 	}
 
 	// Import directory
-	results, err := service.ImportDirectory(context.Background(), testDir)
+	results, err := services.Import.ImportDirectory(context.Background(), testDir)
 	if err != nil {
 		t.Fatalf("ImportDirectory() error = %v", err)
 	}
@@ -200,4 +207,65 @@ K:G`,
 			t.Errorf("Expected action 'created' for %s, got %s", result.Filename, result.Action)
 		}
 	}
+}
+
+func TestImportService_ImportFileErrors(t *testing.T) {
+	services, cleanup := setupImportTest(t)
+	defer cleanup()
+
+	tests := []struct {
+		name        string
+		content     string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "missing title",
+			content:     "K:C\nCDEF|",
+			expectError: true,
+			errorMsg:    "no title found in file",
+		},
+		{
+			name:        "valid file",
+			content:     "T:Valid Song\nK:C\nCDEF|",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFile := tt.name + ".abc"
+			err := os.WriteFile(testFile, []byte(tt.content), 0644)
+			if err != nil {
+				t.Fatalf("Failed to create test file: %v", err)
+			}
+
+			result := services.Import.ImportFile(context.Background(), testFile)
+			
+			if tt.expectError {
+				if result.Error == nil {
+					t.Error("Expected error but got none")
+				} else if !contains(result.Error.Error(), tt.errorMsg) {
+					t.Errorf("Expected error containing '%s', got '%s'", tt.errorMsg, result.Error.Error())
+				}
+			} else {
+				if result.Error != nil {
+					t.Errorf("Expected no error but got: %v", result.Error)
+				}
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
+		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || 
+		func() bool {
+			for i := 0; i <= len(s)-len(substr); i++ {
+				if s[i:i+len(substr)] == substr {
+					return true
+				}
+			}
+			return false
+		}())))
 }

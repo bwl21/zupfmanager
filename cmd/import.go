@@ -33,14 +33,14 @@ var importCmd = &cobra.Command{
 		handler := slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{ReplaceAttr: replaceAttr})
 		slog.SetDefault(slog.New(handler))
 
-		service, err := core.NewImportService()
+		services, err := core.NewServices()
 		if err != nil {
-			slog.Error("Failed to create import service", "error", err)
+			slog.Error("Failed to create services", "error", err)
 			return err
 		}
-		defer service.Close()
+		defer services.Close()
 
-		results, err := service.ImportDirectory(context.Background(), args[0])
+		results, err := services.Import.ImportDirectory(context.Background(), args[0])
 		if err != nil {
 			return err
 		}

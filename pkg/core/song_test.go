@@ -6,32 +6,36 @@ import (
 	"testing"
 )
 
-func TestSongService_ListSongs(t *testing.T) {
+func setupSongTest(t *testing.T) (*Services, func()) {
 	tempDir := t.TempDir()
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
+	cleanup := func() {
+		os.Chdir(oldWd)
+	}
 	os.Chdir(tempDir)
 
-	service, err := NewSongService()
+	services, err := NewServices()
 	if err != nil {
-		t.Fatalf("Failed to create song service: %v", err)
+		t.Fatalf("Failed to create services: %v", err)
 	}
-	defer service.Close()
+
+	return services, func() {
+		services.Close()
+		cleanup()
+	}
+}
+
+func TestSongService_List(t *testing.T) {
+	services, cleanup := setupSongTest(t)
+	defer cleanup()
 
 	// Initially should have no songs
-	songs, err := service.ListSongs(context.Background())
+	songs, err := services.Song.List(context.Background())
 	if err != nil {
-		t.Fatalf("ListSongs() error = %v", err)
+		t.Fatalf("List() error = %v", err)
 	}
 
 	initialCount := len(songs)
-
-	// Create a song via import service to test listing
-	importService, err := NewImportService()
-	if err != nil {
-		t.Fatalf("Failed to create import service: %v", err)
-	}
-	defer importService.Close()
 
 	// Create test ABC file
 	testContent := `T:Test List Song
@@ -45,15 +49,15 @@ K:C`
 	}
 
 	// Import the file to create a song
-	result := importService.ImportFile(context.Background(), testFile)
+	result := services.Import.ImportFile(context.Background(), testFile)
 	if result.Error != nil {
 		t.Fatalf("Failed to import test song: %v", result.Error)
 	}
 
 	// Now list songs again
-	songs, err = service.ListSongs(context.Background())
+	songs, err = services.Song.List(context.Background())
 	if err != nil {
-		t.Fatalf("ListSongs() error = %v", err)
+		t.Fatalf("List() error = %v", err)
 	}
 
 	if len(songs) != initialCount+1 {
@@ -73,24 +77,9 @@ K:C`
 	}
 }
 
-func TestSongService_GetSong(t *testing.T) {
-	tempDir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tempDir)
-
-	service, err := NewSongService()
-	if err != nil {
-		t.Fatalf("Failed to create song service: %v", err)
-	}
-	defer service.Close()
-
-	// Create a song via import service
-	importService, err := NewImportService()
-	if err != nil {
-		t.Fatalf("Failed to create import service: %v", err)
-	}
-	defer importService.Close()
+func TestSongService_Get(t *testing.T) {
+	services, cleanup := setupSongTest(t)
+	defer cleanup()
 
 	testContent := `T:Test Get Song
 Z:genre Rock
@@ -98,18 +87,18 @@ Z:copyright Test Copyright
 K:C`
 
 	testFile := "test-get.abc"
-	err = os.WriteFile(testFile, []byte(testContent), 0644)
+	err := os.WriteFile(testFile, []byte(testContent), 0644)
 	if err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
-	result := importService.ImportFile(context.Background(), testFile)
+	result := services.Import.ImportFile(context.Background(), testFile)
 	if result.Error != nil {
 		t.Fatalf("Failed to import test song: %v", result.Error)
 	}
 
 	// Get all songs to find the ID of our test song
-	songs, err := service.ListSongs(context.Background())
+	songs, err := services.Song.List(context.Background())
 	if err != nil {
 		t.Fatalf("Failed to list songs: %v", err)
 	}
@@ -126,10 +115,10 @@ K:C`
 		t.Fatal("Test song not found")
 	}
 
-	// Test GetSong
-	song, err := service.GetSong(context.Background(), testSongID)
+	// Test Get
+	song, err := services.Song.Get(context.Background(), testSongID)
 	if err != nil {
-		t.Fatalf("GetSong() error = %v", err)
+		t.Fatalf("Get() error = %v", err)
 	}
 
 	if song.Title != "Test Get Song" {
@@ -143,24 +132,9 @@ K:C`
 	}
 }
 
-func TestSongService_SearchSongs(t *testing.T) {
-	tempDir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tempDir)
-
-	service, err := NewSongService()
-	if err != nil {
-		t.Fatalf("Failed to create song service: %v", err)
-	}
-	defer service.Close()
-
-	// Create multiple songs via import service
-	importService, err := NewImportService()
-	if err != nil {
-		t.Fatalf("Failed to create import service: %v", err)
-	}
-	defer importService.Close()
+func TestSongService_Search(t *testing.T) {
+	services, cleanup := setupSongTest(t)
+	defer cleanup()
 
 	testSongs := []struct {
 		filename string
@@ -173,21 +147,21 @@ func TestSongService_SearchSongs(t *testing.T) {
 
 	for _, song := range testSongs {
 		content := "T:" + song.title + "\nK:C"
-		err = os.WriteFile(song.filename, []byte(content), 0644)
+		err := os.WriteFile(song.filename, []byte(content), 0644)
 		if err != nil {
 			t.Fatalf("Failed to create test file %s: %v", song.filename, err)
 		}
 
-		result := importService.ImportFile(context.Background(), song.filename)
+		result := services.Import.ImportFile(context.Background(), song.filename)
 		if result.Error != nil {
 			t.Fatalf("Failed to import test song %s: %v", song.filename, result.Error)
 		}
 	}
 
 	// Test search
-	results, err := service.SearchSongs(context.Background(), "Grace")
+	results, err := services.Song.Search(context.Background(), "Grace")
 	if err != nil {
-		t.Fatalf("SearchSongs() error = %v", err)
+		t.Fatalf("Search() error = %v", err)
 	}
 
 	if len(results) != 2 {
@@ -208,5 +182,66 @@ func TestSongService_SearchSongs(t *testing.T) {
 	}
 	if foundTitles["Simple Song"] {
 		t.Error("'Simple Song' should not be in search results")
+	}
+}
+
+func TestSongService_SearchAdvanced(t *testing.T) {
+	services, cleanup := setupSongTest(t)
+	defer cleanup()
+
+	// Create test songs with different metadata
+	testSongs := []struct {
+		filename string
+		content  string
+	}{
+		{"title-test.abc", "T:Grace in Title\nZ:genre Folk\nK:C"},
+		{"genre-test.abc", "T:Different Song\nZ:genre Grace Genre\nK:C"},
+		{"filename-grace.abc", "T:Another Song\nZ:genre Rock\nK:C"},
+	}
+
+	for _, song := range testSongs {
+		err := os.WriteFile(song.filename, []byte(song.content), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create test file %s: %v", song.filename, err)
+		}
+
+		result := services.Import.ImportFile(context.Background(), song.filename)
+		if result.Error != nil {
+			t.Fatalf("Failed to import test song %s: %v", song.filename, result.Error)
+		}
+	}
+
+	// Test search only in titles
+	results, err := services.Song.SearchAdvanced(context.Background(), "Grace", SearchOptions{
+		SearchTitle:    true,
+		SearchFilename: false,
+		SearchGenre:    false,
+	})
+	if err != nil {
+		t.Fatalf("SearchAdvanced() error = %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result for title search, got %d", len(results))
+	}
+	if len(results) > 0 && results[0].Title != "Grace in Title" {
+		t.Errorf("Expected 'Grace in Title', got %s", results[0].Title)
+	}
+
+	// Test search only in filenames
+	results, err = services.Song.SearchAdvanced(context.Background(), "grace", SearchOptions{
+		SearchTitle:    false,
+		SearchFilename: true,
+		SearchGenre:    false,
+	})
+	if err != nil {
+		t.Fatalf("SearchAdvanced() error = %v", err)
+	}
+
+	if len(results) != 1 {
+		t.Errorf("Expected 1 result for filename search, got %d", len(results))
+	}
+	if len(results) > 0 && results[0].Title != "Another Song" {
+		t.Errorf("Expected 'Another Song', got %s", results[0].Title)
 	}
 }

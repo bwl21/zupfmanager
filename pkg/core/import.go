@@ -14,31 +14,20 @@ import (
 	"github.com/bwl21/zupfmanager/internal/ent/song"
 )
 
-// ImportService handles import operations
-type ImportService struct {
+// importService implements ImportService interface
+type importService struct {
 	db *database.Client
 }
 
-// NewImportService creates a new import service
-func NewImportService() (*ImportService, error) {
-	db, err := database.New()
-	if err != nil {
-		return nil, err
+// NewImportServiceWithDeps creates a new import service with dependencies
+func NewImportServiceWithDeps(db *database.Client) ImportService {
+	return &importService{
+		db: db,
 	}
-	return &ImportService{db: db}, nil
-}
-
-// ImportResult represents the result of an import operation
-type ImportResult struct {
-	Filename string
-	Title    string
-	Action   string // "created" or "updated"
-	Changes  []string
-	Error    error
 }
 
 // ImportDirectory imports all ABC files from a directory
-func (s *ImportService) ImportDirectory(ctx context.Context, directory string) ([]ImportResult, error) {
+func (s *importService) ImportDirectory(ctx context.Context, directory string) ([]ImportResult, error) {
 	files, err := filepath.Glob(filepath.Join(directory, "*.abc"))
 	if err != nil {
 		return nil, err
@@ -54,7 +43,7 @@ func (s *ImportService) ImportDirectory(ctx context.Context, directory string) (
 }
 
 // ImportFile imports a single ABC file
-func (s *ImportService) ImportFile(ctx context.Context, file string) ImportResult {
+func (s *importService) ImportFile(ctx context.Context, file string) ImportResult {
 	filename := filepath.Base(file)
 	result := ImportResult{Filename: filename}
 
@@ -126,7 +115,7 @@ type ABCMetadata struct {
 }
 
 // parseABCMetadata extracts metadata from ABC file content
-func (s *ImportService) parseABCMetadata(content []byte) ABCMetadata {
+func (s *importService) parseABCMetadata(content []byte) ABCMetadata {
 	var metadata ABCMetadata
 
 	scanner := bufio.NewScanner(bytes.NewReader(content))
@@ -160,7 +149,7 @@ func (s *ImportService) parseABCMetadata(content []byte) ABCMetadata {
 }
 
 // detectChanges compares existing song with new metadata and returns list of changes
-func (s *ImportService) detectChanges(existing *ent.Song, metadata ABCMetadata) []string {
+func (s *importService) detectChanges(existing *ent.Song, metadata ABCMetadata) []string {
 	changes := make([]string, 0)
 
 	if existing.Title != metadata.Title {
@@ -177,9 +166,4 @@ func (s *ImportService) detectChanges(existing *ent.Song, metadata ABCMetadata) 
 	}
 
 	return changes
-}
-
-// Close closes the database connection
-func (s *ImportService) Close() error {
-	return s.db.Close()
 }

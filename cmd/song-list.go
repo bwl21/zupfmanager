@@ -23,14 +23,14 @@ var songListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		service, err := core.NewSongService()
+		services, err := core.NewServices()
 		if err != nil {
 			return err
 		}
-		defer service.Close()
+		defer services.Close()
 
 		// Query all songs
-		songs, err := service.ListSongs(context.Background())
+		songs, err := services.Song.List(context.Background())
 		if err != nil {
 			return err
 		}

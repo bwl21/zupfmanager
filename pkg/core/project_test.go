@@ -7,11 +7,13 @@ import (
 	"testing"
 )
 
-func TestProjectService_CreateProject(t *testing.T) {
+func setupProjectTest(t *testing.T) (*Services, func()) {
 	// Create temporary directory for test
 	tempDir := t.TempDir()
 	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
+	cleanup := func() {
+		os.Chdir(oldWd)
+	}
 	os.Chdir(tempDir)
 
 	// Create default config file for testing
@@ -21,11 +23,20 @@ func TestProjectService_CreateProject(t *testing.T) {
 		t.Fatalf("Failed to create default config file: %v", err)
 	}
 
-	service, err := NewProjectService()
+	services, err := NewServices()
 	if err != nil {
-		t.Fatalf("Failed to create project service: %v", err)
+		t.Fatalf("Failed to create services: %v", err)
 	}
-	defer service.Close()
+
+	return services, func() {
+		services.Close()
+		cleanup()
+	}
+}
+
+func TestProjectService_Create(t *testing.T) {
+	services, cleanup := setupProjectTest(t)
+	defer cleanup()
 
 	tests := []struct {
 		name    string
@@ -49,13 +60,29 @@ func TestProjectService_CreateProject(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "create project with invalid short name",
+			req: CreateProjectRequest{
+				Title:     "Invalid Project",
+				ShortName: "invalid name with spaces",
+			},
+			wantErr: true,
+		},
+		{
+			name: "create project with empty title",
+			req: CreateProjectRequest{
+				Title:     "",
+				ShortName: "empty-title",
+			},
+			wantErr: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			project, err := service.CreateProject(context.Background(), tt.req)
+			project, err := services.Project.Create(context.Background(), tt.req)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateProject() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Create() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !tt.wantErr {
@@ -78,31 +105,23 @@ func TestProjectService_CreateProject(t *testing.T) {
 	}
 }
 
-func TestProjectService_ListProjects(t *testing.T) {
-	tempDir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tempDir)
-
-	service, err := NewProjectService()
-	if err != nil {
-		t.Fatalf("Failed to create project service: %v", err)
-	}
-	defer service.Close()
+func TestProjectService_List(t *testing.T) {
+	services, cleanup := setupProjectTest(t)
+	defer cleanup()
 
 	// Create a test project first
 	req := CreateProjectRequest{
 		Title:     "List Test Project",
 		ShortName: "list-test",
 	}
-	_, err = service.CreateProject(context.Background(), req)
+	_, err := services.Project.Create(context.Background(), req)
 	if err != nil {
 		t.Fatalf("Failed to create test project: %v", err)
 	}
 
-	projects, err := service.ListProjects(context.Background())
+	projects, err := services.Project.List(context.Background())
 	if err != nil {
-		t.Fatalf("ListProjects() error = %v", err)
+		t.Fatalf("List() error = %v", err)
 	}
 
 	if len(projects) == 0 {
@@ -121,24 +140,16 @@ func TestProjectService_ListProjects(t *testing.T) {
 	}
 }
 
-func TestProjectService_UpdateProject(t *testing.T) {
-	tempDir := t.TempDir()
-	oldWd, _ := os.Getwd()
-	defer os.Chdir(oldWd)
-	os.Chdir(tempDir)
-
-	service, err := NewProjectService()
-	if err != nil {
-		t.Fatalf("Failed to create project service: %v", err)
-	}
-	defer service.Close()
+func TestProjectService_Update(t *testing.T) {
+	services, cleanup := setupProjectTest(t)
+	defer cleanup()
 
 	// Create a test project first
 	createReq := CreateProjectRequest{
 		Title:     "Original Title",
 		ShortName: "original",
 	}
-	project, err := service.CreateProject(context.Background(), createReq)
+	project, err := services.Project.Create(context.Background(), createReq)
 	if err != nil {
 		t.Fatalf("Failed to create test project: %v", err)
 	}
@@ -149,9 +160,9 @@ func TestProjectService_UpdateProject(t *testing.T) {
 		Title:     "Updated Title",
 		ShortName: "updated",
 	}
-	updatedProject, err := service.UpdateProject(context.Background(), updateReq)
+	updatedProject, err := services.Project.Update(context.Background(), updateReq)
 	if err != nil {
-		t.Fatalf("UpdateProject() error = %v", err)
+		t.Fatalf("Update() error = %v", err)
 	}
 
 	if updatedProject.Title != updateReq.Title {
@@ -159,5 +170,60 @@ func TestProjectService_UpdateProject(t *testing.T) {
 	}
 	if updatedProject.ShortName != updateReq.ShortName {
 		t.Errorf("Expected short name %s, got %s", updateReq.ShortName, updatedProject.ShortName)
+	}
+}
+
+func TestProjectService_Get(t *testing.T) {
+	services, cleanup := setupProjectTest(t)
+	defer cleanup()
+
+	// Create a test project first
+	createReq := CreateProjectRequest{
+		Title:     "Get Test Project",
+		ShortName: "get-test",
+	}
+	project, err := services.Project.Create(context.Background(), createReq)
+	if err != nil {
+		t.Fatalf("Failed to create test project: %v", err)
+	}
+
+	// Get the project
+	retrievedProject, err := services.Project.Get(context.Background(), project.ID)
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+
+	if retrievedProject.ID != project.ID {
+		t.Errorf("Expected ID %d, got %d", project.ID, retrievedProject.ID)
+	}
+	if retrievedProject.Title != project.Title {
+		t.Errorf("Expected title %s, got %s", project.Title, retrievedProject.Title)
+	}
+}
+
+func TestProjectService_Delete(t *testing.T) {
+	services, cleanup := setupProjectTest(t)
+	defer cleanup()
+
+	// Create a test project first
+	createReq := CreateProjectRequest{
+		Title:     "Delete Test Project",
+		ShortName: "delete-test",
+	}
+	project, err := services.Project.Create(context.Background(), createReq)
+	if err != nil {
+		t.Fatalf("Failed to create test project: %v", err)
+	}
+
+	// Delete the project
+	err = services.Project.Delete(context.Background(), project.ID)
+	if err != nil {
+		t.Fatalf("Delete() error = %v", err)
+	}
+
+	// Verify it's deleted
+	_, err = services.Project.Get(context.Background(), project.ID)
+	if err == nil {
+		t.Error("Expected error when getting deleted project, got none")
 	}
 }

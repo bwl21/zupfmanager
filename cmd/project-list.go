@@ -23,14 +23,14 @@ var listProjectsCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		service, err := core.NewProjectService()
+		services, err := core.NewServices()
 		if err != nil {
 			return err
 		}
-		defer service.Close()
+		defer services.Close()
 
 		// Query all projects
-		projects, err := service.ListProjects(context.Background())
+		projects, err := services.Project.List(context.Background())
 		if err != nil {
 			return err
 		}
