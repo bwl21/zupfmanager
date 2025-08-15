@@ -10,9 +10,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/bwl21/zupfmanager/internal/database"
-	"github.com/bwl21/zupfmanager/internal/ent/predicate"
-	"github.com/bwl21/zupfmanager/internal/ent/song"
+	"github.com/bwl21/zupfmanager/pkg/core"
 	"github.com/spf13/cobra"
 )
 
@@ -26,10 +24,11 @@ var songSearchCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		client, err := database.New()
+		service, err := core.NewSongService()
 		if err != nil {
 			return err
 		}
+		defer service.Close()
 
 		// Get the search query
 		searchQuery := args[0]
@@ -39,36 +38,8 @@ var songSearchCmd = &cobra.Command{
 		searchFilename, _ := cmd.Flags().GetBool("filename")
 		searchGenre, _ := cmd.Flags().GetBool("genre")
 
-		// If no specific fields are selected, search all fields
-		if !searchTitle && !searchFilename && !searchGenre {
-			searchTitle = true
-			searchFilename = true
-			searchGenre = true
-		}
-
-		// Build predicates for search
-		var predicates []predicate.Song
-		if searchTitle {
-			predicates = append(predicates,
-				song.TitleContainsFold(searchQuery))
-		}
-		if searchFilename {
-			predicates = append(predicates,
-				song.FilenameContainsFold(searchQuery))
-		}
-		if searchGenre && searchQuery != "" {
-			predicates = append(predicates,
-				song.GenreContainsFold(searchQuery))
-		}
-
-		// Query songs with the search term
-		query := client.Song.Query()
-		if len(predicates) > 0 {
-			query = query.Where(song.Or(predicates...))
-		}
-
 		// Query matching songs
-		songs, err := query.All(context.Background())
+		songs, err := service.SearchSongsAdvanced(context.Background(), searchQuery, searchTitle, searchFilename, searchGenre)
 		if err != nil {
 			return err
 		}
