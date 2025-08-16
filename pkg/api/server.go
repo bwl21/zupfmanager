@@ -4,7 +4,11 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"mime"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	_ "github.com/bwl21/zupfmanager/docs"
@@ -25,10 +29,18 @@ type Server struct {
 	importHandler  *handlers.ImportHandler
 	projectHandler *handlers.ProjectHandler
 	songHandler    *handlers.SongHandler
+	
+	// Frontend serving
+	frontendPath string
+}
+
+// ServerOptions configures the server
+type ServerOptions struct {
+	FrontendPath string // Path to frontend dist directory
 }
 
 // NewServer creates a new API server
-func NewServer(services *core.Services) *Server {
+func NewServer(services *core.Services, opts ...ServerOptions) *Server {
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	
@@ -37,12 +49,18 @@ func NewServer(services *core.Services) *Server {
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
 	
+	var frontendPath string
+	if len(opts) > 0 {
+		frontendPath = opts[0].FrontendPath
+	}
+	
 	s := &Server{
 		router:         router,
 		services:       services,
 		importHandler:  handlers.NewImportHandler(services),
 		projectHandler: handlers.NewProjectHandler(services),
 		songHandler:    handlers.NewSongHandler(services),
+		frontendPath:   frontendPath,
 	}
 	
 	s.setupRoutes()
@@ -94,6 +112,129 @@ func (s *Server) setupRoutes() {
 	// Swagger documentation with dynamic URL
 	url := ginSwagger.URL("/api/swagger.json")
 	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
+	
+	// Serve frontend static files if path is provided
+	if s.frontendPath != "" {
+		s.setupFrontendServing()
+	}
+}
+
+// setupFrontendServing configures static file serving for the frontend
+func (s *Server) setupFrontendServing() {
+	// Check if frontend dist directory exists
+	if _, err := os.Stat(s.frontendPath); os.IsNotExist(err) {
+		slog.Warn("Frontend path does not exist", "path", s.frontendPath)
+		return
+	}
+	
+	slog.Info("Serving frontend static files", "path", s.frontendPath)
+	
+	// Serve static assets with proper MIME types
+	s.router.GET("/assets/*filepath", s.serveStaticWithMimeType)
+	
+	// Serve favicon and other root files with proper MIME types
+	s.router.GET("/favicon.ico", func(c *gin.Context) {
+		s.serveFileWithMimeType(c, filepath.Join(s.frontendPath, "favicon.ico"))
+	})
+	s.router.GET("/vite.svg", func(c *gin.Context) {
+		s.serveFileWithMimeType(c, filepath.Join(s.frontendPath, "vite.svg"))
+	})
+	
+	// SPA fallback: serve index.html for all non-API routes
+	s.router.NoRoute(s.serveSPA)
+}
+
+// serveStaticWithMimeType serves static files with correct MIME types
+func (s *Server) serveStaticWithMimeType(c *gin.Context) {
+	// Get the file path from the URL
+	filePath := c.Param("filepath")
+	fullPath := filepath.Join(s.frontendPath, "assets", filePath)
+	
+	s.serveFileWithMimeType(c, fullPath)
+}
+
+// serveFileWithMimeType serves a file with the correct MIME type
+func (s *Server) serveFileWithMimeType(c *gin.Context, filePath string) {
+	// Check if file exists
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "file not found"})
+		return
+	}
+	
+	// Get MIME type based on file extension
+	ext := filepath.Ext(filePath)
+	mimeType := mime.TypeByExtension(ext)
+	
+	// Set specific MIME types for common web assets
+	switch ext {
+	case ".css":
+		mimeType = "text/css; charset=utf-8"
+	case ".js":
+		mimeType = "application/javascript; charset=utf-8"
+	case ".json":
+		mimeType = "application/json; charset=utf-8"
+	case ".svg":
+		mimeType = "image/svg+xml"
+	case ".ico":
+		mimeType = "image/x-icon"
+	case ".png":
+		mimeType = "image/png"
+	case ".jpg", ".jpeg":
+		mimeType = "image/jpeg"
+	case ".gif":
+		mimeType = "image/gif"
+	case ".woff":
+		mimeType = "font/woff"
+	case ".woff2":
+		mimeType = "font/woff2"
+	case ".ttf":
+		mimeType = "font/ttf"
+	case ".eot":
+		mimeType = "application/vnd.ms-fontobject"
+	}
+	
+	// Set the Content-Type header
+	if mimeType != "" {
+		c.Header("Content-Type", mimeType)
+	}
+	
+	// Set cache headers for static assets
+	if strings.HasPrefix(c.Request.URL.Path, "/assets/") {
+		c.Header("Cache-Control", "public, max-age=31536000") // 1 year
+	} else {
+		c.Header("Cache-Control", "public, max-age=3600") // 1 hour
+	}
+	
+	// Serve the file
+	c.File(filePath)
+}
+
+// serveSPA serves the Single Page Application for client-side routing
+func (s *Server) serveSPA(c *gin.Context) {
+	path := c.Request.URL.Path
+	
+	// Don't serve SPA for API routes, health check, or swagger
+	if strings.HasPrefix(path, "/api/") || 
+	   strings.HasPrefix(path, "/health") || 
+	   strings.HasPrefix(path, "/swagger/") {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	
+	// Serve index.html for all other routes (SPA routing)
+	indexPath := filepath.Join(s.frontendPath, "index.html")
+	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "frontend not found"})
+		return
+	}
+	
+	// Set proper HTML MIME type and cache headers
+	c.Header("Content-Type", "text/html; charset=utf-8")
+	c.Header("Cache-Control", "no-cache, no-store, must-revalidate") // Don't cache HTML
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
+	
+	c.File(indexPath)
 }
 
 // Start starts the API server

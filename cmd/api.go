@@ -24,11 +24,16 @@ The API server provides endpoints for:
 - Managing projects and songs
 - Searching and listing content
 
+Options:
+- API only: zupfmanager api --port 8080
+- Integrated (API + Frontend): zupfmanager api --port 8080 --frontend frontend/dist
+
 Access the API documentation at http://localhost:8080/swagger/index.html`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
 		port, _ := cmd.Flags().GetInt("port")
+		frontendPath, _ := cmd.Flags().GetString("frontend")
 
 		// Create services
 		services, err := core.NewServices()
@@ -37,8 +42,15 @@ Access the API documentation at http://localhost:8080/swagger/index.html`,
 		}
 		defer services.Close()
 
-		// Create API server
-		server := api.NewServer(services)
+		// Create API server with optional frontend serving
+		var server *api.Server
+		if frontendPath != "" {
+			server = api.NewServer(services, api.ServerOptions{
+				FrontendPath: frontendPath,
+			})
+		} else {
+			server = api.NewServer(services)
+		}
 
 		// Setup graceful shutdown
 		ctx, cancel := context.WithCancel(context.Background())
@@ -81,4 +93,5 @@ Access the API documentation at http://localhost:8080/swagger/index.html`,
 func init() {
 	rootCmd.AddCommand(apiCmd)
 	apiCmd.Flags().IntP("port", "p", 8080, "Port to run the API server on")
+	apiCmd.Flags().StringP("frontend", "f", "", "Path to frontend dist directory (optional)")
 }

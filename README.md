@@ -39,7 +39,6 @@ make build
 Download the latest binary for your platform from the [Releases](https://github.com/bwl21/zupfmanager/releases) page.
 
 ## Usage
-# Usage - This section describes how to use the Zupfmanager.
 
 ### Command Line Interface
 
@@ -48,6 +47,12 @@ Zupfmanager provides a comprehensive CLI for managing projects and songs:
 ```bash
 # Show help
 zupfmanager --help
+
+# Start API server only
+zupfmanager api --port 8080
+
+# Start integrated server (API + Frontend)
+zupfmanager api --port 8080 --frontend frontend/dist
 
 # Project Management
 zupfmanager project list                                # List all projects
