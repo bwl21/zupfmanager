@@ -47,9 +47,14 @@ Access the API documentation at http://localhost:8080/swagger/index.html`,
 		if frontendPath != "" {
 			server = api.NewServer(services, api.ServerOptions{
 				FrontendPath: frontendPath,
+				Version:      Version,
+				GitCommit:    GitCommit,
 			})
 		} else {
-			server = api.NewServer(services)
+			server = api.NewServer(services, api.ServerOptions{
+				Version:   Version,
+				GitCommit: GitCommit,
+			})
 		}
 
 		// Setup graceful shutdown

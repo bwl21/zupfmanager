@@ -65,19 +65,15 @@
           <ProjectSongManager :project-id="projectId" />
         </div>
 
+        <!-- Project Build Management -->
+        <div>
+          <ProjectBuildManager :project-id="projectId" />
+        </div>
+
         <!-- Actions -->
         <div>
           <h3 class="text-lg font-medium text-gray-900 mb-4">Actions</h3>
           <div class="flex flex-wrap gap-3">
-            <button
-              class="flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              disabled
-            >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              Build Project (Coming Soon)
-            </button>
             <RouterLink
               :to="`/projects`"
               class="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors"
@@ -118,6 +114,7 @@ import { useQuery } from '@tanstack/vue-query'
 import { useRoute, RouterLink } from 'vue-router'
 import { projectApi } from '@/services/api'
 import ProjectSongManager from '@/components/ProjectSongManager.vue'
+import ProjectBuildManager from '@/components/ProjectBuildManager.vue'
 
 const route = useRoute()
 const projectId = parseInt(route.params.id as string)

@@ -5,7 +5,10 @@
         <!-- Logo and Title -->
         <div class="flex items-center">
           <div class="flex-shrink-0">
-            <h1 class="text-2xl font-bold text-gray-900">🎵 Zupfmanager</h1>
+            <div class="flex flex-col">
+              <h1 class="text-2xl font-bold text-gray-900">🎵 Zupfmanager</h1>
+              <VersionInfo />
+            </div>
           </div>
         </div>
 
@@ -103,6 +106,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import VersionInfo from '../VersionInfo.vue'
 
 const mobileMenuOpen = ref(false)
 </script>

@@ -33,11 +33,17 @@ type Server struct {
 
 	// Frontend serving
 	frontendPath string
+	
+	// Version info
+	version   string
+	gitCommit string
 }
 
 // ServerOptions configures the server
 type ServerOptions struct {
 	FrontendPath string // Path to frontend dist directory
+	Version      string // Version string
+	GitCommit    string // Git commit hash
 }
 
 // NewServer creates a new API server
@@ -50,9 +56,11 @@ func NewServer(services *core.Services, opts ...ServerOptions) *Server {
 	router.Use(gin.Recovery())
 	router.Use(corsMiddleware())
 	
-	var frontendPath string
+	var frontendPath, version, gitCommit string
 	if len(opts) > 0 {
 		frontendPath = opts[0].FrontendPath
+		version = opts[0].Version
+		gitCommit = opts[0].GitCommit
 	}
 	
 	s := &Server{
@@ -63,6 +71,8 @@ func NewServer(services *core.Services, opts ...ServerOptions) *Server {
 		songHandler:        handlers.NewSongHandler(services),
 		projectSongHandler: handlers.NewProjectSongHandler(services),
 		frontendPath:       frontendPath,
+		version:            version,
+		gitCommit:          gitCommit,
 	}
 
 	s.setupRoutes()
@@ -73,6 +83,9 @@ func NewServer(services *core.Services, opts ...ServerOptions) *Server {
 func (s *Server) setupRoutes() {
 	// Health check
 	s.router.GET("/health", s.healthCheck)
+	
+	// Version info
+	s.router.GET("/api/version", s.versionInfo)
 	
 	// API v1 routes
 	v1 := s.router.Group("/api/v1")
@@ -297,10 +310,40 @@ func corsMiddleware() gin.HandlerFunc {
 // @Success 200 {object} map[string]string
 // @Router /health [get]
 func (s *Server) healthCheck(c *gin.Context) {
+	version := s.version
+	if version == "" {
+		version = "dev"
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
 		"status":    "ok",
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
-		"version":   "1.0.0",
+		"version":   version,
+	})
+}
+
+// versionInfo returns detailed version information
+// @Summary Version information
+// @Description Get detailed version information including git commit
+// @Tags version
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Router /api/version [get]
+func (s *Server) versionInfo(c *gin.Context) {
+	version := s.version
+	if version == "" {
+		version = "dev"
+	}
+	
+	gitCommit := s.gitCommit
+	if gitCommit == "" {
+		gitCommit = "dirty"
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"version":    version,
+		"git_commit": gitCommit,
+		"timestamp":  time.Now().UTC().Format(time.RFC3339),
 	})
 }
 

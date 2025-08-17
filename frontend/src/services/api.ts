@@ -14,7 +14,11 @@ import type {
   AddSongToProjectRequest,
   UpdateProjectSongRequest,
   ProjectSongResponse,
-  ProjectSongsResponse
+  ProjectSongsResponse,
+  BuildProjectRequest,
+  BuildStatusResponse,
+  BuildResultResponse,
+  BuildListResponse
 } from '@/types/api'
 
 // Create axios instance with base configuration
@@ -96,6 +100,18 @@ export const projectSongApi = {
 
   remove: (projectId: number, songId: number): Promise<void> =>
     api.delete(`/api/v1/projects/${projectId}/songs/${songId}`)
+}
+
+// Project Build API
+export const projectBuildApi = {
+  build: (projectId: number, data?: BuildProjectRequest): Promise<BuildResultResponse> =>
+    api.post(`/api/v1/projects/${projectId}/build`, data || {}).then((res) => res.data),
+
+  getStatus: (projectId: number, buildId: string): Promise<BuildStatusResponse> =>
+    api.get(`/api/v1/projects/${projectId}/builds/${buildId}/status`).then((res) => res.data),
+
+  listBuilds: (projectId: number): Promise<BuildListResponse> =>
+    api.get(`/api/v1/projects/${projectId}/builds`).then((res) => res.data)
 }
 
 export default api

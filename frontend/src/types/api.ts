@@ -35,6 +35,39 @@ export interface ProjectSongsResponse {
   total: number
 }
 
+// Project Build Types
+export interface BuildProjectRequest {
+  output_dir?: string
+  abc_file_dir?: string
+  priority_threshold?: number // 1-4
+  sample_id?: string
+}
+
+export interface BuildStatusResponse {
+  status: string // "pending" | "running" | "completed" | "failed"
+  progress: number // 0-100
+  message?: string
+  started_at?: string
+  completed_at?: string
+  error?: string
+}
+
+export interface BuildResultResponse {
+  build_id: string
+  project_id: number
+  status: string // "pending" | "running" | "completed" | "failed"
+  output_dir: string
+  generated_files?: string[]
+  started_at: string
+  completed_at?: string
+  error?: string
+}
+
+export interface BuildListResponse {
+  builds: BuildResultResponse[]
+  total: number
+}
+
 // Import Types
 export interface ImportFileRequest {
   file_path: string
