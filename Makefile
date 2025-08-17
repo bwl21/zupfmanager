@@ -11,7 +11,13 @@ all: build
 # Frontend build
 frontend:
 	@echo "Building frontend..."
-	@cd frontend && npm ci && npm run build
+	@cd frontend && \
+		if [ -f package-lock.json ]; then \
+			npm ci; \
+		else \
+			npm install; \
+		fi && \
+		npm run build
 	@echo "Frontend build complete: frontend/dist/"
 
 # Frontend development dependencies
