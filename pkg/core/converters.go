@@ -51,3 +51,38 @@ func SongsFromEnt(entSongs []*ent.Song) []*Song {
 	}
 	return songs
 }
+
+// ProjectSongFromEnt converts an ent.ProjectSong to a domain ProjectSong
+func ProjectSongFromEnt(entProjectSong *ent.ProjectSong) *ProjectSong {
+	if entProjectSong == nil {
+		return nil
+	}
+	
+	projectSong := &ProjectSong{
+		ID:         entProjectSong.ID,
+		ProjectID:  entProjectSong.ProjectID,
+		SongID:     entProjectSong.SongID,
+		Difficulty: string(entProjectSong.Difficulty),
+		Priority:   entProjectSong.Priority,
+		Comment:    &entProjectSong.Comment,
+	}
+	
+	// Add related entities if loaded
+	if entProjectSong.Edges.Song != nil {
+		projectSong.Song = SongFromEnt(entProjectSong.Edges.Song)
+	}
+	if entProjectSong.Edges.Project != nil {
+		projectSong.Project = ProjectFromEnt(entProjectSong.Edges.Project)
+	}
+	
+	return projectSong
+}
+
+// ProjectSongsFromEnt converts a slice of ent.ProjectSong to domain ProjectSongs
+func ProjectSongsFromEnt(entProjectSongs []*ent.ProjectSong) []*ProjectSong {
+	projectSongs := make([]*ProjectSong, len(entProjectSongs))
+	for i, entProjectSong := range entProjectSongs {
+		projectSongs[i] = ProjectSongFromEnt(entProjectSong)
+	}
+	return projectSongs
+}

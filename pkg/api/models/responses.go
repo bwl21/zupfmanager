@@ -96,3 +96,35 @@ type SongListResponse struct {
 	Songs []SongResponse `json:"songs"`
 	Count int            `json:"count" example:"10"`
 } // @name SongListResponse
+
+// AddSongToProjectRequest represents a request to add a song to a project
+type AddSongToProjectRequest struct {
+	Difficulty *string `json:"difficulty,omitempty" example:"medium" enums:"easy,medium,hard,expert"`
+	Priority   *int    `json:"priority,omitempty" example:"1" minimum:"1" maximum:"4"`
+	Comment    *string `json:"comment,omitempty" example:"Great song for beginners"`
+} // @name AddSongToProjectRequest
+
+// UpdateProjectSongRequest represents a request to update a project-song relationship
+type UpdateProjectSongRequest struct {
+	Difficulty *string `json:"difficulty,omitempty" example:"hard" enums:"easy,medium,hard,expert"`
+	Priority   *int    `json:"priority,omitempty" example:"2" minimum:"1" maximum:"4"`
+	Comment    *string `json:"comment,omitempty" example:"Updated comment"`
+} // @name UpdateProjectSongRequest
+
+// ProjectSongResponse represents a project-song relationship
+type ProjectSongResponse struct {
+	ID         int              `json:"id" example:"1"`
+	ProjectID  int              `json:"project_id" example:"1"`
+	SongID     int              `json:"song_id" example:"1"`
+	Difficulty string           `json:"difficulty" example:"medium" enums:"easy,medium,hard,expert"`
+	Priority   int              `json:"priority" example:"1" minimum:"1" maximum:"4"`
+	Comment    *string          `json:"comment,omitempty" example:"Great song"`
+	Song       *SongResponse    `json:"song,omitempty"`
+	Project    *ProjectResponse `json:"project,omitempty"`
+} // @name ProjectSongResponse
+
+// ProjectSongsResponse represents a list of project-song relationships
+type ProjectSongsResponse struct {
+	ProjectSongs []ProjectSongResponse `json:"project_songs"`
+	Total        int                   `json:"total" example:"5"`
+} // @name ProjectSongsResponse

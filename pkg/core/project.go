@@ -2,8 +2,21 @@ package core
 
 import (
 	"context"
+	"errors"
 
 	"github.com/bwl21/zupfmanager/internal/database"
+	"github.com/bwl21/zupfmanager/internal/ent"
+	"github.com/bwl21/zupfmanager/internal/ent/project"
+	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
+	"github.com/bwl21/zupfmanager/internal/ent/song"
+)
+
+// Common errors
+var (
+	ErrProjectNotFound        = errors.New("project not found")
+	ErrSongNotFound          = errors.New("song not found")
+	ErrSongAlreadyInProject  = errors.New("song already in project")
+	ErrProjectSongNotFound   = errors.New("project-song relationship not found")
 )
 
 // projectService implements ProjectService interface
@@ -105,4 +118,153 @@ func (s *projectService) loadConfig(configFile string, useDefault bool) (map[str
 	}
 	
 	return map[string]interface{}{}, nil
+}
+
+// AddSongToProject adds a song to a project with optional difficulty, priority, and comment
+func (s *projectService) AddSongToProject(ctx context.Context, req AddSongToProjectRequest) (*ProjectSong, error) {
+	// Validate input
+	if err := ValidateAddSongToProjectRequest(req); err != nil {
+		return nil, err
+	}
+
+	// Check if project exists
+	projectExists, err := s.db.Project.Query().Where(project.ID(req.ProjectID)).Exist(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !projectExists {
+		return nil, ErrProjectNotFound
+	}
+
+	// Check if song exists
+	songExists, err := s.db.Song.Query().Where(song.ID(req.SongID)).Exist(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !songExists {
+		return nil, ErrSongNotFound
+	}
+
+	// Check if song is already in project
+	exists, err := s.db.ProjectSong.Query().
+		Where(
+			projectsong.ProjectID(req.ProjectID),
+			projectsong.SongID(req.SongID),
+		).
+		Exist(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, ErrSongAlreadyInProject
+	}
+
+	// Create project-song relationship
+	builder := s.db.ProjectSong.Create().
+		SetProjectID(req.ProjectID).
+		SetSongID(req.SongID)
+
+	if req.Difficulty != nil {
+		builder = builder.SetDifficulty(projectsong.Difficulty(*req.Difficulty))
+	}
+	if req.Priority != nil {
+		builder = builder.SetPriority(*req.Priority)
+	}
+	if req.Comment != nil {
+		builder = builder.SetComment(*req.Comment)
+	}
+
+	entProjectSong, err := builder.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return ProjectSongFromEnt(entProjectSong), nil
+}
+
+// RemoveSongFromProject removes a song from a project
+func (s *projectService) RemoveSongFromProject(ctx context.Context, projectID, songID int) error {
+	deleted, err := s.db.ProjectSong.Delete().
+		Where(
+			projectsong.ProjectID(projectID),
+			projectsong.SongID(songID),
+		).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	if deleted == 0 {
+		return ErrProjectSongNotFound
+	}
+
+	return nil
+}
+
+// UpdateProjectSong updates a project-song relationship
+func (s *projectService) UpdateProjectSong(ctx context.Context, req UpdateProjectSongRequest) (*ProjectSong, error) {
+	// Validate input
+	if err := ValidateUpdateProjectSongRequest(req); err != nil {
+		return nil, err
+	}
+
+	// Find the project-song relationship
+	entProjectSong, err := s.db.ProjectSong.Query().
+		Where(
+			projectsong.ProjectID(req.ProjectID),
+			projectsong.SongID(req.SongID),
+		).
+		Only(ctx)
+
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, ErrProjectSongNotFound
+		}
+		return nil, err
+	}
+
+	// Update the relationship
+	builder := entProjectSong.Update()
+	if req.Difficulty != nil {
+		builder = builder.SetDifficulty(projectsong.Difficulty(*req.Difficulty))
+	}
+	if req.Priority != nil {
+		builder = builder.SetPriority(*req.Priority)
+	}
+	if req.Comment != nil {
+		builder = builder.SetComment(*req.Comment)
+	}
+
+	updatedProjectSong, err := builder.Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return ProjectSongFromEnt(updatedProjectSong), nil
+}
+
+// ListProjectSongs lists all songs in a project
+func (s *projectService) ListProjectSongs(ctx context.Context, projectID int) ([]*ProjectSong, error) {
+	// Check if project exists
+	projectExists, err := s.db.Project.Query().Where(project.ID(projectID)).Exist(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !projectExists {
+		return nil, ErrProjectNotFound
+	}
+
+	// Get all project-song relationships for this project
+	entProjectSongs, err := s.db.ProjectSong.Query().
+		Where(projectsong.ProjectID(projectID)).
+		WithSong().
+		WithProject().
+		All(ctx)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return ProjectSongsFromEnt(entProjectSongs), nil
 }

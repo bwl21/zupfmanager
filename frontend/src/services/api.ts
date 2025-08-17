@@ -10,7 +10,11 @@ import type {
   ImportDirectoryRequest,
   ImportResponse,
   HealthResponse,
-  ErrorResponse
+  ErrorResponse,
+  AddSongToProjectRequest,
+  UpdateProjectSongRequest,
+  ProjectSongResponse,
+  ProjectSongsResponse
 } from '@/types/api'
 
 // Create axios instance with base configuration
@@ -77,6 +81,21 @@ export const importApi = {
 
   directory: (data: ImportDirectoryRequest): Promise<ImportResponse> =>
     api.post('/api/v1/import/directory', data).then((res) => res.data)
+}
+
+// Project-Song API
+export const projectSongApi = {
+  list: (projectId: number): Promise<ProjectSongsResponse> =>
+    api.get(`/api/v1/projects/${projectId}/songs`).then((res) => res.data),
+
+  add: (projectId: number, songId: number, data?: AddSongToProjectRequest): Promise<ProjectSongResponse> =>
+    api.post(`/api/v1/projects/${projectId}/songs/${songId}`, data || {}).then((res) => res.data),
+
+  update: (projectId: number, songId: number, data: UpdateProjectSongRequest): Promise<ProjectSongResponse> =>
+    api.put(`/api/v1/projects/${projectId}/songs/${songId}`, data).then((res) => res.data),
+
+  remove: (projectId: number, songId: number): Promise<void> =>
+    api.delete(`/api/v1/projects/${projectId}/songs/${songId}`)
 }
 
 export default api

@@ -6,6 +6,32 @@ export interface ErrorResponse {
   details?: Record<string, string>
 }
 
+// Project-Song Types
+export interface AddSongToProjectRequest {
+  difficulty?: number
+  priority?: number
+}
+
+export interface UpdateProjectSongRequest {
+  difficulty?: number
+  priority?: number
+}
+
+export interface ProjectSongResponse {
+  id: number
+  project_id: number
+  song_id: number
+  difficulty?: number
+  priority?: number
+  song?: SongResponse
+  project?: ProjectResponse
+}
+
+export interface ProjectSongsResponse {
+  project_songs: ProjectSongResponse[]
+  total: number
+}
+
 // Import Types
 export interface ImportFileRequest {
   file_path: string

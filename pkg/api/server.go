@@ -26,10 +26,11 @@ type Server struct {
 	server   *http.Server
 	
 	// Handlers
-	importHandler  *handlers.ImportHandler
-	projectHandler *handlers.ProjectHandler
-	songHandler    *handlers.SongHandler
-	
+	importHandler      *handlers.ImportHandler
+	projectHandler     *handlers.ProjectHandler
+	songHandler        *handlers.SongHandler
+	projectSongHandler *handlers.ProjectSongHandler
+
 	// Frontend serving
 	frontendPath string
 }
@@ -55,14 +56,15 @@ func NewServer(services *core.Services, opts ...ServerOptions) *Server {
 	}
 	
 	s := &Server{
-		router:         router,
-		services:       services,
-		importHandler:  handlers.NewImportHandler(services),
-		projectHandler: handlers.NewProjectHandler(services),
-		songHandler:    handlers.NewSongHandler(services),
-		frontendPath:   frontendPath,
+		router:             router,
+		services:           services,
+		importHandler:      handlers.NewImportHandler(services),
+		projectHandler:     handlers.NewProjectHandler(services),
+		songHandler:        handlers.NewSongHandler(services),
+		projectSongHandler: handlers.NewProjectSongHandler(services),
+		frontendPath:       frontendPath,
 	}
-	
+
 	s.setupRoutes()
 	return s
 }
@@ -95,8 +97,14 @@ func (s *Server) setupRoutes() {
 			projects.GET("/:id", s.projectHandler.GetProject)
 			projects.PUT("/:id", s.projectHandler.UpdateProject)
 			projects.DELETE("/:id", s.projectHandler.DeleteProject)
+			
+			// Project-Song relationship endpoints
+			projects.GET("/:id/songs", s.projectSongHandler.ListProjectSongs)
+			projects.POST("/:id/songs/:songId", s.projectSongHandler.AddSongToProject)
+			projects.PUT("/:id/songs/:songId", s.projectSongHandler.UpdateProjectSong)
+			projects.DELETE("/:id/songs/:songId", s.projectSongHandler.RemoveSongFromProject)
 		}
-		
+
 		// Song endpoints
 		songs := v1.Group("/songs")
 		{

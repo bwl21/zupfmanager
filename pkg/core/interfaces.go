@@ -22,6 +22,18 @@ type Song struct {
 	Tocinfo   string `json:"tocinfo"`
 }
 
+// ProjectSong represents a project-song relationship
+type ProjectSong struct {
+	ID         int     `json:"id"`
+	ProjectID  int     `json:"project_id"`
+	SongID     int     `json:"song_id"`
+	Difficulty string  `json:"difficulty"`
+	Priority   int     `json:"priority"`
+	Comment    *string `json:"comment,omitempty"`
+	Song       *Song   `json:"song,omitempty"`
+	Project    *Project `json:"project,omitempty"`
+}
+
 // CreateProjectRequest represents the data needed to create a project
 type CreateProjectRequest struct {
 	Title         string `json:"title" validate:"required,min=1"`
@@ -37,6 +49,24 @@ type UpdateProjectRequest struct {
 	ShortName     string `json:"short_name" validate:"required,min=1,max=50,alphanum"`
 	ConfigFile    string `json:"config_file,omitempty"`
 	DefaultConfig bool   `json:"default_config,omitempty"`
+}
+
+// AddSongToProjectRequest represents the data needed to add a song to a project
+type AddSongToProjectRequest struct {
+	ProjectID  int     `json:"project_id" validate:"required,min=1"`
+	SongID     int     `json:"song_id" validate:"required,min=1"`
+	Difficulty *string `json:"difficulty,omitempty" validate:"omitempty,oneof=easy medium hard expert"`
+	Priority   *int    `json:"priority,omitempty" validate:"omitempty,min=1,max=4"`
+	Comment    *string `json:"comment,omitempty"`
+}
+
+// UpdateProjectSongRequest represents the data needed to update a project-song relationship
+type UpdateProjectSongRequest struct {
+	ProjectID  int     `json:"project_id" validate:"required,min=1"`
+	SongID     int     `json:"song_id" validate:"required,min=1"`
+	Difficulty *string `json:"difficulty,omitempty" validate:"omitempty,oneof=easy medium hard expert"`
+	Priority   *int    `json:"priority,omitempty" validate:"omitempty,min=1,max=4"`
+	Comment    *string `json:"comment,omitempty"`
 }
 
 // ImportResult represents the result of an import operation
@@ -62,6 +92,12 @@ type ProjectService interface {
 	List(ctx context.Context) ([]*Project, error)
 	Get(ctx context.Context, id int) (*Project, error)
 	Delete(ctx context.Context, id int) error
+	
+	// Project-Song relationship operations
+	AddSongToProject(ctx context.Context, req AddSongToProjectRequest) (*ProjectSong, error)
+	RemoveSongFromProject(ctx context.Context, projectID, songID int) error
+	UpdateProjectSong(ctx context.Context, req UpdateProjectSongRequest) (*ProjectSong, error)
+	ListProjectSongs(ctx context.Context, projectID int) ([]*ProjectSong, error)
 }
 
 // SongService interface defines song operations

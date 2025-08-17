@@ -78,6 +78,114 @@ func ValidateCreateProjectRequest(req CreateProjectRequest) error {
 	return nil
 }
 
+// ValidateAddSongToProjectRequest validates an add song to project request
+func ValidateAddSongToProjectRequest(req AddSongToProjectRequest) error {
+	var errors ValidationErrors
+
+	// Validate ProjectID
+	if req.ProjectID <= 0 {
+		errors = append(errors, ValidationError{
+			Field:   "project_id",
+			Message: "project_id must be a positive integer",
+		})
+	}
+
+	// Validate SongID
+	if req.SongID <= 0 {
+		errors = append(errors, ValidationError{
+			Field:   "song_id",
+			Message: "song_id must be a positive integer",
+		})
+	}
+
+	// Validate Difficulty if provided
+	if req.Difficulty != nil {
+		validDifficulties := []string{"easy", "medium", "hard", "expert"}
+		valid := false
+		for _, d := range validDifficulties {
+			if *req.Difficulty == d {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			errors = append(errors, ValidationError{
+				Field:   "difficulty",
+				Message: "difficulty must be one of: easy, medium, hard, expert",
+			})
+		}
+	}
+
+	// Validate Priority if provided
+	if req.Priority != nil {
+		if *req.Priority < 1 || *req.Priority > 4 {
+			errors = append(errors, ValidationError{
+				Field:   "priority",
+				Message: "priority must be between 1 and 4",
+			})
+		}
+	}
+
+	if errors.HasErrors() {
+		return errors
+	}
+	return nil
+}
+
+// ValidateUpdateProjectSongRequest validates an update project song request
+func ValidateUpdateProjectSongRequest(req UpdateProjectSongRequest) error {
+	var errors ValidationErrors
+
+	// Validate ProjectID
+	if req.ProjectID <= 0 {
+		errors = append(errors, ValidationError{
+			Field:   "project_id",
+			Message: "project_id must be a positive integer",
+		})
+	}
+
+	// Validate SongID
+	if req.SongID <= 0 {
+		errors = append(errors, ValidationError{
+			Field:   "song_id",
+			Message: "song_id must be a positive integer",
+		})
+	}
+
+	// Validate Difficulty if provided
+	if req.Difficulty != nil {
+		validDifficulties := []string{"easy", "medium", "hard", "expert"}
+		valid := false
+		for _, d := range validDifficulties {
+			if *req.Difficulty == d {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			errors = append(errors, ValidationError{
+				Field:   "difficulty",
+				Message: "difficulty must be one of: easy, medium, hard, expert",
+			})
+		}
+	}
+
+	// Validate Priority if provided
+	if req.Priority != nil {
+		if *req.Priority < 1 || *req.Priority > 4 {
+			errors = append(errors, ValidationError{
+				Field:   "priority",
+				Message: "priority must be between 1 and 4",
+			})
+		}
+	}
+
+	if errors.HasErrors() {
+		return errors
+	}
+	return nil
+}
+
 // ValidateUpdateProjectRequest validates an update project request
 func ValidateUpdateProjectRequest(req UpdateProjectRequest) error {
 	var errors ValidationErrors
