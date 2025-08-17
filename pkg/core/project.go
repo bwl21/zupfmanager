@@ -3,12 +3,17 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
+	"os/exec"
+	"strconv"
+	"time"
 
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/bwl21/zupfmanager/internal/ent"
 	"github.com/bwl21/zupfmanager/internal/ent/project"
 	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
 	"github.com/bwl21/zupfmanager/internal/ent/song"
+	"github.com/google/uuid"
 )
 
 // Common errors
@@ -17,6 +22,14 @@ var (
 	ErrSongNotFound          = errors.New("song not found")
 	ErrSongAlreadyInProject  = errors.New("song already in project")
 	ErrProjectSongNotFound   = errors.New("project-song relationship not found")
+	ErrBuildNotFound         = errors.New("build not found")
+	ErrBuildInProgress       = errors.New("build already in progress")
+)
+
+// In-memory build tracking (in production, this would be in database or cache)
+var (
+	buildStatuses = make(map[string]*BuildStatus)
+	buildResults  = make(map[string]*BuildResult)
 )
 
 // projectService implements ProjectService interface
@@ -267,4 +280,145 @@ func (s *projectService) ListProjectSongs(ctx context.Context, projectID int) ([
 	}
 
 	return ProjectSongsFromEnt(entProjectSongs), nil
+}
+
+// BuildProject starts a project build operation
+func (s *projectService) BuildProject(ctx context.Context, req BuildProjectRequest) (*BuildResult, error) {
+	// Validate input
+	if err := ValidateBuildProjectRequest(req); err != nil {
+		return nil, err
+	}
+
+	// Check if project exists
+	projectExists, err := s.db.Project.Query().Where(project.ID(req.ProjectID)).Exist(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !projectExists {
+		return nil, ErrProjectNotFound
+	}
+
+	// Generate unique build ID
+	buildID := uuid.New().String()
+	
+	// Set defaults
+	if req.PriorityThreshold == 0 {
+		req.PriorityThreshold = 4 // Include all priorities by default
+	}
+	if req.OutputDir == "" {
+		// Get project to determine output directory
+		entProject, err := s.db.Project.Get(ctx, req.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		req.OutputDir = entProject.ShortName
+	}
+
+	// Initialize build status
+	now := time.Now().Format(time.RFC3339)
+	buildStatus := &BuildStatus{
+		Status:    "pending",
+		Progress:  0,
+		Message:   "Build queued",
+		StartedAt: now,
+	}
+	buildStatuses[buildID] = buildStatus
+
+	// Initialize build result
+	buildResult := &BuildResult{
+		BuildID:   buildID,
+		ProjectID: req.ProjectID,
+		Status:    "pending",
+		OutputDir: req.OutputDir,
+		StartedAt: now,
+	}
+	buildResults[buildID] = buildResult
+
+	// Start build in background (simplified version using CLI command)
+	go s.executeBuild(buildID, req)
+
+	return buildResult, nil
+}
+
+// GetBuildStatus returns the current status of a build
+func (s *projectService) GetBuildStatus(ctx context.Context, buildID string) (*BuildStatus, error) {
+	status, exists := buildStatuses[buildID]
+	if !exists {
+		return nil, ErrBuildNotFound
+	}
+	return status, nil
+}
+
+// ListBuilds returns all builds for a project
+func (s *projectService) ListBuilds(ctx context.Context, projectID int) ([]*BuildResult, error) {
+	var results []*BuildResult
+	for _, result := range buildResults {
+		if result.ProjectID == projectID {
+			results = append(results, result)
+		}
+	}
+	return results, nil
+}
+
+// executeBuild runs the actual build process in background
+func (s *projectService) executeBuild(buildID string, req BuildProjectRequest) {
+	status := buildStatuses[buildID]
+	result := buildResults[buildID]
+
+	// Update status to running
+	status.Status = "running"
+	status.Progress = 10
+	status.Message = "Starting build process"
+	result.Status = "running"
+
+	// Execute the CLI build command (simplified approach)
+	// In a real implementation, you would extract the build logic from CLI
+	args := []string{"project", "build", strconv.Itoa(req.ProjectID)}
+	
+	if req.OutputDir != "" {
+		args = append(args, "--output-dir", req.OutputDir)
+	}
+	if req.AbcFileDir != "" {
+		args = append(args, "--abc-file-dir", req.AbcFileDir)
+	}
+	if req.PriorityThreshold > 0 {
+		args = append(args, "--priority-threshold", strconv.Itoa(req.PriorityThreshold))
+	}
+	if req.SampleID != "" {
+		args = append(args, "--sample-id", req.SampleID)
+	}
+
+	status.Progress = 50
+	status.Message = "Executing build command"
+
+	// Execute the command
+	cmd := exec.Command("zupfmanager", args...)
+	output, err := cmd.CombinedOutput()
+
+	now := time.Now().Format(time.RFC3339)
+	result.CompletedAt = now
+	status.CompletedAt = now
+
+	if err != nil {
+		// Build failed
+		status.Status = "failed"
+		status.Progress = 0
+		status.Message = "Build failed"
+		status.Error = fmt.Sprintf("Command failed: %v\nOutput: %s", err, string(output))
+		result.Status = "failed"
+		result.Error = status.Error
+	} else {
+		// Build succeeded
+		status.Status = "completed"
+		status.Progress = 100
+		status.Message = "Build completed successfully"
+		result.Status = "completed"
+		
+		// TODO: Parse output to extract generated files
+		result.GeneratedFiles = []string{
+			fmt.Sprintf("%s/druckdateien", req.OutputDir),
+			fmt.Sprintf("%s/pdf", req.OutputDir),
+			fmt.Sprintf("%s/abc", req.OutputDir),
+		}
+	}
 }

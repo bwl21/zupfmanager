@@ -69,6 +69,37 @@ type UpdateProjectSongRequest struct {
 	Comment    *string `json:"comment,omitempty"`
 }
 
+// BuildProjectRequest represents the data needed to build a project
+type BuildProjectRequest struct {
+	ProjectID         int    `json:"project_id" validate:"required,min=1"`
+	OutputDir         string `json:"output_dir,omitempty"`
+	AbcFileDir        string `json:"abc_file_dir,omitempty"`
+	PriorityThreshold int    `json:"priority_threshold,omitempty" validate:"omitempty,min=1,max=4"`
+	SampleID          string `json:"sample_id,omitempty"`
+}
+
+// BuildStatus represents the status of a build operation
+type BuildStatus struct {
+	Status      string `json:"status"` // "pending", "running", "completed", "failed"
+	Progress    int    `json:"progress"` // 0-100
+	Message     string `json:"message,omitempty"`
+	StartedAt   string `json:"started_at,omitempty"`
+	CompletedAt string `json:"completed_at,omitempty"`
+	Error       string `json:"error,omitempty"`
+}
+
+// BuildResult represents the result of a build operation
+type BuildResult struct {
+	BuildID     string   `json:"build_id"`
+	ProjectID   int      `json:"project_id"`
+	Status      string   `json:"status"`
+	OutputDir   string   `json:"output_dir"`
+	GeneratedFiles []string `json:"generated_files,omitempty"`
+	StartedAt   string   `json:"started_at"`
+	CompletedAt string   `json:"completed_at,omitempty"`
+	Error       string   `json:"error,omitempty"`
+}
+
 // ImportResult represents the result of an import operation
 type ImportResult struct {
 	Filename string   `json:"filename"`
@@ -98,6 +129,11 @@ type ProjectService interface {
 	RemoveSongFromProject(ctx context.Context, projectID, songID int) error
 	UpdateProjectSong(ctx context.Context, req UpdateProjectSongRequest) (*ProjectSong, error)
 	ListProjectSongs(ctx context.Context, projectID int) ([]*ProjectSong, error)
+	
+	// Project build operations
+	BuildProject(ctx context.Context, req BuildProjectRequest) (*BuildResult, error)
+	GetBuildStatus(ctx context.Context, buildID string) (*BuildStatus, error)
+	ListBuilds(ctx context.Context, projectID int) ([]*BuildResult, error)
 }
 
 // SongService interface defines song operations

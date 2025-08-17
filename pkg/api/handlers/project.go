@@ -127,6 +127,206 @@ func (h *ProjectHandler) ListProjects(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// BuildProject starts a project build operation
+// @Summary Build project
+// @Description Start building a project to generate ABC files, PDFs, and other outputs
+// @Tags projects
+// @Accept json
+// @Produce json
+// @Param id path int true "Project ID"
+// @Param request body models.BuildProjectRequest false "Build project request"
+// @Success 202 {object} models.BuildResultResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/projects/{id}/build [post]
+func (h *ProjectHandler) BuildProject(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid project ID",
+			Message: "Project ID must be a valid integer",
+		})
+		return
+	}
+
+	var req models.BuildProjectRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid request body",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Convert to core request
+	coreReq := core.BuildProjectRequest{
+		ProjectID: projectID,
+	}
+	if req.OutputDir != nil {
+		coreReq.OutputDir = *req.OutputDir
+	}
+	if req.AbcFileDir != nil {
+		coreReq.AbcFileDir = *req.AbcFileDir
+	}
+	if req.PriorityThreshold != nil {
+		coreReq.PriorityThreshold = *req.PriorityThreshold
+	}
+	if req.SampleID != nil {
+		coreReq.SampleID = *req.SampleID
+	}
+
+	// Start build using core service
+	buildResult, err := h.services.Project.BuildProject(c.Request.Context(), coreReq)
+	if err != nil {
+		switch err {
+		case core.ErrProjectNotFound:
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error:   "Project not found",
+				Message: "The specified project does not exist",
+			})
+		default:
+			// Check if it's a validation error
+			if validationErr, ok := err.(core.ValidationErrors); ok {
+				details := make(map[string]string)
+				for _, ve := range validationErr {
+					details[ve.Field] = ve.Message
+				}
+				c.JSON(http.StatusBadRequest, models.ErrorResponse{
+					Error:   "validation failed",
+					Message: err.Error(),
+					Details: details,
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+				Error:   "Failed to start build",
+				Message: err.Error(),
+			})
+		}
+		return
+	}
+
+	// Convert to response
+	response := models.BuildResultResponse{
+		BuildID:        buildResult.BuildID,
+		ProjectID:      buildResult.ProjectID,
+		Status:         buildResult.Status,
+		OutputDir:      buildResult.OutputDir,
+		GeneratedFiles: buildResult.GeneratedFiles,
+		StartedAt:      buildResult.StartedAt,
+		CompletedAt:    buildResult.CompletedAt,
+		Error:          buildResult.Error,
+	}
+
+	c.JSON(http.StatusAccepted, response)
+}
+
+// GetBuildStatus returns the status of a build operation
+// @Summary Get build status
+// @Description Get the current status of a project build operation
+// @Tags projects
+// @Produce json
+// @Param id path int true "Project ID"
+// @Param buildId path string true "Build ID"
+// @Success 200 {object} models.BuildStatusResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/projects/{id}/builds/{buildId}/status [get]
+func (h *ProjectHandler) GetBuildStatus(c *gin.Context) {
+	buildID := c.Param("buildId")
+	if buildID == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid build ID",
+			Message: "Build ID is required",
+		})
+		return
+	}
+
+	// Get build status using core service
+	buildStatus, err := h.services.Project.GetBuildStatus(c.Request.Context(), buildID)
+	if err != nil {
+		switch err {
+		case core.ErrBuildNotFound:
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error:   "Build not found",
+				Message: "The specified build does not exist",
+			})
+		default:
+			c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+				Error:   "Failed to get build status",
+				Message: err.Error(),
+			})
+		}
+		return
+	}
+
+	// Convert to response
+	response := models.BuildStatusResponse{
+		Status:      buildStatus.Status,
+		Progress:    buildStatus.Progress,
+		Message:     buildStatus.Message,
+		StartedAt:   buildStatus.StartedAt,
+		CompletedAt: buildStatus.CompletedAt,
+		Error:       buildStatus.Error,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// ListBuilds returns all builds for a project
+// @Summary List project builds
+// @Description Get all build operations for a project
+// @Tags projects
+// @Produce json
+// @Param id path int true "Project ID"
+// @Success 200 {object} models.BuildListResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/projects/{id}/builds [get]
+func (h *ProjectHandler) ListBuilds(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid project ID",
+			Message: "Project ID must be a valid integer",
+		})
+		return
+	}
+
+	// List builds using core service
+	builds, err := h.services.Project.ListBuilds(c.Request.Context(), projectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Failed to list builds",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Convert to response
+	responses := make([]models.BuildResultResponse, len(builds))
+	for i, build := range builds {
+		responses[i] = models.BuildResultResponse{
+			BuildID:        build.BuildID,
+			ProjectID:      build.ProjectID,
+			Status:         build.Status,
+			OutputDir:      build.OutputDir,
+			GeneratedFiles: build.GeneratedFiles,
+			StartedAt:      build.StartedAt,
+			CompletedAt:    build.CompletedAt,
+			Error:          build.Error,
+		}
+	}
+
+	c.JSON(http.StatusOK, models.BuildListResponse{
+		Builds: responses,
+		Total:  len(responses),
+	})
+}
+
 // GetProject gets a project by ID
 // @Summary Get project by ID
 // @Description Get a specific project by its ID

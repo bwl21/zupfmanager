@@ -103,6 +103,11 @@ func (s *Server) setupRoutes() {
 			projects.POST("/:id/songs/:songId", s.projectSongHandler.AddSongToProject)
 			projects.PUT("/:id/songs/:songId", s.projectSongHandler.UpdateProjectSong)
 			projects.DELETE("/:id/songs/:songId", s.projectSongHandler.RemoveSongFromProject)
+			
+			// Project build endpoints
+			projects.POST("/:id/build", s.projectHandler.BuildProject)
+			projects.GET("/:id/builds", s.projectHandler.ListBuilds)
+			projects.GET("/:id/builds/:buildId/status", s.projectHandler.GetBuildStatus)
 		}
 
 		// Song endpoints

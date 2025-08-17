@@ -128,3 +128,39 @@ type ProjectSongsResponse struct {
 	ProjectSongs []ProjectSongResponse `json:"project_songs"`
 	Total        int                   `json:"total" example:"5"`
 } // @name ProjectSongsResponse
+
+// BuildProjectRequest represents a request to build a project
+type BuildProjectRequest struct {
+	OutputDir         *string `json:"output_dir,omitempty" example:"my-project"`
+	AbcFileDir        *string `json:"abc_file_dir,omitempty" example:"/path/to/abc/files"`
+	PriorityThreshold *int    `json:"priority_threshold,omitempty" example:"2" minimum:"1" maximum:"4"`
+	SampleID          *string `json:"sample_id,omitempty" example:"sample123"`
+} // @name BuildProjectRequest
+
+// BuildStatusResponse represents the status of a build operation
+type BuildStatusResponse struct {
+	Status      string `json:"status" example:"running" enums:"pending,running,completed,failed"`
+	Progress    int    `json:"progress" example:"75" minimum:"0" maximum:"100"`
+	Message     string `json:"message,omitempty" example:"Building songs..."`
+	StartedAt   string `json:"started_at,omitempty" example:"2025-08-17T18:00:00Z"`
+	CompletedAt string `json:"completed_at,omitempty" example:"2025-08-17T18:05:00Z"`
+	Error       string `json:"error,omitempty" example:"Build failed: file not found"`
+} // @name BuildStatusResponse
+
+// BuildResultResponse represents the result of a build operation
+type BuildResultResponse struct {
+	BuildID        string   `json:"build_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	ProjectID      int      `json:"project_id" example:"1"`
+	Status         string   `json:"status" example:"completed" enums:"pending,running,completed,failed"`
+	OutputDir      string   `json:"output_dir" example:"my-project"`
+	GeneratedFiles []string `json:"generated_files,omitempty" example:"my-project/druckdateien,my-project/pdf"`
+	StartedAt      string   `json:"started_at" example:"2025-08-17T18:00:00Z"`
+	CompletedAt    string   `json:"completed_at,omitempty" example:"2025-08-17T18:05:00Z"`
+	Error          string   `json:"error,omitempty" example:"Build failed: file not found"`
+} // @name BuildResultResponse
+
+// BuildListResponse represents a list of build results
+type BuildListResponse struct {
+	Builds []BuildResultResponse `json:"builds"`
+	Total  int                   `json:"total" example:"3"`
+} // @name BuildListResponse

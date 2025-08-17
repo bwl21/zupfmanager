@@ -78,6 +78,32 @@ func ValidateCreateProjectRequest(req CreateProjectRequest) error {
 	return nil
 }
 
+// ValidateBuildProjectRequest validates a build project request
+func ValidateBuildProjectRequest(req BuildProjectRequest) error {
+	var errors ValidationErrors
+
+	// Validate ProjectID
+	if req.ProjectID <= 0 {
+		errors = append(errors, ValidationError{
+			Field:   "project_id",
+			Message: "project_id must be a positive integer",
+		})
+	}
+
+	// Validate PriorityThreshold if provided
+	if req.PriorityThreshold != 0 && (req.PriorityThreshold < 1 || req.PriorityThreshold > 4) {
+		errors = append(errors, ValidationError{
+			Field:   "priority_threshold",
+			Message: "priority_threshold must be between 1 and 4",
+		})
+	}
+
+	if errors.HasErrors() {
+		return errors
+	}
+	return nil
+}
+
 // ValidateAddSongToProjectRequest validates an add song to project request
 func ValidateAddSongToProjectRequest(req AddSongToProjectRequest) error {
 	var errors ValidationErrors
