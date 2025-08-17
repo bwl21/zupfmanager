@@ -1,19 +1,31 @@
-build/bin # Ignore build artifacts
-node_modules # Ignore node modules
-frontend/dist # Ignore frontend build output
-testdata/ # Ignore test data
-zupfmanager.db # Ignore the database file
-pdf/ # Ignore PDF output directory
-abc/ # Ignore ABC output directory
-log/ # Ignore log directory
-output/ # Ignore output directory
-x.json # Ignore temporary config file
-dist/ # Ignore dist directory
-.DS_Store # Ignore macOS desktop services store files
-.idea # Ignore IntelliJ IDEA project files
-x # Ignore x directory
+# Build artifacts
+build/bin
+dist/
+frontend/dist/
+frontend/node_modules/
+
+# Database files
+zupfmanager.db
+*.db
+
+# Output directories
+pdf/
+abc/
+log/
+output/
+testdata/
+
+# Temporary files
+x.json
 x
-dist
-.idea
+
+# IDE and OS files
 .DS_Store
+.idea/
+*.iml
+
+# Log files
+*.log
+
+# Project specific
 MBT-2025
