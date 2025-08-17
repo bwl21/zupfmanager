@@ -6,7 +6,8 @@
         ({{ versionData.git_commit.substring(0, 7) }})
       </span>
     </span>
-    <span v-else-if="isLoading">Loading...</span>
+    <span v-else-if="isLoading">Loading version...</span>
+    <span v-else-if="error">{{ error }}</span>
     <span v-else>Version unavailable</span>
   </div>
 </template>
@@ -21,17 +22,26 @@ interface VersionData {
 }
 
 const versionData = ref<VersionData | null>(null)
-const isLoading = ref(false)
+const isLoading = ref(true)
+const error = ref<string | null>(null)
 
 const fetchVersion = async () => {
   isLoading.value = true
+  error.value = null
   try {
+    console.log('Fetching version from /api/version')
     const response = await fetch('/api/version')
+    console.log('Version response status:', response.status)
     if (response.ok) {
-      versionData.value = await response.json()
+      const data = await response.json()
+      console.log('Version data:', data)
+      versionData.value = data
+    } else {
+      error.value = `HTTP ${response.status}`
     }
-  } catch (error) {
-    console.warn('Failed to fetch version info:', error)
+  } catch (err) {
+    console.error('Failed to fetch version info:', err)
+    error.value = 'Network error'
   } finally {
     isLoading.value = false
   }
