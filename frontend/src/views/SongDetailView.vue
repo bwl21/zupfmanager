@@ -81,13 +81,13 @@
                 Download ABC (Coming Soon)
               </button>
               <button
+                @click="showAddToProjectModal = true"
                 class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-                disabled
               >
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
-                Add to Project (Coming Soon)
+                Add to Project
               </button>
             </div>
           </div>
@@ -157,16 +157,29 @@
         </div>
       </div>
     </div>
+
+    <!-- Add to Project Modal -->
+    <AddToProjectModal
+      v-if="showAddToProjectModal && data"
+      :song="data"
+      @close="showAddToProjectModal = false"
+      @added="handleAddedToProject"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { useRoute } from 'vue-router'
 import { songApi } from '@/services/api'
+import AddToProjectModal from '@/components/AddToProjectModal.vue'
 
 const route = useRoute()
 const songId = parseInt(route.params.id as string)
+
+// State
+const showAddToProjectModal = ref(false)
 
 // Fetch song details
 const { data, isLoading, error } = useQuery({
@@ -174,4 +187,10 @@ const { data, isLoading, error } = useQuery({
   queryFn: () => songApi.get(songId),
   enabled: !!songId
 })
+
+// Methods
+const handleAddedToProject = () => {
+  showAddToProjectModal.value = false
+  // Could show a success message here
+}
 </script>

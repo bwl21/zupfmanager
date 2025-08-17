@@ -26,6 +26,14 @@ frontend-deps:
 	@cd frontend && npm install
 	@echo "Frontend dependencies installed."
 
+# Copy frontend to dist (useful after manual frontend builds)
+frontend-copy:
+	@echo "Copying frontend to dist/frontend..."
+	@mkdir -p dist
+	@rm -rf dist/frontend
+	@cp -r frontend/dist dist/frontend
+	@echo "Frontend copied to dist/frontend/"
+
 # install completions
 completion:
 	@echo "building completions"	
@@ -37,6 +45,8 @@ build: frontend
 	@echo "Building $(BINARY_NAME) für $(shell go env GOOS)/$(shell go env GOARCH)..."
 	@mkdir -p dist
 	@go build -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)
+	@echo "Copying frontend to dist/frontend..."
+	@rm -rf dist/frontend
 	@cp -r frontend/dist dist/frontend
 	@echo "Build abgeschlossen: dist/$(BINARY_NAME) $(VERSION) $(COMMIT)"
 	@echo "Frontend included: dist/frontend/"
@@ -53,6 +63,7 @@ build-linux: frontend
 	@echo "Building $(BINARY_NAME) for linux/amd64..."
 	@mkdir -p dist
 	@GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)-linux-amd64
+	@rm -rf dist/frontend-linux
 	@cp -r frontend/dist dist/frontend-linux
 	@echo "Build complete: dist/$(BINARY_NAME)-linux-amd64 with frontend"
 
@@ -61,6 +72,7 @@ build-macos-amd64: frontend
 	@echo "Building $(BINARY_NAME) for darwin/amd64..."
 	@mkdir -p dist
 	@GOOS=darwin GOARCH=amd64 CGO_ENABLED=1 go build -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)-darwin-amd64
+	@rm -rf dist/frontend-darwin-amd64
 	@cp -r frontend/dist dist/frontend-darwin-amd64
 	@echo "Build complete: dist/$(BINARY_NAME)-darwin-amd64 with frontend"
 
@@ -69,6 +81,7 @@ build-macos-arm64: frontend
 	@echo "Building $(BINARY_NAME) for darwin/arm64..."
 	@mkdir -p dist
 	@GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 go build -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)-darwin-arm64
+	@rm -rf dist/frontend-darwin-arm64
 	@cp -r frontend/dist dist/frontend-darwin-arm64
 	@echo "Build complete: dist/$(BINARY_NAME)-darwin-arm64 with frontend"
 
@@ -77,6 +90,7 @@ build-windows: frontend
 	@echo "Building $(BINARY_NAME) for windows/amd64..."
 	@mkdir -p dist
 	@GOOS=windows GOARCH=amd64 CGO_ENABLED=1 go build -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)-windows-amd64.exe
+	@rm -rf dist/frontend-windows
 	@cp -r frontend/dist dist/frontend-windows
 	@echo "Build complete: dist/$(BINARY_NAME)-windows-amd64.exe with frontend"
 
@@ -123,4 +137,4 @@ dev:
 	@go run . api --port 8080 --frontend frontend/dist
 
 # Phony targets
-.PHONY: all build build-backend frontend frontend-deps build-linux build-macos-amd64 build-macos-arm64 build-macos build-windows build-all package-linux package-macos-amd64 package-macos-arm64 package-windows package-all clean dev completion
+.PHONY: all build build-backend frontend frontend-deps frontend-copy build-linux build-macos-amd64 build-macos-arm64 build-macos build-windows build-all package-linux package-macos-amd64 package-macos-arm64 package-windows package-all clean dev completion
