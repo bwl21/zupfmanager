@@ -60,19 +60,15 @@
           </div>
         </div>
 
+        <!-- Project Songs Management -->
+        <div>
+          <ProjectSongManager :project-id="projectId" />
+        </div>
+
         <!-- Actions -->
         <div>
           <h3 class="text-lg font-medium text-gray-900 mb-4">Actions</h3>
           <div class="flex flex-wrap gap-3">
-            <button
-              class="flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-              disabled
-            >
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Add Songs (Coming Soon)
-            </button>
             <button
               class="flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
               disabled
@@ -121,6 +117,7 @@
 import { useQuery } from '@tanstack/vue-query'
 import { useRoute, RouterLink } from 'vue-router'
 import { projectApi } from '@/services/api'
+import ProjectSongManager from '@/components/ProjectSongManager.vue'
 
 const route = useRoute()
 const projectId = parseInt(route.params.id as string)

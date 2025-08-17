@@ -1,0 +1,206 @@
+<template>
+  <div class="space-y-6">
+    <!-- Header with Add Song Button -->
+    <div class="flex justify-between items-center">
+      <h3 class="text-lg font-medium text-gray-900">Songs in Project</h3>
+      <button
+        @click="showAddSongModal = true"
+        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+      >
+        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+        Add Song
+      </button>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="isLoading" class="flex justify-center py-8">
+      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+    </div>
+
+    <!-- Error State -->
+    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-md p-4">
+      <div class="flex">
+        <svg class="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-red-800">Error loading project songs</h3>
+          <p class="mt-1 text-sm text-red-700">{{ error }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Songs List -->
+    <div v-else-if="projectSongs.length > 0" class="bg-white shadow overflow-hidden sm:rounded-md">
+      <ul class="divide-y divide-gray-200">
+        <li v-for="projectSong in projectSongs" :key="projectSong.id" class="px-6 py-4">
+          <div class="flex items-center justify-between">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center space-x-3">
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-gray-900 truncate">
+                    {{ projectSong.song?.title || 'Unknown Song' }}
+                  </p>
+                  <p class="text-sm text-gray-500">
+                    {{ projectSong.song?.filename }}
+                  </p>
+                </div>
+                
+                <!-- Difficulty Badge -->
+                <span :class="getDifficultyColor(projectSong.difficulty)" 
+                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
+                  {{ projectSong.difficulty }}
+                </span>
+                
+                <!-- Priority Badge -->
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Priority {{ projectSong.priority }}
+                </span>
+              </div>
+              
+              <!-- Comment -->
+              <p v-if="projectSong.comment" class="mt-2 text-sm text-gray-600">
+                {{ projectSong.comment }}
+              </p>
+            </div>
+            
+            <!-- Actions -->
+            <div class="flex items-center space-x-2">
+              <button
+                @click="editProjectSong(projectSong)"
+                class="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+              >
+                Edit
+              </button>
+              <button
+                @click="removeProjectSong(projectSong)"
+                class="text-red-600 hover:text-red-900 text-sm font-medium"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else class="text-center py-12">
+      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-.895 2-2 2s-2-.895-2-2 .895-2 2-2 2 .895 2 2zm12-3c0 1.105-.895 2-2 2s-2-.895-2-2 .895-2 2-2 2 .895 2 2z" />
+      </svg>
+      <h3 class="mt-2 text-sm font-medium text-gray-900">No songs in project</h3>
+      <p class="mt-1 text-sm text-gray-500">Get started by adding a song to this project.</p>
+      <div class="mt-6">
+        <button
+          @click="showAddSongModal = true"
+          class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+          </svg>
+          Add Song
+        </button>
+      </div>
+    </div>
+
+    <!-- Add Song Modal -->
+    <AddSongModal
+      v-if="showAddSongModal"
+      :project-id="projectId"
+      @close="showAddSongModal = false"
+      @song-added="handleSongAdded"
+    />
+
+    <!-- Edit Song Modal -->
+    <EditProjectSongModal
+      v-if="showEditModal && editingProjectSong"
+      :project-song="editingProjectSong"
+      @close="showEditModal = false"
+      @song-updated="handleSongUpdated"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted, computed } from 'vue'
+import { projectSongApi } from '@/services/api'
+import type { ProjectSongResponse } from '@/types/api'
+import AddSongModal from './AddSongModal.vue'
+import EditProjectSongModal from './EditProjectSongModal.vue'
+
+interface Props {
+  projectId: number
+}
+
+const props = defineProps<Props>()
+
+// State
+const projectSongs = ref<ProjectSongResponse[]>([])
+const isLoading = ref(false)
+const error = ref<string | null>(null)
+const showAddSongModal = ref(false)
+const showEditModal = ref(false)
+const editingProjectSong = ref<ProjectSongResponse | null>(null)
+
+// Methods
+const loadProjectSongs = async () => {
+  isLoading.value = true
+  error.value = null
+  
+  try {
+    const response = await projectSongApi.list(props.projectId)
+    projectSongs.value = response.project_songs
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to load project songs'
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const editProjectSong = (projectSong: ProjectSongResponse) => {
+  editingProjectSong.value = projectSong
+  showEditModal.value = true
+}
+
+const removeProjectSong = async (projectSong: ProjectSongResponse) => {
+  if (!confirm(`Remove "${projectSong.song?.title}" from this project?`)) {
+    return
+  }
+  
+  try {
+    await projectSongApi.remove(props.projectId, projectSong.song_id)
+    await loadProjectSongs() // Reload the list
+  } catch (err) {
+    alert('Failed to remove song from project')
+  }
+}
+
+const handleSongAdded = () => {
+  showAddSongModal.value = false
+  loadProjectSongs() // Reload the list
+}
+
+const handleSongUpdated = () => {
+  showEditModal.value = false
+  editingProjectSong.value = null
+  loadProjectSongs() // Reload the list
+}
+
+const getDifficultyColor = (difficulty: string) => {
+  const colors = {
+    easy: 'bg-green-100 text-green-800',
+    medium: 'bg-yellow-100 text-yellow-800',
+    hard: 'bg-orange-100 text-orange-800',
+    expert: 'bg-red-100 text-red-800'
+  }
+  return colors[difficulty as keyof typeof colors] || 'bg-gray-100 text-gray-800'
+}
+
+// Lifecycle
+onMounted(() => {
+  loadProjectSongs()
+})
+</script>

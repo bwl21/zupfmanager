@@ -8,21 +8,24 @@ export interface ErrorResponse {
 
 // Project-Song Types
 export interface AddSongToProjectRequest {
-  difficulty?: number
-  priority?: number
+  difficulty?: string // "easy" | "medium" | "hard" | "expert"
+  priority?: number // 1-4
+  comment?: string
 }
 
 export interface UpdateProjectSongRequest {
-  difficulty?: number
-  priority?: number
+  difficulty?: string // "easy" | "medium" | "hard" | "expert"
+  priority?: number // 1-4
+  comment?: string
 }
 
 export interface ProjectSongResponse {
   id: number
   project_id: number
   song_id: number
-  difficulty?: number
-  priority?: number
+  difficulty: string // "easy" | "medium" | "hard" | "expert"
+  priority: number // 1-4
+  comment?: string
   song?: SongResponse
   project?: ProjectResponse
 }
