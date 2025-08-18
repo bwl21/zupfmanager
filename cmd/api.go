@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"os/signal"
 	"syscall"
 	"time"
@@ -37,6 +38,21 @@ Access the API documentation at http://localhost:8080/swagger/index.html`,
 
 		port, _ := cmd.Flags().GetInt("port")
 		frontendPath, _ := cmd.Flags().GetString("frontend")
+
+		// Auto-detect frontend path if not provided
+		if frontendPath == "" {
+			// Check for frontend files in common locations
+			possiblePaths := []string{
+				"dist/frontend",
+				"frontend/dist",
+			}
+			for _, path := range possiblePaths {
+				if _, err := os.Stat(filepath.Join(path, "index.html")); err == nil {
+					frontendPath = path
+					break
+				}
+			}
+		}
 
 		// Create services
 		services, err := core.NewServices()
