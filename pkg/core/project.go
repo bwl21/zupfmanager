@@ -370,9 +370,16 @@ func (s *projectService) executeBuild(buildID string, req BuildProjectRequest) {
 	status.Message = "Starting build process"
 	result.Status = "running"
 
+	// Create progress callback
+	progressCallback := func(progress int, message string) {
+		status.Progress = progress
+		status.Message = message
+		slog.Info("Build progress", "buildID", buildID, "progress", progress, "message", message)
+	}
+
 	// Execute the build directly using core logic
 	ctx := context.Background()
-	err := s.ExecuteProjectBuild(ctx, req)
+	err := s.ExecuteProjectBuildWithProgress(ctx, req, progressCallback)
 
 	now := time.Now().Format(time.RFC3339)
 	result.CompletedAt = now

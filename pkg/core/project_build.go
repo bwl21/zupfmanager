@@ -26,8 +26,16 @@ const (
 	zupfnoterConfigString = "%%%%zupfnoter.config"
 )
 
+// ProgressCallback is a function type for progress updates
+type ProgressCallback func(progress int, message string)
+
 // ExecuteProjectBuild performs the actual project build logic
 func (s *projectService) ExecuteProjectBuild(ctx context.Context, req BuildProjectRequest) error {
+	return s.ExecuteProjectBuildWithProgress(ctx, req, nil)
+}
+
+// ExecuteProjectBuildWithProgress performs the actual project build logic with progress updates
+func (s *projectService) ExecuteProjectBuildWithProgress(ctx context.Context, req BuildProjectRequest, progressCallback ProgressCallback) error {
 	// Get the project first
 	project, err := s.db.Project.Get(ctx, req.ProjectID)
 	if err != nil {
@@ -53,10 +61,17 @@ func (s *projectService) ExecuteProjectBuild(ctx context.Context, req BuildProje
 	// Attach the songs to the project for compatibility with the rest of the code
 	project.Edges.ProjectSongs = projectSongs
 
-	return s.buildProject(ctx, req.AbcFileDir, req.OutputDir, project, req.SampleID)
+	return s.buildProject(ctx, req.AbcFileDir, req.OutputDir, project, req.SampleID, progressCallback)
 }
 
-func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir string, project *ent.Project, sampleId string) error {
+func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir string, project *ent.Project, sampleId string, progressCallback ProgressCallback) error {
+	updateProgress := func(progress int, message string) {
+		if progressCallback != nil {
+			progressCallback(progress, message)
+		}
+	}
+
+	updateProgress(15, "Preparing directories")
 	os.RemoveAll(filepath.Join(outputDir, "pdf"))
 	os.RemoveAll(filepath.Join(outputDir, "abc"))
 	os.RemoveAll(filepath.Join(outputDir, "log"))
@@ -89,6 +104,7 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 
 	projectSongs := project.Edges.ProjectSongs
 	slog.Info("Project songs loaded", "count", len(projectSongs))
+	updateProgress(25, fmt.Sprintf("Building %d songs", len(projectSongs)))
 
 	// Ensure all songs are loaded
 	for _, ps := range projectSongs {
@@ -102,16 +118,30 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 		return strings.ToLower(projectSongs[i].Edges.Song.Title) < strings.ToLower(projectSongs[j].Edges.Song.Title)
 	})
 	
+	// Track completed songs for progress
+	completedSongs := 0
+	totalSongs := len(projectSongs)
+	
 	for id, song := range projectSongs {
 		song := song
+		songIndex := id
 		eg.Go(func() error {
-			return s.buildSong(ctx, abcFileDir, outputDir, id+1, song, sampleId, project)
+			err := s.buildSong(ctx, abcFileDir, outputDir, songIndex+1, song, sampleId, project)
+			if err == nil {
+				completedSongs++
+				// Progress from 25% to 70% based on song completion
+				progress := 25 + (completedSongs * 45 / totalSongs)
+				updateProgress(progress, fmt.Sprintf("Built song %d/%d: %s", completedSongs, totalSongs, song.Edges.Song.Title))
+			}
+			return err
 		})
 	}
 	err := eg.Wait()
 	if err != nil {
 		return fmt.Errorf("failed to build songs: %w", err)
 	}
+	
+	updateProgress(75, "Processing copyright information")
 
 	copyrightNames := s.getCopyrightNames(project)
 	slog.Info("Copyright Names", "names", copyrightNames)
@@ -126,10 +156,12 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 		return fmt.Errorf("failed to copy PDFs to copyright directories: %w", err)
 	}
 
+	updateProgress(80, "Creating table of contents")
 	if err := s.createToc(context.Background(), project, projectSongs, outputDir); err != nil {
 		return fmt.Errorf("failed to create table of contents: %w", err)
 	}
 
+	updateProgress(85, "Merging PDF files")
 	// Get folder patterns from project config or use defaults
 	folderPatterns = s.getFolderPatterns(project)
 
@@ -215,9 +247,17 @@ W:{{TOC}}
 	json.NewEncoder(tempFile).Encode("{}")
 	tempFile.Close()
 
-	_, _, err = zupfnoter.Run(ctx, filepath.Join(outputDir, "abc", tocSongFilename), filepath.Join(outputDir, "pdf"))
+	stdOutBuf, stdErrBuf, err := zupfnoter.Run(ctx, filepath.Join(outputDir, "abc", tocSongFilename), filepath.Join(outputDir, "pdf"))
 	if err != nil {
-		return fmt.Errorf("failed to run zupfnoter: %w [%s]", err, tocSongFilename)
+		errorMsg := fmt.Sprintf("Zupfnoter failed for TOC %s", tocSongFilename)
+		if stdOutBuf != "" {
+			errorMsg += fmt.Sprintf("\nStdout: %s", stdOutBuf)
+		}
+		if stdErrBuf != "" {
+			errorMsg += fmt.Sprintf("\nStderr: %s", stdErrBuf)
+		}
+		slog.Error("zupfnoter failed for TOC", "output", stdOutBuf, "stderr", stdErrBuf, "file", tocSongFilename)
+		return fmt.Errorf("%s: %w", errorMsg, err)
 	}
 
 	// Distribute the table of contents PDF to the print files directories.
@@ -268,15 +308,22 @@ func (s *projectService) buildSong(ctx context.Context, abcFileDir, outputDir st
 	json.NewEncoder(tempConfigFile).Encode(finalConfig)
 	tempConfigFile.Close()
 
-	stdOutBuf, _, err := zupfnoter.Run(
+	stdOutBuf, stdErrBuf, err := zupfnoter.Run(
 		ctx,
 		filepath.Join(abcFileDir, song.Edges.Song.Filename),
 		filepath.Join(outputDir, "pdf"),
 		tempConfigFile.Name(),
 	)
 	if err != nil {
-		slog.Error("zupfnoter failed", "output", stdOutBuf, "file", song.Edges.Song.Filename)
-		return fmt.Errorf("failed to run zupfnoter: %w", err)
+		errorMsg := fmt.Sprintf("Zupfnoter failed for %s", song.Edges.Song.Filename)
+		if stdOutBuf != "" {
+			errorMsg += fmt.Sprintf("\nStdout: %s", stdOutBuf)
+		}
+		if stdErrBuf != "" {
+			errorMsg += fmt.Sprintf("\nStderr: %s", stdErrBuf)
+		}
+		slog.Error("zupfnoter failed", "output", stdOutBuf, "stderr", stdErrBuf, "file", song.Edges.Song.Filename)
+		return fmt.Errorf("%s: %w", errorMsg, err)
 	}
 	os.Remove(tempConfigFile.Name())
 
