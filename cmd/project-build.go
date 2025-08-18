@@ -78,8 +78,9 @@ var projectBuildCmd = &cobra.Command{
 		// Attach the songs to the project for compatibility with the rest of the code
 		project.Edges.ProjectSongs = projectSongs
 
-		projectBuildOutputDir = project.ShortName
-		cmd.Flags().StringVarP(&projectBuildOutputDir, "output-dir", "o", projectBuildOutputDir, "The directory to output the build results")
+		if projectBuildOutputDir == "" {
+			projectBuildOutputDir = project.ShortName
+		}
 
 		if projectBuildAbcFileDir == "" {
 			// Check if abc_file_dir exists and is a string
@@ -375,6 +376,7 @@ func extractConfigFromABCFile(abcFile []byte) (map[string]any, error) {
 func init() {
 	projectCmd.AddCommand(projectBuildCmd)
 
+	projectBuildCmd.Flags().StringVarP(&projectBuildOutputDir, "output-dir", "o", "", "The directory to output the build results")
 	projectBuildCmd.Flags().StringVarP(&projectBuildAbcFileDir, "abc-file-dir", "a", "", "The directory to find the ABC files")
 	projectBuildCmd.Flags().IntVarP(&projectBuildPriorityThreshold, "priority-threshold", "p", 1, "The maximum priority of songs to include in the build")
 	projectBuildCmd.Flags().StringVarP(&projectSampleId, "sampleId", "s", projectSampleId, "A string to indentify the sample stage. Will be injected to the project config")
