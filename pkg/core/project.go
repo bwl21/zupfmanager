@@ -385,7 +385,7 @@ func (s *projectService) executeBuild(buildID string, req BuildProjectRequest) {
 		args = append(args, "--priority-threshold", strconv.Itoa(req.PriorityThreshold))
 	}
 	if req.SampleID != "" {
-		args = append(args, "--sample-id", req.SampleID)
+		args = append(args, "--sampleId", req.SampleID)
 	}
 
 	status.Progress = 50
