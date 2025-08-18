@@ -6,7 +6,7 @@ MODULE := $(shell grep "^module " go.mod | awk '{print $$2}')
 GO_LDFLAGS := -X $(MODULE)/cmd.Version=$(VERSION) -X $(MODULE)/cmd.GitCommit=$(COMMIT)
 
 # Standardziel
-all: build
+all: build-embedded
 
 # Frontend build
 frontend:
@@ -40,18 +40,20 @@ completion:
 	@zupfmanager completion > ~/.zsh/completions/_zupfmanager
 	@echo please execute 'source ~/.zshrc to activate the completions'
 
-# Build für aktuelles System (mit Frontend)
-build: frontend
-	@echo "Building $(BINARY_NAME) für $(shell go env GOOS)/$(shell go env GOARCH)..."
+# Build für aktuelles System (embedded frontend)
+build: build-embedded
+
+# Build with external frontend files (legacy)
+build-external: frontend
+	@echo "Building $(BINARY_NAME) with external frontend für $(shell go env GOOS)/$(shell go env GOARCH)..."
 	@mkdir -p dist
-	@go build -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)
+	@go build -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)-external
 	@rm -rf pkg/api/frontend/
 	@echo "Copying frontend to dist/frontend..."
 	@rm -rf dist/frontend
 	@cp -r frontend/dist dist/frontend
-	@echo "Build abgeschlossen: dist/$(BINARY_NAME) $(VERSION) $(COMMIT)"
+	@echo "External build complete: dist/$(BINARY_NAME)-external $(VERSION) $(COMMIT)"
 	@echo "Frontend included: dist/frontend/"
-
 # Build nur Backend (ohne Frontend)
 build-backend:
 	@echo "Building $(BINARY_NAME) backend only für $(shell go env GOOS)/$(shell go env GOARCH)..."
@@ -104,7 +106,7 @@ build-windows: frontend
 build-macos: build-macos-amd64 build-macos-arm64
 
 # Build for both macOS and Windows
-build-all: build-macos build-windows
+build-all: build-embedded-macos build-windows
 
 # Create release packages
 package-linux: build-linux
@@ -144,7 +146,7 @@ dev:
 	@go run . api --port 8080 --frontend frontend/dist
 
 # Phony targets
-.PHONY: all build build-backend frontend frontend-deps frontend-copy frontend-embed build-embedded build-linux build-macos-amd64 build-macos-arm64 build-macos build-windows build-all package-linux package-macos-amd64 package-macos-arm64 package-windows package-all clean dev completion
+.PHONY: all build build-external build-backend frontend frontend-deps frontend-copy frontend-embed build-embedded build-linux build-macos-amd64 build-macos-arm64 build-macos build-windows build-all package-linux package-macos-amd64 package-macos-arm64 package-windows package-all clean dev completion
 
 # Prepare frontend for embedding
 frontend-embed: frontend
@@ -158,8 +160,8 @@ frontend-embed: frontend
 build-embedded: frontend-embed
 	@echo "Building $(BINARY_NAME) with embedded frontend für $(shell go env GOOS)/$(shell go env GOARCH)..."
 	@mkdir -p dist
-	@go build -tags embed_frontend -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)-embedded
+	@go build -tags embed_frontend -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)
 	@rm -rf pkg/api/frontend/
-	@echo "Embedded build complete: dist/$(BINARY_NAME)-embedded $(VERSION) $(COMMIT)"
+	@echo "Embedded build complete: dist/$(BINARY_NAME) $(VERSION) $(COMMIT)"
 	@echo "Frontend is embedded in the executable"
 
