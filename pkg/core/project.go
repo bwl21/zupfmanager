@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"strconv"
 	"time"
@@ -391,8 +392,14 @@ func (s *projectService) executeBuild(buildID string, req BuildProjectRequest) {
 	status.Progress = 50
 	status.Message = "Executing build command"
 
-	// Execute the command
-	cmd := exec.Command("zupfmanager", args...)
+	// Execute the command using the current binary
+	executablePath, err := os.Executable()
+	if err != nil {
+		// Fallback to PATH lookup
+		executablePath = "zupfmanager"
+	}
+	
+	cmd := exec.Command(executablePath, args...)
 	output, err := cmd.CombinedOutput()
 
 	now := time.Now().Format(time.RFC3339)
