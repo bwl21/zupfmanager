@@ -158,7 +158,7 @@ frontend-embed: frontend
 build-embedded: frontend-embed
 	@echo "Building $(BINARY_NAME) with embedded frontend für $(shell go env GOOS)/$(shell go env GOARCH)..."
 	@mkdir -p dist
-	@go build -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)-embedded
+	@go build -tags embed_frontend -ldflags "$(GO_LDFLAGS)" -o dist/$(BINARY_NAME)-embedded
 	@rm -rf pkg/api/frontend/
 	@echo "Embedded build complete: dist/$(BINARY_NAME)-embedded $(VERSION) $(COMMIT)"
 	@echo "Frontend is embedded in the executable"

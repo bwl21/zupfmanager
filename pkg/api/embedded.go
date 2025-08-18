@@ -1,16 +1,13 @@
+//go:build !embed_frontend
+
 package api
 
 import (
-	"embed"
+	"errors"
 	"io/fs"
 )
 
-// Embedded frontend files
-//go:embed frontend/dist
-var frontendFS embed.FS
-
-// GetFrontendFS returns the embedded frontend filesystem
+// GetFrontendFS returns an error for non-embedded builds
 func GetFrontendFS() (fs.FS, error) {
-	// Return the subdirectory containing the actual frontend files
-	return fs.Sub(frontendFS, "frontend/dist")
+	return nil, errors.New("frontend not embedded in this build")
 }
