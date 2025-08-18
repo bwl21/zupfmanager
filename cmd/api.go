@@ -24,10 +24,13 @@ The API server provides endpoints for:
 - Managing projects and songs
 - Searching and listing content
 
-Options:
-- API only: zupfmanager api --port 8080
-- Integrated (API + Frontend): zupfmanager api --port 8080 --frontend frontend/dist
+The server includes an embedded frontend by default. Use --frontend to override with external files.
 
+Options:
+- Embedded frontend: zupfmanager api --port 8080
+- External frontend: zupfmanager api --port 8080 --frontend frontend/dist
+
+Access the web interface at http://localhost:8080/
 Access the API documentation at http://localhost:8080/swagger/index.html`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
@@ -42,20 +45,13 @@ Access the API documentation at http://localhost:8080/swagger/index.html`,
 		}
 		defer services.Close()
 
-		// Create API server with optional frontend serving
-		var server *api.Server
-		if frontendPath != "" {
-			server = api.NewServer(services, api.ServerOptions{
-				FrontendPath: frontendPath,
-				Version:      Version,
-				GitCommit:    GitCommit,
-			})
-		} else {
-			server = api.NewServer(services, api.ServerOptions{
-				Version:   Version,
-				GitCommit: GitCommit,
-			})
-		}
+		// Create API server with embedded frontend (fallback to external if provided)
+		server := api.NewServer(services, api.ServerOptions{
+			FrontendPath: frontendPath, // Used as fallback if embedded fails
+			UseEmbedded:  true,         // Try embedded frontend first
+			Version:      Version,
+			GitCommit:    GitCommit,
+		})
 
 		// Setup graceful shutdown
 		ctx, cancel := context.WithCancel(context.Background())

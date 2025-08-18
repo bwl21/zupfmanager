@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"mime"
 	"net/http"
@@ -33,6 +34,8 @@ type Server struct {
 
 	// Frontend serving
 	frontendPath string
+	frontendFS   fs.FS
+	useEmbedded  bool
 	
 	// Version info
 	version   string
@@ -41,7 +44,8 @@ type Server struct {
 
 // ServerOptions configures the server
 type ServerOptions struct {
-	FrontendPath string // Path to frontend dist directory
+	FrontendPath string // Path to frontend dist directory (fallback)
+	UseEmbedded  bool   // Use embedded frontend files
 	Version      string // Version string
 	GitCommit    string // Git commit hash
 }
@@ -57,8 +61,10 @@ func NewServer(services *core.Services, opts ...ServerOptions) *Server {
 	router.Use(corsMiddleware())
 	
 	var frontendPath, version, gitCommit string
+	var useEmbedded bool
 	if len(opts) > 0 {
 		frontendPath = opts[0].FrontendPath
+		useEmbedded = opts[0].UseEmbedded
 		version = opts[0].Version
 		gitCommit = opts[0].GitCommit
 	}
@@ -71,6 +77,7 @@ func NewServer(services *core.Services, opts ...ServerOptions) *Server {
 		songHandler:        handlers.NewSongHandler(services),
 		projectSongHandler: handlers.NewProjectSongHandler(services),
 		frontendPath:       frontendPath,
+		useEmbedded:        useEmbedded,
 		version:            version,
 		gitCommit:          gitCommit,
 	}
@@ -139,8 +146,15 @@ func (s *Server) setupRoutes() {
 	url := ginSwagger.URL("/api/swagger.json")
 	s.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, url))
 	
-	// Serve frontend static files if path is provided
-	if s.frontendPath != "" {
+	// Serve frontend - embedded takes priority over external path
+	if s.useEmbedded {
+		if err := s.setupEmbeddedFrontend(); err != nil {
+			slog.Warn("Failed to setup embedded frontend, falling back to external", "error", err)
+			if s.frontendPath != "" {
+				s.setupFrontendServing()
+			}
+		}
+	} else if s.frontendPath != "" {
 		s.setupFrontendServing()
 	}
 }
