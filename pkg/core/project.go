@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-	"strconv"
+	"log/slog"
 	"time"
 
 	"github.com/bwl21/zupfmanager/internal/database"
@@ -372,53 +370,31 @@ func (s *projectService) executeBuild(buildID string, req BuildProjectRequest) {
 	status.Message = "Starting build process"
 	result.Status = "running"
 
-	// Execute the CLI build command (simplified approach)
-	// In a real implementation, you would extract the build logic from CLI
-	args := []string{"project", "build", strconv.Itoa(req.ProjectID)}
-	
-	if req.OutputDir != "" {
-		args = append(args, "--output-dir", req.OutputDir)
-	}
-	if req.AbcFileDir != "" {
-		args = append(args, "--abc-file-dir", req.AbcFileDir)
-	}
-	if req.PriorityThreshold > 0 {
-		args = append(args, "--priority-threshold", strconv.Itoa(req.PriorityThreshold))
-	}
-	if req.SampleID != "" {
-		args = append(args, "--sampleId", req.SampleID)
-	}
-
-	status.Progress = 50
-	status.Message = "Executing build command"
-
-	// Execute the command using the current binary
-	executablePath, err := os.Executable()
-	if err != nil {
-		// Fallback to PATH lookup
-		executablePath = "zupfmanager"
-	}
-	
-	cmd := exec.Command(executablePath, args...)
-	output, err := cmd.CombinedOutput()
+	// Execute the build directly using core logic
+	ctx := context.Background()
+	err := s.ExecuteProjectBuild(ctx, req)
 
 	now := time.Now().Format(time.RFC3339)
 	result.CompletedAt = now
 	status.CompletedAt = now
 
 	if err != nil {
-		// Build failed
 		status.Status = "failed"
-		status.Progress = 0
+		status.Progress = 100
 		status.Message = "Build failed"
-		status.Error = fmt.Sprintf("Command failed: %v\nOutput: %s", err, string(output))
 		result.Status = "failed"
-		result.Error = status.Error
+		result.Error = fmt.Sprintf("Build failed: %v", err)
+		slog.Error("Build failed", "buildID", buildID, "error", err)
 	} else {
-		// Build succeeded
 		status.Status = "completed"
 		status.Progress = 100
 		status.Message = "Build completed successfully"
+		result.Status = "completed"
+		
+		// TODO: Scan output directory to get generated files
+		result.GeneratedFiles = []string{} // Placeholder
+		
+		slog.Info("Build completed successfully", "buildID", buildID)
 		result.Status = "completed"
 		
 		// TODO: Parse output to extract generated files

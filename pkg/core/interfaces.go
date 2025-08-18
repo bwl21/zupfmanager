@@ -132,6 +132,7 @@ type ProjectService interface {
 	
 	// Project build operations
 	BuildProject(ctx context.Context, req BuildProjectRequest) (*BuildResult, error)
+	ExecuteProjectBuild(ctx context.Context, req BuildProjectRequest) error
 	GetBuildStatus(ctx context.Context, buildID string) (*BuildStatus, error)
 	ListBuilds(ctx context.Context, projectID int) ([]*BuildResult, error)
 }

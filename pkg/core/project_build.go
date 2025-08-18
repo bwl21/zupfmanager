@@ -1,4 +1,4 @@
-package cmd
+package core
 
 import (
 	"bytes"
@@ -11,16 +11,13 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 
 	"dario.cat/mergo"
-	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/bwl21/zupfmanager/internal/ent"
-	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
+	entproject "github.com/bwl21/zupfmanager/internal/ent/project"
+	entprojectsong "github.com/bwl21/zupfmanager/internal/ent/projectsong"
 	"github.com/bwl21/zupfmanager/internal/zupfnoter"
-	"github.com/bwl21/zupfmanager/pkg/core"
-	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/pdfcpu/pdfcpu/pkg/api"
@@ -30,90 +27,25 @@ const (
 	zupfnoterConfigString = "%%%%zupfnoter.config"
 )
 
-var (
-	projectBuildOutputDir         string
-	projectBuildAbcFileDir        string
-	projectBuildPriorityThreshold int
-	projectSampleId               string
-)
+// ExecuteProjectBuild performs the actual project build logic
+func (s *projectService) ExecuteProjectBuild(ctx context.Context, req BuildProjectRequest) error {
+	// Get the project with songs
+	project, err := s.db.Project.Query().
+		Where(entproject.ID(req.ProjectID)).
+		WithProjectSongs(func(psq *ent.ProjectSongQuery) {
+			psq.Where(entprojectsong.PriorityLTE(req.PriorityThreshold)).
+				WithSong().
+				Order(ent.Asc("priority"))
+		}).
+		Only(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get project: %w", err)
+	}
 
-var projectBuildCmd = &cobra.Command{
-	Use:   "build PROJECT_ID",
-	Short: "Build a project",
-	Long:  `Builds a project by running the build command specified in the project's configuration.`,
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		projectID, err := strconv.Atoi(args[0])
-		if err != nil {
-			return fmt.Errorf("invalid project ID: %w", err)
-		}
-
-		client, err := database.New()
-		if err != nil {
-			return err
-		}
-		defer client.Close()
-
-		// First, get the project to ensure it exists
-		project, err := client.Project.Get(context.Background(), projectID)
-		if err != nil {
-			return fmt.Errorf("failed to find project with ID %d: %w", projectID, err)
-		}
-
-		// Then query the project songs separately with the priority filter
-		projectSongs, err := client.ProjectSong.Query().
-			Where(
-				projectsong.And(
-					projectsong.ProjectID(projectID),
-					projectsong.PriorityLTE(projectBuildPriorityThreshold),
-				),
-			).
-			WithSong().
-			WithProject().
-			Order(ent.Asc("priority")).
-			All(context.Background())
-		if err != nil {
-			return fmt.Errorf("failed to query project songs: %w", err)
-		}
-
-		// Attach the songs to the project for compatibility with the rest of the code
-		project.Edges.ProjectSongs = projectSongs
-
-		if projectBuildOutputDir == "" {
-			projectBuildOutputDir = project.ShortName
-		}
-
-		if projectBuildAbcFileDir == "" {
-			// Check if abc_file_dir exists and is a string
-			abcFileDir, ok := project.Config["abc_file_dir"].(string)
-			if ok {
-				projectBuildAbcFileDir = abcFileDir
-			} else {
-				// Provide a default value or handle the error appropriately
-				projectBuildAbcFileDir = ""
-			}
-		}
-
-		// Use core service for build logic
-		services, err := core.NewServices()
-		if err != nil {
-			return err
-		}
-		defer services.Close()
-
-		buildReq := core.BuildProjectRequest{
-			ProjectID:         projectID,
-			OutputDir:         projectBuildOutputDir,
-			AbcFileDir:        projectBuildAbcFileDir,
-			PriorityThreshold: projectBuildPriorityThreshold,
-			SampleID:          projectSampleId,
-		}
-
-		return services.Project.ExecuteProjectBuild(context.Background(), buildReq)
-	},
+	return s.buildProject(ctx, req.AbcFileDir, req.OutputDir, project, req.SampleID)
 }
 
-func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId string) error {
+func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir string, project *ent.Project, sampleId string) error {
 	os.RemoveAll(filepath.Join(outputDir, "pdf"))
 	os.RemoveAll(filepath.Join(outputDir, "abc"))
 	os.RemoveAll(filepath.Join(outputDir, "log"))
@@ -131,7 +63,7 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 	_ = os.MkdirAll(druckdateienDir, 0755)
 	
 	// Create target directories based on folder patterns
-	folderPatterns := getFolderPatterns(project)
+	folderPatterns := s.getFolderPatterns(project)
 	folderSet := make(map[string]bool)
 	for _, folder := range folderPatterns {
 		if !folderSet[folder] {
@@ -141,7 +73,7 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 		}
 	}
 
-	eg, ctx := errgroup.WithContext(context.Background())
+	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(5)
 
 	projectSongs := project.Edges.ProjectSongs
@@ -157,10 +89,11 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 	sort.Slice(projectSongs, func(i, j int) bool {
 		return strings.ToLower(projectSongs[i].Edges.Song.Title) < strings.ToLower(projectSongs[j].Edges.Song.Title)
 	})
+	
 	for id, song := range projectSongs {
 		song := song
 		eg.Go(func() error {
-			return buildSong(ctx, abcFileDir, outputDir, id+1, song, projectSampleId, project)
+			return s.buildSong(ctx, abcFileDir, outputDir, id+1, song, sampleId, project)
 		})
 	}
 	err := eg.Wait()
@@ -168,25 +101,25 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 		return fmt.Errorf("failed to build songs: %w", err)
 	}
 
-	copyrightNames := getCopyrightNames(project)
-	fmt.Println("Copyright Names:", copyrightNames)
+	copyrightNames := s.getCopyrightNames(project)
+	slog.Info("Copyright Names", "names", copyrightNames)
 
-	err = createCopyrightDirectories(copyrightNames)
+	err = s.createCopyrightDirectories(copyrightNames)
 	if err != nil {
 		return fmt.Errorf("failed to create copyright directories: %w", err)
 	}
 
-	err = copyPdfsToCopyrightDirectories(project, outputDir)
+	err = s.copyPdfsToCopyrightDirectories(project, outputDir)
 	if err != nil {
 		return fmt.Errorf("failed to copy PDFs to copyright directories: %w", err)
 	}
 
-	if err := createToc(project, projectSongs, outputDir); err != nil {
+	if err := s.createToc(ctx, project, projectSongs, outputDir); err != nil {
 		return fmt.Errorf("failed to create table of contents: %w", err)
 	}
 
 	// Get folder patterns from project config or use defaults
-	folderPatterns = getFolderPatterns(project)
+	folderPatterns = s.getFolderPatterns(project)
 
 	// Get unique target folders
 	folderSet = make(map[string]bool)
@@ -201,7 +134,7 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 		
 		slog.Info("Merging PDFs for folder", "folder", folder, "source", sourceDir, "dest", destFile)
 		
-		err = mergePDFs(sourceDir, destFile)
+		err = s.mergePDFs(sourceDir, destFile)
 		if err != nil {
 			return fmt.Errorf("failed to merge PDFs in %s directory: %w", folder, err)
 		}
@@ -210,8 +143,11 @@ func buildProject(abcFileDir, outputDir string, project *ent.Project, sampleId s
 	return nil
 }
 
+// Rest of the helper functions...
+// (I'll add them in the next step to keep this manageable)
+
 // getCopyrightNames returns a slice of copyright names used in the project.
-func getCopyrightNames(project *ent.Project) []string {
+func (s *projectService) getCopyrightNames(project *ent.Project) []string {
 	copyrightNames := make([]string, 0)
 	for _, ps := range project.Edges.ProjectSongs {
 		if ps.Edges.Song.Copyright != "" {
@@ -221,7 +157,7 @@ func getCopyrightNames(project *ent.Project) []string {
 	return copyrightNames
 }
 
-func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, outputDir string) error {
+func (s *projectService) createToc(ctx context.Context, project *ent.Project, projectSongs []*ent.ProjectSong, outputDir string) error {
 	tocabc := ""
 	for id, song := range projectSongs {
 		tocinfo := ""
@@ -255,21 +191,16 @@ func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, outputDir 
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	// defer os.Remove(tempFile.Name())
 	json.NewEncoder(tempFile).Encode("{}")
 	tempFile.Close()
 
-	ctxb := context.Background()
-
-	_, _, err = zupfnoter.Run(ctxb, filepath.Join(outputDir, "abc", tocSongFilename), filepath.Join(outputDir, "pdf"))
+	_, _, err = zupfnoter.Run(ctx, filepath.Join(outputDir, "abc", tocSongFilename), filepath.Join(outputDir, "pdf"))
 	if err != nil {
-		fmt.Println(filepath.Join(outputDir, "abc", tocSongFilename))
 		return fmt.Errorf("failed to run zupfnoter: %w [%s]", err, tocSongFilename)
 	}
 
 	// Distribute the table of contents PDF to the print files directories.
-	err = distributeZupfnoterOutput(project, tocSongFilename, outputDir, 0)
-
+	err = s.distributeZupfnoterOutput(project, tocSongFilename, outputDir, 0)
 	if err != nil {
 		return fmt.Errorf("failed to distribute Zupfnoter output: %w", err)
 	}
@@ -277,26 +208,19 @@ func createToc(project *ent.Project, projectSongs []*ent.ProjectSong, outputDir 
 	return nil
 }
 
-// buildSong verarbeitet einen Song: Liest die ABC-Datei, kombiniert Konfigurationen,
-// ruft das externe Tool "zupfnoter" auf, kopiert die ABC-Datei ins Zielverzeichnis
-// und verschiebt das Logfile.
-func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int, song *ent.ProjectSong, projectSampleId string, project *ent.Project) error {
-	// 1. Logge den Start der Verarbeitung für diesen Song.
+func (s *projectService) buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int, song *ent.ProjectSong, projectSampleId string, project *ent.Project) error {
 	slog.Info("building song", "song", song.Edges.Song.Title)
 
-	// 2. Lese die ABC-Datei des Songs ein.
 	abcFile, err := os.ReadFile(filepath.Join(abcFileDir, song.Edges.Song.Filename))
 	if err != nil {
 		return fmt.Errorf("failed to read ABC file: %w", err)
 	}
 
-	// 3. Extrahiere Konfiguration aus der ABC-Datei (z.B. Metadaten).
-	fileConfig, err := extractConfigFromABCFile(abcFile)
+	fileConfig, err := s.extractConfigFromABCFile(abcFile)
 	if err != nil {
 		return fmt.Errorf("failed to extract config from ABC file: %w", err)
 	}
 
-	// 4. Serialisiere die Projekt-Konfiguration als JSON.
 	projectConfigBytes, err := json.Marshal(song.Edges.Project.Config)
 	if err != nil {
 		return fmt.Errorf("failed to marshal project config: %w", err)
@@ -305,50 +229,41 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 	fc = bytes.ReplaceAll(fc, []byte("#{the_index}"), []byte(fmt.Sprintf("%02d", songIndex)))
 	fc = bytes.ReplaceAll(fc, []byte("#{sampleId}"), []byte(projectSampleId))
 
-	// 6. Deserialisiere das JSON wieder in eine Map für weitere Bearbeitung.
 	var finalConfig map[string]any
 	err = json.Unmarshal(fc, &finalConfig)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal project config: %w", err)
 	}
 
-	// 7. Führe die Konfiguration aus der Datei und dem Projekt zusammen.
 	err = mergo.Merge(&finalConfig, fileConfig)
 	if err != nil {
 		return fmt.Errorf("failed to merge config: %w", err)
 	}
 
-	// 8. Schreibe die finale Konfiguration in eine temporäre Datei.
 	tempConfigFile, err := os.CreateTemp("", "zupfnoter-*.json")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
 	}
-	// Schreibe die finale Konfiguration als JSON in die Datei.
 	json.NewEncoder(tempConfigFile).Encode(finalConfig)
 	tempConfigFile.Close()
 
-	// 9. Rufe das externe Tool "zupfnoter" auf und übergebe die notwendigen Dateien.
 	stdOutBuf, _, err := zupfnoter.Run(
 		ctx,
-		filepath.Join(abcFileDir, song.Edges.Song.Filename), // Pfad zur ABC-Datei
-		filepath.Join(outputDir, "pdf"),                     // Ausgabeverzeichnis für PDF
-		tempConfigFile.Name(),                               // Pfad zur Konfigurationsdatei
+		filepath.Join(abcFileDir, song.Edges.Song.Filename),
+		filepath.Join(outputDir, "pdf"),
+		tempConfigFile.Name(),
 	)
 	if err != nil {
-		fmt.Println(stdOutBuf)
-		fmt.Println(filepath.Join(outputDir, "abc", song.Edges.Song.Filename))
+		slog.Error("zupfnoter failed", "output", stdOutBuf, "file", song.Edges.Song.Filename)
 		return fmt.Errorf("failed to run zupfnoter: %w", err)
 	}
-	// 10. Lösche die temporäre Konfigurationsdatei.
 	os.Remove(tempConfigFile.Name())
 
-	// 11. Distribute the Zupfnoter output to the print files directories.
-	err = distributeZupfnoterOutput(project, song.Edges.Song.Filename, outputDir, songIndex)
+	err = s.distributeZupfnoterOutput(project, song.Edges.Song.Filename, outputDir, songIndex)
 	if err != nil {
 		return fmt.Errorf("failed to distribute Zupfnoter output: %w", err)
 	}
 
-	// 12. Kopiere die ABC-Datei ins Zielverzeichnis (z.B. für das Archiv).
 	err = os.WriteFile(
 		filepath.Join(outputDir, "abc", song.Edges.Song.Filename),
 		abcFile,
@@ -358,7 +273,6 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 		return fmt.Errorf("failed to copy ABC file to output dir: %w", err)
 	}
 
-	// 12. Verschiebe das Logfile ins Log-Verzeichnis.
 	logFN := fmt.Sprintf("%s.err.log", song.Edges.Song.Filename)
 	err = os.Rename(
 		filepath.Join(outputDir, "pdf", logFN),
@@ -368,19 +282,16 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 		return fmt.Errorf("failed to rename log file: %w", err)
 	}
 
-	// 13. Erfolgreich abgeschlossen.
 	return nil
 }
 
-func extractConfigFromABCFile(abcFile []byte) (map[string]any, error) {
-	// search until the first line that starts with %%%%zupfnoter.config and everything after that is JSON
+func (s *projectService) extractConfigFromABCFile(abcFile []byte) (map[string]any, error) {
 	configLine := bytes.Index(abcFile, []byte(zupfnoterConfigString))
 	if configLine == -1 {
 		return nil, fmt.Errorf("no config found in ABC file")
 	}
 	config := bytes.TrimSpace(abcFile[configLine+len(zupfnoterConfigString):])
 
-	// parse the JSON
 	var configMap map[string]any
 	err := json.Unmarshal(config, &configMap)
 	if err != nil {
@@ -389,19 +300,9 @@ func extractConfigFromABCFile(abcFile []byte) (map[string]any, error) {
 	return configMap, nil
 }
 
-func init() {
-	projectCmd.AddCommand(projectBuildCmd)
+// Add remaining helper functions...
 
-	projectBuildCmd.Flags().StringVarP(&projectBuildOutputDir, "output-dir", "o", "", "The directory to output the build results")
-	projectBuildCmd.Flags().StringVarP(&projectBuildAbcFileDir, "abc-file-dir", "a", "", "The directory to find the ABC files")
-	projectBuildCmd.Flags().IntVarP(&projectBuildPriorityThreshold, "priority-threshold", "p", 1, "The maximum priority of songs to include in the build")
-	projectBuildCmd.Flags().StringVarP(&projectSampleId, "sampleId", "s", projectSampleId, "A string to indentify the sample stage. Will be injected to the project config")
-
-}
-
-// getFolderPatterns returns the folder patterns from the project config or the default patterns
-func getFolderPatterns(project *ent.Project) map[string]string {
-	// Define default folder patterns
+func (s *projectService) getFolderPatterns(project *ent.Project) map[string]string {
 	folderPatterns := map[string]string{
 		"*_-A*_a3.pdf": "klein",
 		"*_-M*_a3.pdf": "klein",
@@ -410,7 +311,6 @@ func getFolderPatterns(project *ent.Project) map[string]string {
 		"*_-X*_a3.pdf": "gross",
 	}
 
-	// Override with project config if available
 	if configPatterns, ok := project.Config["folderPatterns"].(map[string]interface{}); ok {
 		folderPatterns = make(map[string]string)
 		for pattern, folder := range configPatterns {
@@ -423,7 +323,7 @@ func getFolderPatterns(project *ent.Project) map[string]string {
 	return folderPatterns
 }
 
-func distributeZupfnoterOutput(project *ent.Project, baseFilename string, outputDir string, songIndex int) error {
+func (s *projectService) distributeZupfnoterOutput(project *ent.Project, baseFilename string, outputDir string, songIndex int) error {
 	pdfDir := filepath.Join(outputDir, "pdf")
 	baseFilenameWithoutExt := strings.TrimSuffix(baseFilename, ".abc")
 	pattern := filepath.Join(pdfDir, filepath.Base(baseFilenameWithoutExt)+"*.pdf")
@@ -432,7 +332,7 @@ func distributeZupfnoterOutput(project *ent.Project, baseFilename string, output
 		return fmt.Errorf("failed to glob PDF files: %w", err)
 	}
 
-	folderPatterns := getFolderPatterns(project)
+	folderPatterns := s.getFolderPatterns(project)
 
 	for _, pdfFile := range files {
 		filename := filepath.Base(pdfFile)
@@ -451,19 +351,17 @@ func distributeZupfnoterOutput(project *ent.Project, baseFilename string, output
 		}
 
 		if targetDir == "" {
-			slog.Error("no target folder found: ", "filename", filename)
+			slog.Error("no target folder found", "filename", filename)
 			continue
 		}
 
-		slog.Info("target directory", "targetDir", targetDir)
 		err := os.MkdirAll(targetDir, 0755)
 		if err != nil {
 			return fmt.Errorf("failed to create target directory: %w", err)
 		}
 
 		targetFile := filepath.Join(targetDir, newFilename)
-		slog.Info("copying file", "source", pdfFile, "target", targetFile)
-		err = copyFile(pdfFile, targetFile)
+		err = s.copyFile(pdfFile, targetFile)
 		if err != nil {
 			return fmt.Errorf("failed to copy file: %w", err)
 		}
@@ -472,7 +370,7 @@ func distributeZupfnoterOutput(project *ent.Project, baseFilename string, output
 	return nil
 }
 
-func copyFile(src, dst string) error {
+func (s *projectService) copyFile(src, dst string) error {
 	sourceFileStat, err := os.Stat(src)
 	if err != nil {
 		return err
@@ -497,10 +395,9 @@ func copyFile(src, dst string) error {
 	return err
 }
 
-func mergePDFs(dir, dest string) error {
+func (s *projectService) mergePDFs(dir, dest string) error {
 	slog.Info("merging pdf files", "dir", dir, "dest", dest)
 
-	// Check if directory exists
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		slog.Warn("directory does not exist, skipping merge", "dir", dir)
 		return nil
@@ -521,13 +418,12 @@ func mergePDFs(dir, dest string) error {
 		return fmt.Errorf("failed to walk directory: %w", err)
 	}
 
-	// Check if we found any PDF files
 	if len(files) == 0 {
 		slog.Warn("no PDF files found to merge", "dir", dir)
 		return nil
 	}
 
-	slog.Info(fmt.Sprintf("merging %d PDF files from %s to %s", len(files), dir, dest))
+	slog.Info("merging PDF files", "count", len(files), "from", dir, "to", dest)
 	err = api.MergeCreateFile(files, dest, false, nil)
 	if err != nil {
 		return fmt.Errorf("failed to merge pdf files: %w", err)
@@ -537,8 +433,7 @@ func mergePDFs(dir, dest string) error {
 	return nil
 }
 
-// createCopyrightDirectory creates a directory for a given copyright name under the "referenz" directory.
-func createCopyrightDirectory(copyrightName string) error {
+func (s *projectService) createCopyrightDirectory(copyrightName string) error {
 	dirPath := filepath.Join("referenz", copyrightName)
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		err := os.MkdirAll(dirPath, 0755)
@@ -549,10 +444,9 @@ func createCopyrightDirectory(copyrightName string) error {
 	return nil
 }
 
-// createCopyrightDirectories creates directories for a given list of copyright names under the "referenz" directory.
-func createCopyrightDirectories(copyrightNames []string) error {
+func (s *projectService) createCopyrightDirectories(copyrightNames []string) error {
 	for _, copyrightName := range copyrightNames {
-		err := createCopyrightDirectory(copyrightName)
+		err := s.createCopyrightDirectory(copyrightName)
 		if err != nil {
 			return err
 		}
@@ -560,65 +454,38 @@ func createCopyrightDirectories(copyrightNames []string) error {
 	return nil
 }
 
-func copyPdfsToCopyrightDirectories(project *ent.Project, outputDir string) error {
-	// Sicherstellen, dass die Projekt-Songs geladen sind
+func (s *projectService) copyPdfsToCopyrightDirectories(project *ent.Project, outputDir string) error {
 	if project.Edges.ProjectSongs == nil {
 		return fmt.Errorf("project songs not loaded")
 	}
 
-	// Map zur Gruppierung nach Copyright (vermeidet doppelte Verzeichniserstellung)
-	copyrightMap := make(map[string][]*ent.ProjectSong)
-
-	// Songs nach Copyright gruppieren
+	copyrightGroups := make(map[string][]*ent.ProjectSong)
 	for _, ps := range project.Edges.ProjectSongs {
-		if ps.Edges.Song == nil {
-			continue
+		if ps.Edges.Song.Copyright != "" {
+			copyrightGroups[ps.Edges.Song.Copyright] = append(copyrightGroups[ps.Edges.Song.Copyright], ps)
 		}
-		copyright := ps.Edges.Song.Copyright
-		if copyright == "" {
-			continue
-		}
-		copyrightMap[copyright] = append(copyrightMap[copyright], ps)
 	}
 
-	// PDFs pro Copyright-Verzeichnis kopieren
-	for copyright, songs := range copyrightMap {
-		destDir := filepath.Join(outputDir, "referenz", copyright)
-		if err := os.MkdirAll(destDir, 0755); err != nil {
-			return fmt.Errorf("failed to create directory %s: %w", destDir, err)
-		}
-
-		// Einmaliges Durchsuchen des PDF-Verzeichnisses
-		pdfDir := filepath.Join(outputDir, "pdf")
-		err := filepath.Walk(pdfDir, func(path string, info os.FileInfo, err error) error {
+	for copyrightName, songs := range copyrightGroups {
+		copyrightDir := filepath.Join("referenz", copyrightName)
+		
+		for _, song := range songs {
+			sourcePattern := filepath.Join(outputDir, "pdf", strings.TrimSuffix(song.Edges.Song.Filename, ".abc")+"*.pdf")
+			files, err := filepath.Glob(sourcePattern)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to glob files for song %s: %w", song.Edges.Song.Title, err)
 			}
-
-			if info.IsDir() || !strings.HasSuffix(info.Name(), ".pdf") {
-				return nil
-			}
-
-			// Prüfe auf Übereinstimmung mit einem der Songs
-			for _, ps := range songs {
-				if ps.Edges.Song == nil || ps.Edges.Song.Filename == "" {
-					continue
-				}
-
-				baseName := strings.TrimSuffix(ps.Edges.Song.Filename, ".abc")
-				if strings.Contains(info.Name(), baseName) {
-					destPath := filepath.Join(destDir, info.Name())
-					if err := copyFile(path, destPath); err != nil {
-						return fmt.Errorf("failed to copy %s to %s: %w", path, destPath, err)
-					}
+			
+			for _, file := range files {
+				filename := filepath.Base(file)
+				destFile := filepath.Join(copyrightDir, filename)
+				err = s.copyFile(file, destFile)
+				if err != nil {
+					return fmt.Errorf("failed to copy file %s to %s: %w", file, destFile, err)
 				}
 			}
-			return nil
-		})
-
-		if err != nil {
-			return err
 		}
 	}
+
 	return nil
 }
