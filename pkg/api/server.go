@@ -149,7 +149,7 @@ func (s *Server) setupRoutes() {
 	// Serve frontend - embedded takes priority over external path
 	if s.useEmbedded {
 		if err := s.setupEmbeddedFrontend(); err != nil {
-			slog.Warn("Failed to setup embedded frontend, falling back to external", "error", err)
+			slog.Info("Embedded frontend not available, using external files", "reason", err.Error())
 			if s.frontendPath != "" {
 				s.setupFrontendServing()
 			}
