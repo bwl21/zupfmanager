@@ -15,7 +15,6 @@ import (
 
 	"dario.cat/mergo"
 	"github.com/bwl21/zupfmanager/internal/ent"
-	entproject "github.com/bwl21/zupfmanager/internal/ent/project"
 	entprojectsong "github.com/bwl21/zupfmanager/internal/ent/projectsong"
 	"github.com/bwl21/zupfmanager/internal/zupfnoter"
 	"golang.org/x/sync/errgroup"
@@ -29,18 +28,30 @@ const (
 
 // ExecuteProjectBuild performs the actual project build logic
 func (s *projectService) ExecuteProjectBuild(ctx context.Context, req BuildProjectRequest) error {
-	// Get the project with songs
-	project, err := s.db.Project.Query().
-		Where(entproject.ID(req.ProjectID)).
-		WithProjectSongs(func(psq *ent.ProjectSongQuery) {
-			psq.Where(entprojectsong.PriorityLTE(req.PriorityThreshold)).
-				WithSong().
-				Order(ent.Asc("priority"))
-		}).
-		Only(ctx)
+	// Get the project first
+	project, err := s.db.Project.Get(ctx, req.ProjectID)
 	if err != nil {
 		return fmt.Errorf("failed to get project: %w", err)
 	}
+
+	// Then query the project songs separately with the priority filter (like the working version)
+	projectSongs, err := s.db.ProjectSong.Query().
+		Where(
+			entprojectsong.And(
+				entprojectsong.ProjectID(req.ProjectID),
+				entprojectsong.PriorityLTE(req.PriorityThreshold),
+			),
+		).
+		WithSong().
+		WithProject().
+		Order(ent.Asc("priority")).
+		All(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to query project songs: %w", err)
+	}
+
+	// Attach the songs to the project for compatibility with the rest of the code
+	project.Edges.ProjectSongs = projectSongs
 
 	return s.buildProject(ctx, req.AbcFileDir, req.OutputDir, project, req.SampleID)
 }
@@ -298,7 +309,7 @@ func (s *projectService) buildSong(ctx context.Context, abcFileDir, outputDir st
 func (s *projectService) extractConfigFromABCFile(abcFile []byte) (map[string]any, error) {
 	configLine := bytes.Index(abcFile, []byte(zupfnoterConfigString))
 	if configLine == -1 {
-		return nil, fmt.Errorf("no config found in ABC file")
+		return make(map[string]any), nil
 	}
 	config := bytes.TrimSpace(abcFile[configLine+len(zupfnoterConfigString):])
 
