@@ -77,6 +77,7 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	eg.SetLimit(5)
 
 	projectSongs := project.Edges.ProjectSongs
+	slog.Info("Project songs loaded", "count", len(projectSongs))
 
 	// Ensure all songs are loaded
 	for _, ps := range projectSongs {
@@ -114,7 +115,7 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 		return fmt.Errorf("failed to copy PDFs to copyright directories: %w", err)
 	}
 
-	if err := s.createToc(ctx, project, projectSongs, outputDir); err != nil {
+	if err := s.createToc(context.Background(), project, projectSongs, outputDir); err != nil {
 		return fmt.Errorf("failed to create table of contents: %w", err)
 	}
 
@@ -175,9 +176,18 @@ func (s *projectService) createToc(ctx context.Context, project *ent.Project, pr
 		defaultTemplateFile := "x/MBT-2025/999_inhaltsverzeichnis_template.abc"
 		toctemplateBytes, err = os.ReadFile(defaultTemplateFile)
 		if err != nil {
-			return fmt.Errorf("failed to read default template file: %w", err)
+			slog.Warn("failed to read default template file, using built-in template", "path", defaultTemplateFile, "error", err)
+			// Use built-in template as last resort
+			toctemplateBytes = []byte(`X:1
+T:Inhaltsverzeichnis
+M:4/4
+L:1/4
+K:C
+W:{{TOC}}
+`)
+		} else {
+			slog.Warn("using default template file", "path", defaultTemplateFile)
 		}
-		slog.Warn("using default template file", "path", defaultTemplateFile)
 	}
 	toctemplate := strings.Replace(string(toctemplateBytes), "W:{{TOC}}", tocabc, 1)
 
