@@ -83,11 +83,11 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	_ = os.MkdirAll(filepath.Join(outputDir, "pdf"), 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "abc"), 0755)
 	_ = os.MkdirAll(filepath.Join(outputDir, "log"), 0755)
-	
+
 	// Create druckdateien directory
 	druckdateienDir := filepath.Join(outputDir, "druckdateien")
 	_ = os.MkdirAll(druckdateienDir, 0755)
-	
+
 	// Create target directories based on folder patterns
 	folderPatterns := s.getFolderPatterns(project)
 	folderSet := make(map[string]bool)
@@ -117,11 +117,11 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	sort.Slice(projectSongs, func(i, j int) bool {
 		return strings.ToLower(projectSongs[i].Edges.Song.Title) < strings.ToLower(projectSongs[j].Edges.Song.Title)
 	})
-	
+
 	// Track completed songs for progress
 	completedSongs := 0
 	totalSongs := len(projectSongs)
-	
+
 	for id, song := range projectSongs {
 		song := song
 		songIndex := id
@@ -140,13 +140,13 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	if err != nil {
 		return fmt.Errorf("failed to build songs: %w", err)
 	}
-	
+
 	updateProgress(75, "Processing copyright information")
 
 	copyrightNames := s.getCopyrightNames(project)
 	slog.Info("Copyright Names", "names", copyrightNames)
 
-	err = s.createCopyrightDirectories(copyrightNames)
+	err = s.createCopyrightDirectories(outputDir, copyrightNames)
 	if err != nil {
 		return fmt.Errorf("failed to create copyright directories: %w", err)
 	}
@@ -175,9 +175,9 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	for folder := range folderSet {
 		sourceDir := filepath.Join(outputDir, "druckdateien", folder)
 		destFile := filepath.Join(outputDir, "druckdateien", folder+".pdf")
-		
+
 		slog.Info("Merging PDFs for folder", "folder", folder, "source", sourceDir, "dest", destFile)
-		
+
 		err = s.mergePDFs(sourceDir, destFile)
 		if err != nil {
 			return fmt.Errorf("failed to merge PDFs in %s directory: %w", folder, err)
@@ -501,8 +501,8 @@ func (s *projectService) mergePDFs(dir, dest string) error {
 	return nil
 }
 
-func (s *projectService) createCopyrightDirectory(copyrightName string) error {
-	dirPath := filepath.Join("referenz", copyrightName)
+func (s *projectService) createCopyrightDirectory(outputDir string, copyrightName string) error {
+	dirPath := filepath.Join(outputDir, "referenz", copyrightName)
 	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
 		err := os.MkdirAll(dirPath, 0755)
 		if err != nil {
@@ -512,9 +512,9 @@ func (s *projectService) createCopyrightDirectory(copyrightName string) error {
 	return nil
 }
 
-func (s *projectService) createCopyrightDirectories(copyrightNames []string) error {
+func (s *projectService) createCopyrightDirectories(outputDir string, copyrightNames []string) error {
 	for _, copyrightName := range copyrightNames {
-		err := s.createCopyrightDirectory(copyrightName)
+		err := s.createCopyrightDirectory(outputDir, copyrightName)
 		if err != nil {
 			return err
 		}
@@ -535,15 +535,15 @@ func (s *projectService) copyPdfsToCopyrightDirectories(project *ent.Project, ou
 	}
 
 	for copyrightName, songs := range copyrightGroups {
-		copyrightDir := filepath.Join("referenz", copyrightName)
-		
+		copyrightDir := filepath.Join(outputDir, "referenz", copyrightName)
+
 		for _, song := range songs {
 			sourcePattern := filepath.Join(outputDir, "pdf", strings.TrimSuffix(song.Edges.Song.Filename, ".abc")+"*.pdf")
 			files, err := filepath.Glob(sourcePattern)
 			if err != nil {
 				return fmt.Errorf("failed to glob files for song %s: %w", song.Edges.Song.Title, err)
 			}
-			
+
 			for _, file := range files {
 				filename := filepath.Base(file)
 				destFile := filepath.Join(copyrightDir, filename)
