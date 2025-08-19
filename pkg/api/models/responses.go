@@ -164,3 +164,11 @@ type BuildListResponse struct {
 	Builds []BuildResultResponse `json:"builds"`
 	Total  int                   `json:"total" example:"3"`
 } // @name BuildListResponse
+
+// BuildDefaultsResponse represents default values for build configuration
+type BuildDefaultsResponse struct {
+	OutputDir         string `json:"output_dir" example:"my-project"`
+	AbcFileDir        string `json:"abc_file_dir" example:"/path/to/abc/files"`
+	PriorityThreshold int    `json:"priority_threshold" example:"4" minimum:"1" maximum:"4"`
+	SampleID          string `json:"sample_id" example:""`
+} // @name BuildDefaultsResponse

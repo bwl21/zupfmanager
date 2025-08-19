@@ -327,6 +327,58 @@ func (h *ProjectHandler) ListBuilds(c *gin.Context) {
 	})
 }
 
+// GetBuildDefaults returns default values for build configuration
+// @Summary Get build defaults
+// @Description Get default values for build configuration including abc_file_dir from last import
+// @Tags projects
+// @Produce json
+// @Param id path int true "Project ID"
+// @Success 200 {object} models.BuildDefaultsResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/projects/{id}/build/defaults [get]
+func (h *ProjectHandler) GetBuildDefaults(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid project ID",
+			Message: "Project ID must be a valid integer",
+		})
+		return
+	}
+
+	// Get the project to check if it exists and has abc_file_dir config
+	project, err := h.services.Project.Get(c.Request.Context(), projectID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{
+			Error:   "Project not found",
+			Message: "The specified project does not exist",
+		})
+		return
+	}
+
+	defaults := models.BuildDefaultsResponse{
+		OutputDir:         project.ShortName,
+		AbcFileDir:        "",
+		PriorityThreshold: 4,
+		SampleID:          "",
+	}
+
+	// Check if project has abc_file_dir configured
+	if abcFileDir, ok := project.Config["abc_file_dir"].(string); ok && abcFileDir != "" {
+		defaults.AbcFileDir = abcFileDir
+	} else {
+		// Try to get the last import directory
+		lastImportDir, err := core.GetLastImportDir()
+		if err == nil && lastImportDir != "" {
+			defaults.AbcFileDir = lastImportDir
+		}
+	}
+
+	c.JSON(http.StatusOK, defaults)
+}
+
 // GetProject gets a project by ID
 // @Summary Get project by ID
 // @Description Get a specific project by its ID

@@ -126,6 +126,7 @@ func (s *Server) setupRoutes() {
 			
 			// Project build endpoints
 			projects.POST("/:id/build", s.projectHandler.BuildProject)
+			projects.GET("/:id/build/defaults", s.projectHandler.GetBuildDefaults)
 			projects.GET("/:id/builds", s.projectHandler.ListBuilds)
 			projects.GET("/:id/builds/:buildId/status", s.projectHandler.GetBuildStatus)
 		}

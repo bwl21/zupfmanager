@@ -38,17 +38,23 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">
               ABC File Directory
             </label>
-            <input
-              v-model="buildConfig.abc_file_dir"
-              type="text"
-              placeholder="Path to ABC files (optional)"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            />
+            <div class="relative">
+              <input
+                v-model="buildConfig.abc_file_dir"
+                type="text"
+                :placeholder="isLoadingDefaults ? 'Loading defaults...' : 'Path to ABC files (uses last import directory if empty)'"
+                :disabled="isLoadingDefaults"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-50 disabled:text-gray-500"
+              />
+              <div v-if="isLoadingDefaults" class="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+              </div>
+            </div>
             <p class="mt-1 text-xs text-gray-500">
-              Directory containing the ABC notation files
+              Directory containing the ABC notation files. If empty, uses the most recent import directory.
             </p>
           </div>
-          
+
           <!-- Priority Threshold -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -134,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { projectBuildApi } from '@/services/api'
 import type { BuildProjectRequest, BuildResultResponse } from '@/types/api'
 
@@ -150,6 +156,7 @@ const emit = defineEmits<{
 
 // State
 const isStarting = ref(false)
+const isLoadingDefaults = ref(false)
 const buildConfig = ref<BuildProjectRequest>({
   output_dir: '',
   abc_file_dir: '',
@@ -186,6 +193,24 @@ const startBuild = async () => {
   }
 }
 
+const loadDefaults = async () => {
+  isLoadingDefaults.value = true
+  try {
+    const defaults = await projectBuildApi.getDefaults(props.projectId)
+    buildConfig.value = {
+      output_dir: defaults.output_dir || '',
+      abc_file_dir: defaults.abc_file_dir || '',
+      priority_threshold: defaults.priority_threshold || 4,
+      sample_id: defaults.sample_id || ''
+    }
+  } catch (err) {
+    console.error('Failed to load build defaults:', err)
+    // Keep the default values if loading fails
+  } finally {
+    isLoadingDefaults.value = false
+  }
+}
+
 const getPriorityDescription = (threshold: number | undefined) => {
   const descriptions = {
     1: 'Only highest priority songs (Priority 1)',
@@ -195,4 +220,9 @@ const getPriorityDescription = (threshold: number | undefined) => {
   }
   return descriptions[threshold as keyof typeof descriptions] || 'All songs'
 }
+
+// Lifecycle
+onMounted(() => {
+  loadDefaults()
+})
 </script>

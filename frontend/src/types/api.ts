@@ -68,6 +68,13 @@ export interface BuildListResponse {
   total: number
 }
 
+export interface BuildDefaultsResponse {
+  output_dir: string
+  abc_file_dir: string
+  priority_threshold: number
+  sample_id: string
+}
+
 // Import Types
 export interface ImportFileRequest {
   file_path: string

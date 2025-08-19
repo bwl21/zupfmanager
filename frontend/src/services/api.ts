@@ -18,7 +18,8 @@ import type {
   BuildProjectRequest,
   BuildStatusResponse,
   BuildResultResponse,
-  BuildListResponse
+  BuildListResponse,
+  BuildDefaultsResponse
 } from '@/types/api'
 
 // Create axios instance with base configuration
@@ -106,6 +107,9 @@ export const projectSongApi = {
 export const projectBuildApi = {
   build: (projectId: number, data?: BuildProjectRequest): Promise<BuildResultResponse> =>
     api.post(`/api/v1/projects/${projectId}/build`, data || {}).then((res) => res.data),
+
+  getDefaults: (projectId: number): Promise<BuildDefaultsResponse> =>
+    api.get(`/api/v1/projects/${projectId}/build/defaults`).then((res) => res.data),
 
   getStatus: (projectId: number, buildId: string): Promise<BuildStatusResponse> =>
     api.get(`/api/v1/projects/${projectId}/builds/${buildId}/status`).then((res) => res.data),
