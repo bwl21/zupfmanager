@@ -156,6 +156,12 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 		return fmt.Errorf("failed to copy PDFs to copyright directories: %w", err)
 	}
 
+	// Copy reference files to druckdateien folders
+	err = s.copyReferenceFilesToDruckdateien(project, outputDir)
+	if err != nil {
+		return fmt.Errorf("failed to copy reference files to druckdateien: %w", err)
+	}
+
 	updateProgress(80, "Creating table of contents")
 	if err := s.createToc(context.Background(), project, projectSongs, outputDir); err != nil {
 		return fmt.Errorf("failed to create table of contents: %w", err)
@@ -432,6 +438,68 @@ func (s *projectService) distributeZupfnoterOutput(project *ent.Project, baseFil
 		err = s.copyFile(pdfFile, targetFile)
 		if err != nil {
 			return fmt.Errorf("failed to copy file: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *projectService) copyReferenceFilesToDruckdateien(project *ent.Project, outputDir string) error {
+	if project.Edges.ProjectSongs == nil {
+		return fmt.Errorf("project songs not loaded")
+	}
+
+	folderPatterns := s.getFolderPatterns(project)
+	
+	// Group songs by copyright
+	copyrightGroups := make(map[string][]*ent.ProjectSong)
+	for _, ps := range project.Edges.ProjectSongs {
+		if ps.Edges.Song.Copyright != "" {
+			copyrightGroups[ps.Edges.Song.Copyright] = append(copyrightGroups[ps.Edges.Song.Copyright], ps)
+		}
+	}
+
+	// Copy reference files from referenz directories to druckdateien folders
+	for copyrightName := range copyrightGroups {
+		referenzDir := filepath.Join("referenz", copyrightName)
+		
+		// Check if referenz directory exists
+		if _, err := os.Stat(referenzDir); os.IsNotExist(err) {
+			continue // Skip if no referenz directory exists for this copyright
+		}
+		
+		// Get all PDF files in the referenz directory
+		pattern := filepath.Join(referenzDir, "*.pdf")
+		files, err := filepath.Glob(pattern)
+		if err != nil {
+			return fmt.Errorf("failed to glob reference files for %s: %w", copyrightName, err)
+		}
+		
+		// Copy each reference file to appropriate druckdateien folders
+		for _, file := range files {
+			filename := filepath.Base(file)
+			
+			// Find target folders based on filename patterns
+			for pattern, folder := range folderPatterns {
+				matched, err := filepath.Match(pattern, filename)
+				if err != nil {
+					return fmt.Errorf("failed to match pattern: %w", err)
+				}
+				if matched {
+					targetDir := filepath.Join(outputDir, "druckdateien", folder)
+					err := os.MkdirAll(targetDir, 0755)
+					if err != nil {
+						return fmt.Errorf("failed to create target directory: %w", err)
+					}
+					
+					targetFile := filepath.Join(targetDir, filename)
+					err = s.copyFile(file, targetFile)
+					if err != nil {
+						return fmt.Errorf("failed to copy reference file %s to %s: %w", file, targetFile, err)
+					}
+					slog.Info("copied reference file", "from", file, "to", targetFile)
+				}
+			}
 		}
 	}
 
