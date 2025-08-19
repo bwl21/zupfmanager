@@ -14,6 +14,8 @@ import (
 	"github.com/bwl21/zupfmanager/internal/ent/song"
 )
 
+const lastImportDirFile = ".zupfmanager_last_import_dir"
+
 // importService implements ImportService interface
 type importService struct {
 	db *database.Client
@@ -37,6 +39,12 @@ func (s *importService) ImportDirectory(ctx context.Context, directory string) (
 	for _, file := range files {
 		result := s.ImportFile(ctx, file)
 		results = append(results, result)
+	}
+
+	// Save the directory as the most recent import directory
+	if err := saveLastImportDir(directory); err != nil {
+		// Log the error but don't fail the import
+		fmt.Printf("Warning: failed to save last import directory: %v\n", err)
 	}
 
 	return results, nil
@@ -166,4 +174,45 @@ func (s *importService) detectChanges(existing *ent.Song, metadata ABCMetadata) 
 	}
 
 	return changes
+}
+
+// saveLastImportDir saves the directory path to a state file
+func saveLastImportDir(directory string) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user home directory: %w", err)
+	}
+	
+	stateFile := filepath.Join(homeDir, lastImportDirFile)
+	absDir, err := filepath.Abs(directory)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+	
+	return os.WriteFile(stateFile, []byte(absDir), 0644)
+}
+
+// GetLastImportDir retrieves the most recent import directory
+func GetLastImportDir() (string, error) {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("failed to get user home directory: %w", err)
+	}
+	
+	stateFile := filepath.Join(homeDir, lastImportDirFile)
+	content, err := os.ReadFile(stateFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil // No previous import directory
+		}
+		return "", fmt.Errorf("failed to read last import directory: %w", err)
+	}
+	
+	dir := strings.TrimSpace(string(content))
+	// Verify the directory still exists
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		return "", nil // Directory no longer exists
+	}
+	
+	return dir, nil
 }

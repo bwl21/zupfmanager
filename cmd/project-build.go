@@ -89,8 +89,14 @@ var projectBuildCmd = &cobra.Command{
 			if ok {
 				projectBuildAbcFileDir = abcFileDir
 			} else {
-				// Provide a default value or handle the error appropriately
-				projectBuildAbcFileDir = ""
+				// Try to use the most recent import directory as default
+				lastImportDir, err := core.GetLastImportDir()
+				if err == nil && lastImportDir != "" {
+					projectBuildAbcFileDir = lastImportDir
+				} else {
+					// Provide a default value or handle the error appropriately
+					projectBuildAbcFileDir = ""
+				}
 			}
 		}
 
