@@ -177,6 +177,32 @@ Co-authored-by: Ona <no-reply@ona.com>
 **Update:** 2025-08-20 10:23  
 **Additional Commit:** `f1026a1`
 
+## Database Schema Separation
+
+**Update:** 2025-08-20 11:04  
+**Additional Commit:** `fb08ad3`
+
+### Critical Architecture Fix
+
+The initial implementation incorrectly stored the `abc_file_dir_preference` in the project's `config` field. However, this field is specifically designed for Zupfnoter configuration templates, not zupfmanager internal settings.
+
+#### Schema Changes:
+1. **New Database Field:** Added `abc_file_dir_preference` as dedicated string field in project schema
+2. **Clean Separation:** Project `config` now only contains Zupfnoter-specific settings
+3. **Database Migration:** Required for existing installations
+
+#### Technical Implementation:
+- **Schema:** `internal/ent/schema/project.go` - Added dedicated field
+- **API Models:** Updated `ProjectResponse` to include new field
+- **Converters:** Updated domain model conversion functions
+- **Handlers:** Modified all project API endpoints to handle new field
+
+#### Benefits:
+- **Clean Architecture:** Clear separation between zupfmanager and Zupfnoter settings
+- **Data Integrity:** Zupfnoter config remains untouched by UI preferences
+- **Maintainability:** Easier to manage different types of configuration
+- **Future-Proof:** Allows for additional zupfmanager-specific settings
+
 ### Enhanced Frontend Implementation
 
 The solution was further enhanced with a proper directory picker widget and database-based persistence:
