@@ -11,10 +11,11 @@ func ProjectFromEnt(entProject *ent.Project) *Project {
 	}
 	
 	return &Project{
-		ID:        entProject.ID,
-		Title:     entProject.Title,
-		ShortName: entProject.ShortName,
-		Config:    entProject.Config,
+		ID:                   entProject.ID,
+		Title:                entProject.Title,
+		ShortName:            entProject.ShortName,
+		Config:               entProject.Config,
+		AbcFileDirPreference: entProject.AbcFileDirPreference,
 	}
 }
 

@@ -28,9 +28,10 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 		Type: "Project",
 		Fields: map[string]*sqlgraph.FieldSpec{
-			project.FieldTitle:     {Type: field.TypeString, Column: project.FieldTitle},
-			project.FieldShortName: {Type: field.TypeString, Column: project.FieldShortName},
-			project.FieldConfig:    {Type: field.TypeJSON, Column: project.FieldConfig},
+			project.FieldTitle:                {Type: field.TypeString, Column: project.FieldTitle},
+			project.FieldShortName:            {Type: field.TypeString, Column: project.FieldShortName},
+			project.FieldConfig:               {Type: field.TypeJSON, Column: project.FieldConfig},
+			project.FieldAbcFileDirPreference: {Type: field.TypeString, Column: project.FieldAbcFileDirPreference},
 		},
 	}
 	graph.Nodes[1] = &sqlgraph.Node{
@@ -179,6 +180,11 @@ func (f *ProjectFilter) WhereShortName(p entql.StringP) {
 // WhereConfig applies the entql json.RawMessage predicate on the config field.
 func (f *ProjectFilter) WhereConfig(p entql.BytesP) {
 	f.Where(p.Field(project.FieldConfig))
+}
+
+// WhereAbcFileDirPreference applies the entql string predicate on the abc_file_dir_preference field.
+func (f *ProjectFilter) WhereAbcFileDirPreference(p entql.StringP) {
+	f.Where(p.Field(project.FieldAbcFileDirPreference))
 }
 
 // WhereHasProjectSongs applies a predicate to check if query has an edge project_songs.

@@ -23,6 +23,8 @@ type Project struct {
 	ShortName string `json:"short_name,omitempty"`
 	// Config holds the value of the "config" field.
 	Config map[string]interface{} `json:"config,omitempty"`
+	// User's preferred directory for ABC files
+	AbcFileDirPreference string `json:"abc_file_dir_preference,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ProjectQuery when eager-loading is set.
 	Edges        ProjectEdges `json:"edges"`
@@ -56,7 +58,7 @@ func (*Project) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case project.FieldID:
 			values[i] = new(sql.NullInt64)
-		case project.FieldTitle, project.FieldShortName:
+		case project.FieldTitle, project.FieldShortName, project.FieldAbcFileDirPreference:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -98,6 +100,12 @@ func (pr *Project) assignValues(columns []string, values []any) error {
 				if err := json.Unmarshal(*value, &pr.Config); err != nil {
 					return fmt.Errorf("unmarshal field config: %w", err)
 				}
+			}
+		case project.FieldAbcFileDirPreference:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field abc_file_dir_preference", values[i])
+			} else if value.Valid {
+				pr.AbcFileDirPreference = value.String
 			}
 		default:
 			pr.selectValues.Set(columns[i], values[i])
@@ -148,6 +156,9 @@ func (pr *Project) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("config=")
 	builder.WriteString(fmt.Sprintf("%v", pr.Config))
+	builder.WriteString(", ")
+	builder.WriteString("abc_file_dir_preference=")
+	builder.WriteString(pr.AbcFileDirPreference)
 	builder.WriteByte(')')
 	return builder.String()
 }

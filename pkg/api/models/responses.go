@@ -69,10 +69,11 @@ type UpdateProjectRequest struct {
 
 // ProjectResponse represents a project response
 type ProjectResponse struct {
-	ID        int                    `json:"id" example:"1"`
-	Title     string                 `json:"title" example:"My Music Project"`
-	ShortName string                 `json:"short_name" example:"my-project"`
-	Config    map[string]interface{} `json:"config,omitempty"`
+	ID                   int                    `json:"id" example:"1"`
+	Title                string                 `json:"title" example:"My Music Project"`
+	ShortName            string                 `json:"short_name" example:"my-project"`
+	Config               map[string]interface{} `json:"config,omitempty"`
+	AbcFileDirPreference string                 `json:"abc_file_dir_preference,omitempty" example:"/path/to/abc/files"`
 } // @name ProjectResponse
 
 // ProjectListResponse represents a list of projects response

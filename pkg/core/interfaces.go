@@ -6,10 +6,11 @@ import (
 
 // Project represents a project domain entity
 type Project struct {
-	ID        int                    `json:"id"`
-	Title     string                 `json:"title"`
-	ShortName string                 `json:"short_name"`
-	Config    map[string]interface{} `json:"config"`
+	ID                   int                    `json:"id"`
+	Title                string                 `json:"title"`
+	ShortName            string                 `json:"short_name"`
+	Config               map[string]interface{} `json:"config"`
+	AbcFileDirPreference string                 `json:"abc_file_dir_preference,omitempty"`
 }
 
 // Song represents a song domain entity

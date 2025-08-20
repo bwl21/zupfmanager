@@ -84,9 +84,9 @@ var projectBuildCmd = &cobra.Command{
 		}
 
 		if projectBuildAbcFileDir == "" {
-			// Priority order: abc_file_dir_preference > abc_file_dir > last import directory
-			if preference, ok := project.Config["abc_file_dir_preference"].(string); ok && preference != "" {
-				projectBuildAbcFileDir = preference
+			// Priority order: abc_file_dir_preference > abc_file_dir (from config) > last import directory
+			if project.AbcFileDirPreference != "" {
+				projectBuildAbcFileDir = project.AbcFileDirPreference
 			} else if abcFileDir, ok := project.Config["abc_file_dir"].(string); ok && abcFileDir != "" {
 				projectBuildAbcFileDir = abcFileDir
 			} else {

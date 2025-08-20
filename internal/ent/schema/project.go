@@ -24,6 +24,9 @@ func (Project) Fields() []ent.Field {
 			NotEmpty(),
 		field.JSON("config", map[string]interface{}{}).
 			Optional(),
+		field.String("abc_file_dir_preference").
+			Optional().
+			Comment("User's preferred directory for ABC files"),
 	}
 }
 

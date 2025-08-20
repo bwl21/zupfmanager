@@ -63,6 +63,11 @@ func ShortName(v string) predicate.Project {
 	return predicate.Project(sql.FieldEQ(FieldShortName, v))
 }
 
+// AbcFileDirPreference applies equality check predicate on the "abc_file_dir_preference" field. It's identical to AbcFileDirPreferenceEQ.
+func AbcFileDirPreference(v string) predicate.Project {
+	return predicate.Project(sql.FieldEQ(FieldAbcFileDirPreference, v))
+}
+
 // TitleEQ applies the EQ predicate on the "title" field.
 func TitleEQ(v string) predicate.Project {
 	return predicate.Project(sql.FieldEQ(FieldTitle, v))
@@ -201,6 +206,81 @@ func ConfigIsNil() predicate.Project {
 // ConfigNotNil applies the NotNil predicate on the "config" field.
 func ConfigNotNil() predicate.Project {
 	return predicate.Project(sql.FieldNotNull(FieldConfig))
+}
+
+// AbcFileDirPreferenceEQ applies the EQ predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceEQ(v string) predicate.Project {
+	return predicate.Project(sql.FieldEQ(FieldAbcFileDirPreference, v))
+}
+
+// AbcFileDirPreferenceNEQ applies the NEQ predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceNEQ(v string) predicate.Project {
+	return predicate.Project(sql.FieldNEQ(FieldAbcFileDirPreference, v))
+}
+
+// AbcFileDirPreferenceIn applies the In predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceIn(vs ...string) predicate.Project {
+	return predicate.Project(sql.FieldIn(FieldAbcFileDirPreference, vs...))
+}
+
+// AbcFileDirPreferenceNotIn applies the NotIn predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceNotIn(vs ...string) predicate.Project {
+	return predicate.Project(sql.FieldNotIn(FieldAbcFileDirPreference, vs...))
+}
+
+// AbcFileDirPreferenceGT applies the GT predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceGT(v string) predicate.Project {
+	return predicate.Project(sql.FieldGT(FieldAbcFileDirPreference, v))
+}
+
+// AbcFileDirPreferenceGTE applies the GTE predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceGTE(v string) predicate.Project {
+	return predicate.Project(sql.FieldGTE(FieldAbcFileDirPreference, v))
+}
+
+// AbcFileDirPreferenceLT applies the LT predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceLT(v string) predicate.Project {
+	return predicate.Project(sql.FieldLT(FieldAbcFileDirPreference, v))
+}
+
+// AbcFileDirPreferenceLTE applies the LTE predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceLTE(v string) predicate.Project {
+	return predicate.Project(sql.FieldLTE(FieldAbcFileDirPreference, v))
+}
+
+// AbcFileDirPreferenceContains applies the Contains predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceContains(v string) predicate.Project {
+	return predicate.Project(sql.FieldContains(FieldAbcFileDirPreference, v))
+}
+
+// AbcFileDirPreferenceHasPrefix applies the HasPrefix predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceHasPrefix(v string) predicate.Project {
+	return predicate.Project(sql.FieldHasPrefix(FieldAbcFileDirPreference, v))
+}
+
+// AbcFileDirPreferenceHasSuffix applies the HasSuffix predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceHasSuffix(v string) predicate.Project {
+	return predicate.Project(sql.FieldHasSuffix(FieldAbcFileDirPreference, v))
+}
+
+// AbcFileDirPreferenceIsNil applies the IsNil predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceIsNil() predicate.Project {
+	return predicate.Project(sql.FieldIsNull(FieldAbcFileDirPreference))
+}
+
+// AbcFileDirPreferenceNotNil applies the NotNil predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceNotNil() predicate.Project {
+	return predicate.Project(sql.FieldNotNull(FieldAbcFileDirPreference))
+}
+
+// AbcFileDirPreferenceEqualFold applies the EqualFold predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceEqualFold(v string) predicate.Project {
+	return predicate.Project(sql.FieldEqualFold(FieldAbcFileDirPreference, v))
+}
+
+// AbcFileDirPreferenceContainsFold applies the ContainsFold predicate on the "abc_file_dir_preference" field.
+func AbcFileDirPreferenceContainsFold(v string) predicate.Project {
+	return predicate.Project(sql.FieldContainsFold(FieldAbcFileDirPreference, v))
 }
 
 // HasProjectSongs applies the HasEdge predicate on the "project_songs" edge.

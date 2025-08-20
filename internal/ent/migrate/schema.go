@@ -14,6 +14,7 @@ var (
 		{Name: "title", Type: field.TypeString},
 		{Name: "short_name", Type: field.TypeString},
 		{Name: "config", Type: field.TypeJSON, Nullable: true},
+		{Name: "abc_file_dir_preference", Type: field.TypeString, Nullable: true},
 	}
 	// ProjectsTable holds the schema information for the "projects" table.
 	ProjectsTable = &schema.Table{

@@ -74,10 +74,11 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 	}
 
 	response := models.ProjectResponse{
-		ID:        project.ID,
-		Title:     project.Title,
-		ShortName: project.ShortName,
-		Config:    project.Config,
+		ID:                   project.ID,
+		Title:                project.Title,
+		ShortName:            project.ShortName,
+		Config:               project.Config,
+		AbcFileDirPreference: project.AbcFileDirPreference,
 	}
 
 	c.JSON(http.StatusCreated, response)
@@ -117,10 +118,11 @@ func (h *ProjectHandler) ListProjects(c *gin.Context) {
 
 	for i, project := range projects {
 		response.Projects[i] = models.ProjectResponse{
-			ID:        project.ID,
-			Title:     project.Title,
-			ShortName: project.ShortName,
-			Config:    project.Config,
+			ID:                   project.ID,
+			Title:                project.Title,
+			ShortName:            project.ShortName,
+			Config:               project.Config,
+			AbcFileDirPreference: project.AbcFileDirPreference,
 		}
 	}
 
@@ -365,9 +367,9 @@ func (h *ProjectHandler) GetBuildDefaults(c *gin.Context) {
 		SampleID:          "",
 	}
 
-	// Priority order: abc_file_dir_preference > abc_file_dir > last import directory
-	if preference, ok := project.Config["abc_file_dir_preference"].(string); ok && preference != "" {
-		defaults.AbcFileDir = preference
+	// Priority order: abc_file_dir_preference > abc_file_dir (from config) > last import directory
+	if project.AbcFileDirPreference != "" {
+		defaults.AbcFileDir = project.AbcFileDirPreference
 	} else if abcFileDir, ok := project.Config["abc_file_dir"].(string); ok && abcFileDir != "" {
 		defaults.AbcFileDir = abcFileDir
 	} else {
@@ -413,30 +415,8 @@ func (h *ProjectHandler) UpdateAbcFileDirPreference(c *gin.Context) {
 		return
 	}
 
-	// Get the existing project
-	project, err := h.services.Project.Get(c.Request.Context(), projectID)
-	if err != nil {
-		c.JSON(http.StatusNotFound, models.ErrorResponse{
-			Error:   "Project not found",
-			Message: "The specified project does not exist",
-		})
-		return
-	}
-
-	// Update the config with the new abc_file_dir preference
-	updatedConfig := make(map[string]interface{})
-	if project.Config != nil {
-		// Copy existing config
-		for k, v := range project.Config {
-			updatedConfig[k] = v
-		}
-	}
-	
-	// Set the new preference
-	updatedConfig["abc_file_dir_preference"] = req.AbcFileDir
-
-	// Update the project config directly via the database client
-	_, err = h.services.DB().Project.UpdateOneID(projectID).SetConfig(updatedConfig).Save(c.Request.Context())
+	// Update the abc_file_dir_preference field directly
+	_, err = h.services.DB().Project.UpdateOneID(projectID).SetAbcFileDirPreference(req.AbcFileDir).Save(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
 			Error:   "Failed to update project",
@@ -456,10 +436,11 @@ func (h *ProjectHandler) UpdateAbcFileDirPreference(c *gin.Context) {
 	}
 
 	response := models.ProjectResponse{
-		ID:        updatedProject.ID,
-		Title:     updatedProject.Title,
-		ShortName: updatedProject.ShortName,
-		Config:    updatedProject.Config,
+		ID:                   updatedProject.ID,
+		Title:                updatedProject.Title,
+		ShortName:            updatedProject.ShortName,
+		Config:               updatedProject.Config,
+		AbcFileDirPreference: updatedProject.AbcFileDirPreference,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -497,10 +478,11 @@ func (h *ProjectHandler) GetProject(c *gin.Context) {
 	}
 
 	response := models.ProjectResponse{
-		ID:        project.ID,
-		Title:     project.Title,
-		ShortName: project.ShortName,
-		Config:    project.Config,
+		ID:                   project.ID,
+		Title:                project.Title,
+		ShortName:            project.ShortName,
+		Config:               project.Config,
+		AbcFileDirPreference: project.AbcFileDirPreference,
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -572,10 +554,11 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 	}
 
 	response := models.ProjectResponse{
-		ID:        project.ID,
-		Title:     project.Title,
-		ShortName: project.ShortName,
-		Config:    project.Config,
+		ID:                   project.ID,
+		Title:                project.Title,
+		ShortName:            project.ShortName,
+		Config:               project.Config,
+		AbcFileDirPreference: project.AbcFileDirPreference,
 	}
 
 	c.JSON(http.StatusOK, response)

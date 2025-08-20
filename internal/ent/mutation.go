@@ -33,19 +33,20 @@ const (
 // ProjectMutation represents an operation that mutates the Project nodes in the graph.
 type ProjectMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *int
-	title                *string
-	short_name           *string
-	_config              *map[string]interface{}
-	clearedFields        map[string]struct{}
-	project_songs        map[int]struct{}
-	removedproject_songs map[int]struct{}
-	clearedproject_songs bool
-	done                 bool
-	oldValue             func(context.Context) (*Project, error)
-	predicates           []predicate.Project
+	op                      Op
+	typ                     string
+	id                      *int
+	title                   *string
+	short_name              *string
+	_config                 *map[string]interface{}
+	abc_file_dir_preference *string
+	clearedFields           map[string]struct{}
+	project_songs           map[int]struct{}
+	removedproject_songs    map[int]struct{}
+	clearedproject_songs    bool
+	done                    bool
+	oldValue                func(context.Context) (*Project, error)
+	predicates              []predicate.Project
 }
 
 var _ ent.Mutation = (*ProjectMutation)(nil)
@@ -273,6 +274,55 @@ func (m *ProjectMutation) ResetConfig() {
 	delete(m.clearedFields, project.FieldConfig)
 }
 
+// SetAbcFileDirPreference sets the "abc_file_dir_preference" field.
+func (m *ProjectMutation) SetAbcFileDirPreference(s string) {
+	m.abc_file_dir_preference = &s
+}
+
+// AbcFileDirPreference returns the value of the "abc_file_dir_preference" field in the mutation.
+func (m *ProjectMutation) AbcFileDirPreference() (r string, exists bool) {
+	v := m.abc_file_dir_preference
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAbcFileDirPreference returns the old "abc_file_dir_preference" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldAbcFileDirPreference(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAbcFileDirPreference is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAbcFileDirPreference requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAbcFileDirPreference: %w", err)
+	}
+	return oldValue.AbcFileDirPreference, nil
+}
+
+// ClearAbcFileDirPreference clears the value of the "abc_file_dir_preference" field.
+func (m *ProjectMutation) ClearAbcFileDirPreference() {
+	m.abc_file_dir_preference = nil
+	m.clearedFields[project.FieldAbcFileDirPreference] = struct{}{}
+}
+
+// AbcFileDirPreferenceCleared returns if the "abc_file_dir_preference" field was cleared in this mutation.
+func (m *ProjectMutation) AbcFileDirPreferenceCleared() bool {
+	_, ok := m.clearedFields[project.FieldAbcFileDirPreference]
+	return ok
+}
+
+// ResetAbcFileDirPreference resets all changes to the "abc_file_dir_preference" field.
+func (m *ProjectMutation) ResetAbcFileDirPreference() {
+	m.abc_file_dir_preference = nil
+	delete(m.clearedFields, project.FieldAbcFileDirPreference)
+}
+
 // AddProjectSongIDs adds the "project_songs" edge to the ProjectSong entity by ids.
 func (m *ProjectMutation) AddProjectSongIDs(ids ...int) {
 	if m.project_songs == nil {
@@ -361,7 +411,7 @@ func (m *ProjectMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProjectMutation) Fields() []string {
-	fields := make([]string, 0, 3)
+	fields := make([]string, 0, 4)
 	if m.title != nil {
 		fields = append(fields, project.FieldTitle)
 	}
@@ -370,6 +420,9 @@ func (m *ProjectMutation) Fields() []string {
 	}
 	if m._config != nil {
 		fields = append(fields, project.FieldConfig)
+	}
+	if m.abc_file_dir_preference != nil {
+		fields = append(fields, project.FieldAbcFileDirPreference)
 	}
 	return fields
 }
@@ -385,6 +438,8 @@ func (m *ProjectMutation) Field(name string) (ent.Value, bool) {
 		return m.ShortName()
 	case project.FieldConfig:
 		return m.Config()
+	case project.FieldAbcFileDirPreference:
+		return m.AbcFileDirPreference()
 	}
 	return nil, false
 }
@@ -400,6 +455,8 @@ func (m *ProjectMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldShortName(ctx)
 	case project.FieldConfig:
 		return m.OldConfig(ctx)
+	case project.FieldAbcFileDirPreference:
+		return m.OldAbcFileDirPreference(ctx)
 	}
 	return nil, fmt.Errorf("unknown Project field %s", name)
 }
@@ -429,6 +486,13 @@ func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetConfig(v)
+		return nil
+	case project.FieldAbcFileDirPreference:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAbcFileDirPreference(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Project field %s", name)
@@ -463,6 +527,9 @@ func (m *ProjectMutation) ClearedFields() []string {
 	if m.FieldCleared(project.FieldConfig) {
 		fields = append(fields, project.FieldConfig)
 	}
+	if m.FieldCleared(project.FieldAbcFileDirPreference) {
+		fields = append(fields, project.FieldAbcFileDirPreference)
+	}
 	return fields
 }
 
@@ -480,6 +547,9 @@ func (m *ProjectMutation) ClearField(name string) error {
 	case project.FieldConfig:
 		m.ClearConfig()
 		return nil
+	case project.FieldAbcFileDirPreference:
+		m.ClearAbcFileDirPreference()
+		return nil
 	}
 	return fmt.Errorf("unknown Project nullable field %s", name)
 }
@@ -496,6 +566,9 @@ func (m *ProjectMutation) ResetField(name string) error {
 		return nil
 	case project.FieldConfig:
 		m.ResetConfig()
+		return nil
+	case project.FieldAbcFileDirPreference:
+		m.ResetAbcFileDirPreference()
 		return nil
 	}
 	return fmt.Errorf("unknown Project field %s", name)
