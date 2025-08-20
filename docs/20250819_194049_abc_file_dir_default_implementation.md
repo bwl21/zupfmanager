@@ -1,4 +1,4 @@
- mchte # ABC File Directory Default Implementation
+ mchte  # ABC File Directory Default Implementation
 
 **Date:** 2025-08-19 19:40:49  
 **Feature:** Default --abc-file-dir from most recent import  
@@ -279,14 +279,114 @@ The solution was further enhanced with a proper directory picker widget and data
 4. Directory appears as default in future build operations
 5. Preference persists across sessions and devices
 
+## Browse Button Removal
+
+**Update:** 2025-08-20 18:00  
+**Additional Commits:** `920859f`, `eae5af2`, `8c0193f`, `8c284c0`, `0ca79fd`
+
+### Critical Browser Security Limitation
+
+After implementing directory picker widgets across the application (ImportView, BuildConfigModal, ProjectsView), a fundamental limitation was discovered: **Browser security restrictions prevent access to absolute file system paths**, which are required by the backend for Zupfnoter integration.
+
+#### Problem Identified:
+1. **Browser APIs Limitation:** `webkitRelativePath` and File System Access API only provide relative paths or directory names
+2. **Backend Requirement:** Zupfnoter requires absolute paths (e.g., `/home/user/Documents/music/`)
+3. **User Confusion:** Browse buttons suggested functionality that couldn't deliver absolute paths
+4. **Inconsistent UX:** Buttons that appeared functional but required manual path completion
+
+#### Root Cause Analysis:
+```javascript
+// Browser APIs can only provide:
+file.webkitRelativePath  // "music-folder/song.abc" (relative)
+dirHandle.name          // "music-folder" (name only)
+
+// But backend needs:
+"/home/user/Documents/music-folder/"  // Absolute path - NOT accessible via browser
+```
+
+#### Solution: Complete Browse Button Removal
+
+**Decision:** Remove all browse buttons and directory picker functionality from the entire application to provide honest, consistent UX.
+
+#### Files Modified:
+1. **frontend/src/views/ImportView.vue**
+   - Removed file and directory browse buttons
+   - Removed hidden input elements and File APIs
+   - Simplified to text-only path input
+   - Removed all browser-based file selection functions
+
+2. **frontend/src/components/BuildConfigModal.vue**
+   - Removed directory browse button for ABC file directory
+   - Removed File System Access API integration
+   - Cleaned up directory selection display components
+   - Simplified to manual path entry
+
+3. **frontend/src/views/ProjectsView.vue**
+   - Removed directory browse button for project creation
+   - Removed directory selection validation
+   - Cleaned up related UI components and functions
+
+#### Technical Changes:
+- **Removed Functions:** `openDirectoryPicker()`, `handleDirectorySelection()`, `selectFile()`, `selectDirectory()`
+- **Removed Refs:** `fileInput`, `directoryInput`, `selectedFileInfo`, `selectedDirectoryInfo`
+- **Removed UI Elements:** Browse buttons, file selection dialogs, directory info displays
+- **Cleaned Text:** Removed all references to "Browse" functionality in help text and comments
+
+#### Commit History:
+1. **920859f** - `feat: add file and directory browser to import view`
+   - Initial implementation of browse buttons with File System Access API
+   - Added file/directory selection dialogs and validation
+   
+2. **eae5af2** - `fix: improve file/directory browser path handling`
+   - Attempted to fix path display issues
+   - Added better user guidance and validation
+   
+3. **8c0193f** - `revert: remove file/directory browser functionality`
+   - Removed browse functionality from ImportView
+   - Recognized browser security limitations
+   
+4. **8c284c0** - `remove: eliminate all browse buttons from application`
+   - Systematic removal from BuildConfigModal and ProjectsView
+   - Complete cleanup of all browser-based file selection
+   
+5. **0ca79fd** - `cleanup: remove remaining browse button references`
+   - Final cleanup of help text and comments
+   - Complete removal of all browse-related UI text
+
+#### Bundle Size Impact:
+- **ImportView:** Reduced from 12+ kB to 8.63 kB
+- **ProjectsView:** Reduced from 11+ kB to 9.55 kB  
+- **BuildConfigModal:** Reduced bundle size through removed File API code
+
+#### User Experience Changes:
+- **Before:** Browse buttons that couldn't provide absolute paths → user confusion
+- **After:** Clear text input fields with absolute path requirements → honest UX
+- **Benefit:** No false promises of functionality that browser security prevents
+
+#### Alternative Solutions Considered:
+1. **Server-side file browser:** Would require backend file system access
+2. **Relative path resolution:** Would need configurable base directories
+3. **Path completion hints:** Still wouldn't solve absolute path requirement
+
+#### Final Architecture:
+```
+User Input: Manual absolute path entry
+├── ImportView: /path/to/abc/files/
+├── BuildConfigModal: /path/to/abc/directory/  
+└── ProjectsView: /path/to/project/directory/
+```
+
 ## Conclusion
 
-The implementation successfully provides a convenient default for the `--abc-file-dir` parameter while maintaining full backward compatibility. The enhanced solution includes:
+The implementation successfully provides a convenient default for the `--abc-file-dir` parameter while maintaining full backward compatibility. The final solution includes:
 
-- **Intuitive UI:** Directory picker widget with browse functionality
+- **Honest UX:** Text-only path input without misleading browse buttons
 - **Robust Persistence:** Database-based storage for multi-device consistency  
-- **Modern Browser Support:** File System Access API with graceful fallbacks
+- **Clean Architecture:** Removed unused browser APIs and file selection code
 - **Flexible Priority System:** Multiple fallback levels for different use cases
 - **Seamless Integration:** Works with existing project configuration system
+- **Reduced Bundle Size:** Smaller JavaScript bundles through code removal
 
-The solution is robust, handles edge cases appropriately, and integrates seamlessly with the existing codebase architecture while providing a significantly improved user experience.
+**Key Lesson:** Browser security restrictions make absolute path access impossible, requiring manual path entry for backend systems that need complete file system paths. The solution prioritizes honest user experience over feature appearance.
+
+The solution is robust, handles edge cases appropriately, and integrates seamlessly with the existing codebase architecture while providing a clear, unambiguous user experience that works within browser security constraints.
