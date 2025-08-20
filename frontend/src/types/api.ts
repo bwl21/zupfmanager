@@ -6,6 +6,32 @@ export interface ErrorResponse {
   details?: Record<string, string>
 }
 
+// Preview Types
+export interface GeneratePreviewRequest {
+  abc_file_dir: string
+  config?: Record<string, any>
+}
+
+export interface GeneratePreviewResponse {
+  pdf_files: string[]
+  preview_dir: string
+}
+
+export interface PreviewPDFResponse {
+  filename: string
+  size: number
+  created_at: string
+}
+
+export interface PreviewPDFListResponse {
+  pdfs: PreviewPDFResponse[]
+  count: number
+}
+
+export interface MessageResponse {
+  message: string
+}
+
 // Project-Song Types
 export interface AddSongToProjectRequest {
   difficulty?: string // "easy" | "medium" | "hard" | "expert"

@@ -98,6 +98,36 @@ type SongListResponse struct {
 	Count int            `json:"count" example:"10"`
 } // @name SongListResponse
 
+// GeneratePreviewRequest represents a request to generate preview PDFs
+type GeneratePreviewRequest struct {
+	AbcFileDir string                 `json:"abc_file_dir" binding:"required" example:"/path/to/abc/files"`
+	Config     map[string]interface{} `json:"config,omitempty"`
+} // @name GeneratePreviewRequest
+
+// GeneratePreviewResponse represents the response from preview generation
+type GeneratePreviewResponse struct {
+	PDFFiles   []string `json:"pdf_files" example:"song_-A1_a3.pdf,song_-M1_a3.pdf"`
+	PreviewDir string   `json:"preview_dir" example:"/tmp/zupfmanager/previews/song-123"`
+} // @name GeneratePreviewResponse
+
+// PreviewPDFResponse represents a preview PDF file
+type PreviewPDFResponse struct {
+	Filename  string `json:"filename" example:"song_-A1_a3.pdf"`
+	Size      int64  `json:"size" example:"12345"`
+	CreatedAt string `json:"created_at" example:"2025-08-20T18:20:00Z"`
+} // @name PreviewPDFResponse
+
+// PreviewPDFListResponse represents a list of preview PDFs
+type PreviewPDFListResponse struct {
+	PDFs  []PreviewPDFResponse `json:"pdfs"`
+	Count int                  `json:"count" example:"3"`
+} // @name PreviewPDFListResponse
+
+// MessageResponse represents a simple message response
+type MessageResponse struct {
+	Message string `json:"message" example:"Operation completed successfully"`
+} // @name MessageResponse
+
 // AddSongToProjectRequest represents a request to add a song to a project
 type AddSongToProjectRequest struct {
 	Difficulty *string `json:"difficulty,omitempty" example:"medium" enums:"easy,medium,hard,expert"`

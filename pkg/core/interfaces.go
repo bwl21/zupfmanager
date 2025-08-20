@@ -138,12 +138,38 @@ type ProjectService interface {
 	ListBuilds(ctx context.Context, projectID int) ([]*BuildResult, error)
 }
 
+// PreviewPDF represents a generated preview PDF
+type PreviewPDF struct {
+	Filename  string `json:"filename"`
+	Size      int64  `json:"size"`
+	CreatedAt string `json:"created_at"`
+}
+
+// GeneratePreviewRequest represents the request to generate preview PDFs
+type GeneratePreviewRequest struct {
+	SongID     int                    `json:"song_id" validate:"required,min=1"`
+	AbcFileDir string                 `json:"abc_file_dir" validate:"required"`
+	Config     map[string]interface{} `json:"config,omitempty"`
+}
+
+// GeneratePreviewResponse represents the response from preview generation
+type GeneratePreviewResponse struct {
+	PDFFiles   []string `json:"pdf_files"`
+	PreviewDir string   `json:"preview_dir"`
+}
+
 // SongService interface defines song operations
 type SongService interface {
 	List(ctx context.Context) ([]*Song, error)
 	Get(ctx context.Context, id int) (*Song, error)
 	Search(ctx context.Context, query string) ([]*Song, error)
 	SearchAdvanced(ctx context.Context, query string, options SearchOptions) ([]*Song, error)
+	
+	// Preview operations
+	GeneratePreview(ctx context.Context, req GeneratePreviewRequest) (*GeneratePreviewResponse, error)
+	ListPreviewPDFs(ctx context.Context, songID int) ([]*PreviewPDF, error)
+	GetPreviewPDF(ctx context.Context, songID int, filename string) (string, error) // returns file path
+	CleanupPreviewPDFs(ctx context.Context, songID int) error
 }
 
 // ImportService interface defines import operations

@@ -138,6 +138,12 @@ func (s *Server) setupRoutes() {
 			songs.GET("", s.songHandler.ListSongs)
 			songs.GET("/:id", s.songHandler.GetSong)
 			songs.GET("/search", s.songHandler.SearchSongs)
+			
+			// Preview endpoints
+			songs.POST("/:id/generate-preview", s.songHandler.GeneratePreview)
+			songs.GET("/:id/preview-pdfs", s.songHandler.ListPreviewPDFs)
+			songs.GET("/:id/preview-pdf/:filename", s.songHandler.GetPreviewPDF)
+			songs.DELETE("/:id/preview-pdfs", s.songHandler.CleanupPreviewPDFs)
 		}
 	}
 	

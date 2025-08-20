@@ -79,7 +79,20 @@ export const songApi = {
     if (options?.genre !== undefined) params.append('genre', options.genre.toString())
     
     return api.get(`/api/v1/songs/search?${params}`).then((res) => res.data)
-  }
+  },
+
+  // Preview API
+  generatePreview: (id: number, data: { abc_file_dir: string; config?: any }): Promise<{ pdf_files: string[]; preview_dir: string }> =>
+    api.post(`/api/v1/songs/${id}/generate-preview`, data).then((res) => res.data),
+
+  listPreviewPDFs: (id: number): Promise<{ pdfs: Array<{ filename: string; size: number; created_at: string }>; count: number }> =>
+    api.get(`/api/v1/songs/${id}/preview-pdfs`).then((res) => res.data),
+
+  getPreviewPDFUrl: (id: number, filename: string): string =>
+    `${api.defaults.baseURL}/api/v1/songs/${id}/preview-pdf/${filename}`,
+
+  cleanupPreviewPDFs: (id: number): Promise<{ message: string }> =>
+    api.delete(`/api/v1/songs/${id}/preview-pdfs`).then((res) => res.data)
 }
 
 // Import API

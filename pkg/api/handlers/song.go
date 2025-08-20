@@ -58,6 +58,191 @@ func (h *SongHandler) ListSongs(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// GeneratePreview generates preview PDFs for a song
+// @Summary Generate preview PDFs
+// @Description Generate preview PDFs for a specific song
+// @Tags songs
+// @Accept json
+// @Produce json
+// @Param id path int true "Song ID"
+// @Param request body models.GeneratePreviewRequest true "Preview generation request"
+// @Success 200 {object} models.GeneratePreviewResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/songs/{id}/generate-preview [post]
+func (h *SongHandler) GeneratePreview(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid song ID",
+			Message: "song ID must be a number",
+		})
+		return
+	}
+
+	var request models.GeneratePreviewRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid request body",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Set the song ID from the URL parameter
+	coreRequest := core.GeneratePreviewRequest{
+		SongID:     id,
+		AbcFileDir: request.AbcFileDir,
+		Config:     request.Config,
+	}
+
+	result, err := h.services.Song.GeneratePreview(c.Request.Context(), coreRequest)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "failed to generate preview",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	response := models.GeneratePreviewResponse{
+		PDFFiles:   result.PDFFiles,
+		PreviewDir: result.PreviewDir,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// ListPreviewPDFs lists available preview PDFs for a song
+// @Summary List preview PDFs
+// @Description Get a list of available preview PDFs for a song
+// @Tags songs
+// @Produce json
+// @Param id path int true "Song ID"
+// @Success 200 {object} models.PreviewPDFListResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/songs/{id}/preview-pdfs [get]
+func (h *SongHandler) ListPreviewPDFs(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid song ID",
+			Message: "song ID must be a number",
+		})
+		return
+	}
+
+	pdfs, err := h.services.Song.ListPreviewPDFs(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "failed to list preview PDFs",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	response := models.PreviewPDFListResponse{
+		PDFs:  make([]models.PreviewPDFResponse, len(pdfs)),
+		Count: len(pdfs),
+	}
+
+	for i, pdf := range pdfs {
+		response.PDFs[i] = models.PreviewPDFResponse{
+			Filename:  pdf.Filename,
+			Size:      pdf.Size,
+			CreatedAt: pdf.CreatedAt,
+		}
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// GetPreviewPDF serves a preview PDF file
+// @Summary Get preview PDF
+// @Description Download or view a specific preview PDF file
+// @Tags songs
+// @Produce application/pdf
+// @Param id path int true "Song ID"
+// @Param filename path string true "PDF filename"
+// @Success 200 {file} application/pdf
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/songs/{id}/preview-pdf/{filename} [get]
+func (h *SongHandler) GetPreviewPDF(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid song ID",
+			Message: "song ID must be a number",
+		})
+		return
+	}
+
+	filename := c.Param("filename")
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "missing filename",
+			Message: "filename parameter is required",
+		})
+		return
+	}
+
+	filePath, err := h.services.Song.GetPreviewPDF(c.Request.Context(), id, filename)
+	if err != nil {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{
+			Error:   "PDF not found",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Serve the PDF file
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", "inline; filename=\""+filename+"\"")
+	c.File(filePath)
+}
+
+// CleanupPreviewPDFs removes all preview PDFs for a song
+// @Summary Cleanup preview PDFs
+// @Description Remove all preview PDFs for a specific song
+// @Tags songs
+// @Produce json
+// @Param id path int true "Song ID"
+// @Success 200 {object} models.MessageResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/songs/{id}/preview-pdfs [delete]
+func (h *SongHandler) CleanupPreviewPDFs(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid song ID",
+			Message: "song ID must be a number",
+		})
+		return
+	}
+
+	err = h.services.Song.CleanupPreviewPDFs(c.Request.Context(), id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "failed to cleanup preview PDFs",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.MessageResponse{
+		Message: "Preview PDFs deleted successfully",
+	})
+}
+
 // GetSong gets a song by ID
 // @Summary Get song by ID
 // @Description Get a specific song by its ID

@@ -389,4 +389,143 @@ The implementation successfully provides a convenient default for the `--abc-fil
 
 **Key Lesson:** Browser security restrictions make absolute path access impossible, requiring manual path entry for backend systems that need complete file system paths. The solution prioritizes honest user experience over feature appearance.
 
+## PDF Preview Functionality
+
+**Update:** 2025-08-20 18:30  
+**Additional Commits:** TBD
+
+### Preview System Implementation
+
+Added comprehensive PDF preview functionality that allows users to generate and view PDF outputs for individual ABC files without running a full project build.
+
+#### Architecture Overview:
+```
+Frontend (Vue.js) → API Endpoints → Song Service → Zupfnoter → PDF Generation
+                                                  ↓
+                                            Temporary Storage → PDF Serving
+```
+
+#### Backend Implementation:
+
+**1. Extended Song Service Interface:**
+```go
+type SongService interface {
+    // Existing methods...
+    
+    // Preview operations
+    GeneratePreview(ctx context.Context, req GeneratePreviewRequest) (*GeneratePreviewResponse, error)
+    ListPreviewPDFs(ctx context.Context, songID int) ([]*PreviewPDF, error)
+    GetPreviewPDF(ctx context.Context, songID int, filename string) (string, error)
+    CleanupPreviewPDFs(ctx context.Context, songID int) error
+}
+```
+
+**2. New API Endpoints:**
+- `POST /api/v1/songs/{id}/generate-preview` - Generate preview PDFs
+- `GET /api/v1/songs/{id}/preview-pdfs` - List available PDFs
+- `GET /api/v1/songs/{id}/preview-pdf/{filename}` - Serve PDF file
+- `DELETE /api/v1/songs/{id}/preview-pdfs` - Cleanup preview PDFs
+
+**3. Preview Storage Strategy:**
+- **Location:** `/tmp/zupfmanager/previews/song-{id}/pdf/`
+- **Naming:** `{abc_filename}*.pdf` (multiple variants per song)
+- **Lifecycle:** User-controlled cleanup + temporary storage
+- **Security:** Path traversal protection, filename validation
+
+#### Frontend Implementation:
+
+**1. Preview Modal Component:**
+```vue
+<PreviewModal>
+  <!-- Generate Section -->
+  <input v-model="abcFileDir" placeholder="/path/to/abc/files" />
+  <button @click="generatePreview">Generate Preview PDFs</button>
+  
+  <!-- PDF List -->
+  <div v-for="pdf in pdfs" class="pdf-item">
+    <span>{{ pdf.filename }}</span>
+    <button @click="openPDF(pdf.filename)">Open</button>
+  </div>
+</PreviewModal>
+```
+
+**2. Integration with SongDetailView:**
+- Added "Preview PDFs" button in actions section
+- Modal-based interface for preview management
+- Real-time PDF list updates after generation
+
+**3. API Service Extensions:**
+```typescript
+export const songApi = {
+  // Existing methods...
+  
+  generatePreview: (id: number, data: { abc_file_dir: string }) => Promise<GeneratePreviewResponse>
+  listPreviewPDFs: (id: number) => Promise<PreviewPDFListResponse>
+  getPreviewPDFUrl: (id: number, filename: string) => string
+  cleanupPreviewPDFs: (id: number) => Promise<MessageResponse>
+}
+```
+
+#### Technical Features:
+
+**1. PDF Generation Process:**
+1. User selects song and provides ABC file directory
+2. System creates temporary preview directory
+3. Zupfnoter generates multiple PDF variants (A3, M, O, B, X layouts)
+4. PDFs stored in organized temporary structure
+5. File list returned to frontend for display
+
+**2. PDF Serving:**
+- Direct file serving with proper MIME types
+- Security validation (no path traversal)
+- Opens in new browser tab for viewing
+- Supports all Zupfnoter-generated PDF variants
+
+**3. Lifecycle Management:**
+- User-initiated cleanup via "Clear All" button
+- Temporary storage in system temp directory
+- Automatic cleanup on system restart
+- Per-song isolation prevents conflicts
+
+#### User Experience:
+
+**1. Preview Workflow:**
+1. Navigate to song detail page
+2. Click "Preview PDFs" button
+3. Enter ABC file directory path
+4. Click "Generate Preview PDFs"
+5. View generated PDFs in list
+6. Click "Open" to view PDF in new tab
+
+**2. Management Features:**
+- **Refresh:** Update PDF list without regeneration
+- **Clear All:** Remove all preview PDFs for song
+- **Real-time Updates:** List updates after generation/cleanup
+- **Error Handling:** Clear error messages for failed operations
+
+#### Benefits:
+
+1. **Quick Preview:** View PDF outputs without full project build
+2. **Multiple Variants:** See all Zupfnoter layout options
+3. **No Project Required:** Works with individual ABC files
+4. **Temporary Storage:** No permanent disk usage
+5. **User Control:** Manual cleanup and regeneration
+
+#### Technical Considerations:
+
+**1. Performance:**
+- Isolated PDF generation per song
+- Temporary storage prevents accumulation
+- Concurrent generation support via goroutines
+
+**2. Security:**
+- Path traversal protection in filename handling
+- Temporary directory isolation
+- No permanent file system modifications
+
+**3. Error Handling:**
+- Zupfnoter execution error capture
+- File system error handling
+- User-friendly error messages in UI
+
 The solution is robust, handles edge cases appropriately, and integrates seamlessly with the existing codebase architecture while providing a clear, unambiguous user experience that works within browser security constraints.
