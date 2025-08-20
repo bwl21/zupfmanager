@@ -45,8 +45,9 @@
                   <input
                     v-model="buildConfig.abc_file_dir"
                     type="text"
-                    :placeholder="isLoadingDefaults ? 'Loading defaults...' : 'Path to ABC files (uses last import directory if empty)'"
+                    :placeholder="isLoadingDefaults ? 'Loading defaults...' : 'Full path to ABC files directory (e.g., /home/user/music/abc)'"
                     :disabled="isLoadingDefaults"
+                    @input="clearDirectoryInfo"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                   <div v-if="isLoadingDefaults" class="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -58,6 +59,7 @@
                   type="button"
                   :disabled="isLoadingDefaults"
                   class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Browse to help locate the directory"
                 >
                   <svg class="h-4 w-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H6a2 2 0 00-2 2z" />
@@ -65,7 +67,7 @@
                   Browse
                 </button>
               </div>
-              
+
               <!-- Hidden file input for directory selection -->
               <input
                 ref="directoryInput"
@@ -78,8 +80,13 @@
               />
             </div>
             <p class="mt-1 text-xs text-gray-500">
-              Directory containing the ABC notation files. Click "Browse" to select a directory from your computer.
+              Full path to directory containing ABC notation files. Click "Browse" to help locate the directory, then enter or verify the complete path.
             </p>
+            <div v-if="selectedDirectoryInfo" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+              <p class="text-blue-800 font-medium">Directory selected: {{ selectedDirectoryInfo.name }}</p>
+              <p class="text-blue-600">Found {{ selectedDirectoryInfo.abcCount }} ABC files</p>
+              <p class="text-blue-600 mt-1">Please enter the complete path to this directory in the field above.</p>
+            </div>
           </div>
 
           <!-- Priority Threshold -->
@@ -129,7 +136,22 @@
           </div>
         </div>
 
-        <!-- Warning -->
+        <!-- Path Warning -->
+        <div v-if="buildConfig.abc_file_dir && !isValidPath(buildConfig.abc_file_dir)" class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
+          <div class="flex">
+            <svg class="h-5 w-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div class="ml-3">
+              <p class="text-sm text-orange-700">
+                <strong>Path may be incomplete:</strong> Please ensure you enter the complete absolute path to the ABC files directory 
+                (e.g., <code class="bg-orange-100 px-1 rounded">/home/user/music/abc</code> or <code class="bg-orange-100 px-1 rounded">C:\Users\User\Music\ABC</code>).
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- General Warning -->
         <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
           <div class="flex">
             <svg class="h-5 w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -185,6 +207,7 @@ const emit = defineEmits<{
 const isStarting = ref(false)
 const isLoadingDefaults = ref(false)
 const directoryInput = ref<HTMLInputElement | null>(null)
+const selectedDirectoryInfo = ref<{name: string, abcCount: number} | null>(null)
 const buildConfig = ref<BuildProjectRequest>({
   output_dir: '',
   abc_file_dir: '',
@@ -203,6 +226,11 @@ const startBuild = async () => {
     }
     if (buildConfig.value.abc_file_dir?.trim()) {
       config.abc_file_dir = buildConfig.value.abc_file_dir.trim()
+      
+      // Save the abc_file_dir as preference if it's a valid path (not a placeholder)
+      if (!config.abc_file_dir.startsWith('[Enter full path to:')) {
+        await saveAbcFileDirPreference(config.abc_file_dir)
+      }
     }
     if (buildConfig.value.priority_threshold && buildConfig.value.priority_threshold !== 4) {
       config.priority_threshold = buildConfig.value.priority_threshold
@@ -277,42 +305,65 @@ const handleDirectorySelection = async (event: Event) => {
     const relativePath = firstFile.webkitRelativePath
     
     let directoryName = ''
+    let abcCount = 0
+    
     if (relativePath) {
       // Extract the root directory name from the relative path
       const pathParts = relativePath.split('/')
       directoryName = pathParts[0]
       
-      // Log ABC files found for user feedback
+      // Count ABC files found
       const abcFiles = Array.from(files)
         .filter(file => file.name.toLowerCase().endsWith('.abc'))
+      abcCount = abcFiles.length
       
-      if (abcFiles.length > 0) {
-        console.log(`Found ${abcFiles.length} ABC files in directory: ${directoryName}`)
-      }
+      console.log(`Found ${abcCount} ABC files in directory: ${directoryName}`)
     } else {
       // Fallback if webkitRelativePath is not available
       directoryName = 'Selected Directory'
     }
     
-    // Update the form field
-    buildConfig.value.abc_file_dir = directoryName
+    // Show directory info to user
+    selectedDirectoryInfo.value = {
+      name: directoryName,
+      abcCount: abcCount
+    }
     
-    // Save to project configuration
-    await saveAbcFileDirPreference(directoryName)
+    // Don't automatically update the field - let user enter the full path
+    // Only suggest if the field is empty
+    if (!buildConfig.value.abc_file_dir) {
+      buildConfig.value.abc_file_dir = `[Enter full path to: ${directoryName}]`
+    }
     
     // Reset the input so the same directory can be selected again
     target.value = ''
   }
 }
 
-const saveAbcFileDirPreference = async (directoryName: string) => {
+const clearDirectoryInfo = () => {
+  selectedDirectoryInfo.value = null
+}
+
+const saveAbcFileDirPreference = async (directoryPath: string) => {
   try {
-    await projectApi.updateAbcFileDir(props.projectId, directoryName)
-    console.log(`Saved ABC file directory preference: ${directoryName}`)
+    await projectApi.updateAbcFileDir(props.projectId, directoryPath)
+    console.log(`Saved ABC file directory preference: ${directoryPath}`)
   } catch (err) {
     console.error('Failed to save ABC file directory preference:', err)
     // Don't show error to user as this is not critical for the build process
   }
+}
+
+const isValidPath = (path: string) => {
+  if (!path || path.trim() === '') return true // Empty is valid (uses defaults)
+  if (path.startsWith('[Enter full path to:')) return false // Placeholder text
+  
+  // Check for common path patterns
+  const hasAbsolutePath = path.startsWith('/') || // Unix/Linux/Mac
+                         /^[A-Za-z]:\\/.test(path) || // Windows (C:\)
+                         path.startsWith('\\\\') // UNC path (\\server\share)
+  
+  return hasAbsolutePath && path.length > 3 // Must be more than just root
 }
 
 const getPriorityDescription = (threshold: number | undefined) => {
