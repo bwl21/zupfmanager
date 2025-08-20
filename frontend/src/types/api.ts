@@ -126,6 +126,7 @@ export interface ProjectResponse {
   title: string
   short_name: string
   config?: Record<string, any>
+  abc_file_dir_preference?: string
 }
 
 export interface ProjectListResponse {

@@ -124,7 +124,53 @@
             />
             <p class="mt-1 text-xs text-gray-500">Only letters, numbers, hyphens, and underscores allowed</p>
           </div>
-          <div class="flex items-center">
+          <!-- ABC File Directory (only for editing) -->
+          <div v-if="editingProject">
+            <label for="abc_file_dir" class="block text-sm font-medium text-gray-700">ABC Files Directory</label>
+            <div class="mt-1 flex space-x-2">
+              <input
+                id="abc_file_dir"
+                v-model="projectForm.abc_file_dir_preference"
+                type="text"
+                class="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Full path to ABC files directory (e.g., /home/user/music/abc)"
+                @input="clearDirectoryInfo"
+              />
+              <button
+                type="button"
+                @click="openDirectoryPicker"
+                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                title="Browse to help locate the directory"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H6a2 2 0 00-2 2z" />
+                </svg>
+              </button>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">
+              Full path to directory containing ABC notation files. Click "Browse" to help locate the directory.
+            </p>
+            <!-- Directory selection info -->
+            <div v-if="selectedDirectoryInfo" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+              <p class="text-blue-800 font-medium">Directory selected: {{ selectedDirectoryInfo.name }}</p>
+              <p class="text-blue-600">Found {{ selectedDirectoryInfo.abcCount }} ABC files</p>
+              <p class="text-blue-600 mt-1">Please enter the complete path to this directory in the field above.</p>
+            </div>
+            <!-- Path validation warning -->
+            <div v-if="projectForm.abc_file_dir_preference && !isValidPath(projectForm.abc_file_dir_preference)" class="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
+              <div class="flex">
+                <svg class="h-4 w-4 text-orange-400 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+                <p class="text-orange-700">
+                  <strong>Path may be incomplete:</strong> Please ensure you enter the complete absolute path 
+                  (e.g., <code class="bg-orange-100 px-1 rounded">/home/user/music/abc</code> or <code class="bg-orange-100 px-1 rounded">C:\Users\User\Music\ABC</code>).
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div>
             <input
               id="default_config"
               v-model="projectForm.default_config"
@@ -152,6 +198,17 @@
             </button>
           </div>
         </form>
+        
+        <!-- Hidden file input for directory selection -->
+        <input
+          ref="directoryInput"
+          type="file"
+          webkitdirectory
+          directory
+          multiple
+          @change="handleDirectorySelection"
+          class="hidden"
+        />
       </div>
     </div>
   </div>
@@ -179,8 +236,13 @@ const editingProject = ref<ProjectResponse | null>(null)
 const projectForm = reactive({
   title: '',
   short_name: '',
-  default_config: true
+  default_config: true,
+  abc_file_dir_preference: ''
 })
+
+// Directory picker state
+const directoryInput = ref<HTMLInputElement | null>(null)
+const selectedDirectoryInfo = ref<{name: string, abcCount: number} | null>(null)
 
 // Create project mutation
 const { mutate: createProject, isPending: isCreating } = useMutation({
@@ -214,6 +276,8 @@ function resetForm() {
   projectForm.title = ''
   projectForm.short_name = ''
   projectForm.default_config = true
+  projectForm.abc_file_dir_preference = ''
+  selectedDirectoryInfo.value = null
 }
 
 function editProject(project: ProjectResponse) {
@@ -221,6 +285,7 @@ function editProject(project: ProjectResponse) {
   projectForm.title = project.title
   projectForm.short_name = project.short_name
   projectForm.default_config = false
+  projectForm.abc_file_dir_preference = project.abc_file_dir_preference || ''
 }
 
 function cancelEdit() {
@@ -229,8 +294,9 @@ function cancelEdit() {
   resetForm()
 }
 
-function submitProject() {
+async function submitProject() {
   if (editingProject.value) {
+    // Update project basic info
     updateProject({
       id: editingProject.value.id,
       data: {
@@ -239,6 +305,17 @@ function submitProject() {
         default_config: projectForm.default_config
       }
     })
+    
+    // Update abc_file_dir_preference separately if it's a valid path
+    if (projectForm.abc_file_dir_preference && 
+        !projectForm.abc_file_dir_preference.startsWith('[Enter full path to:') &&
+        isValidPath(projectForm.abc_file_dir_preference)) {
+      try {
+        await projectApi.updateAbcFileDir(editingProject.value.id, projectForm.abc_file_dir_preference)
+      } catch (err) {
+        console.error('Failed to update ABC file directory preference:', err)
+      }
+    }
   } else {
     createProject({
       title: projectForm.title,
@@ -246,6 +323,104 @@ function submitProject() {
       default_config: projectForm.default_config
     })
   }
+}
+
+// Directory picker functions
+const openDirectoryPicker = async () => {
+  // Try to use the modern File System Access API first
+  if ('showDirectoryPicker' in window) {
+    try {
+      const dirHandle = await (window as any).showDirectoryPicker({
+        mode: 'read'
+      })
+      
+      // Get the directory name (this is what we can reliably get)
+      const directoryName = dirHandle.name
+      
+      // Show directory info to user
+      selectedDirectoryInfo.value = {
+        name: directoryName,
+        abcCount: 0 // We can't count files with this API
+      }
+      
+      // Don't automatically update the field - let user enter the full path
+      if (!projectForm.abc_file_dir_preference) {
+        projectForm.abc_file_dir_preference = `[Enter full path to: ${directoryName}]`
+      }
+      
+      return
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.log('File System Access API failed, falling back to input method:', err)
+      }
+    }
+  }
+  
+  // Fallback to traditional file input method
+  if (directoryInput.value) {
+    directoryInput.value.click()
+  }
+}
+
+const handleDirectorySelection = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  
+  if (files && files.length > 0) {
+    // Use webkitRelativePath to get directory structure
+    const firstFile = files[0]
+    const relativePath = firstFile.webkitRelativePath
+    
+    let directoryName = ''
+    let abcCount = 0
+    
+    if (relativePath) {
+      // Extract the root directory name from the relative path
+      const pathParts = relativePath.split('/')
+      directoryName = pathParts[0]
+      
+      // Count ABC files found
+      const abcFiles = Array.from(files)
+        .filter(file => file.name.toLowerCase().endsWith('.abc'))
+      abcCount = abcFiles.length
+      
+      console.log(`Found ${abcCount} ABC files in directory: ${directoryName}`)
+    } else {
+      // Fallback if webkitRelativePath is not available
+      directoryName = 'Selected Directory'
+    }
+    
+    // Show directory info to user
+    selectedDirectoryInfo.value = {
+      name: directoryName,
+      abcCount: abcCount
+    }
+    
+    // Don't automatically update the field - let user enter the full path
+    // Only suggest if the field is empty
+    if (!projectForm.abc_file_dir_preference) {
+      projectForm.abc_file_dir_preference = `[Enter full path to: ${directoryName}]`
+    }
+    
+    // Reset the input so the same directory can be selected again
+    target.value = ''
+  }
+}
+
+const clearDirectoryInfo = () => {
+  selectedDirectoryInfo.value = null
+}
+
+const isValidPath = (path: string) => {
+  if (!path || path.trim() === '') return true // Empty is valid (uses defaults)
+  if (path.startsWith('[Enter full path to:')) return false // Placeholder text
+  
+  // Check for common path patterns
+  const hasAbsolutePath = path.startsWith('/') || // Unix/Linux/Mac
+                         /^[A-Za-z]:\\/.test(path) || // Windows (C:\)
+                         path.startsWith('\\\\') // UNC path (\\server\share)
+  
+  return hasAbsolutePath && path.length > 3 // Must be more than just root
 }
 
 function deleteProject(id: number) {

@@ -277,10 +277,18 @@ const openDirectoryPicker = async () => {
       
       // Get the directory name (this is what we can reliably get)
       const directoryName = dirHandle.name
-      buildConfig.value.abc_file_dir = directoryName
       
-      // Save to project configuration
-      await saveAbcFileDirPreference(directoryName)
+      // Show directory info to user
+      selectedDirectoryInfo.value = {
+        name: directoryName,
+        abcCount: 0 // We can't count files with this API
+      }
+      
+      // Don't automatically update the field - let user enter the full path
+      if (!buildConfig.value.abc_file_dir) {
+        buildConfig.value.abc_file_dir = `[Enter full path to: ${directoryName}]`
+      }
+      
       return
     } catch (err: any) {
       if (err.name !== 'AbortError') {
