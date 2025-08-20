@@ -1,9 +1,9 @@
- mchte  # ABC File Directory Default Implementation
+ # ABC File Directory Default Implementation
 
-**Date:** 2025-08-19 19:40:49  
-**Feature:** Default --abc-file-dir from most recent import  
+**Date:** 2025-08-19 19:40:49 (Updated: 2025-08-20 20:29:00)  
+**Feature:** Default --abc-file-dir from most recent import + Preview Integration  
 **Branch:** feature/abc-file-dir-default  
-**Commit:** 554ff12  
+**Latest Commit:** d79ce39  
 
 ## Problem Statement
 
@@ -530,3 +530,105 @@ export const songApi = {
 - Graceful handling of missing directories
 
 The solution is robust, handles edge cases appropriately, and integrates seamlessly with the existing codebase architecture while providing a clear, unambiguous user experience that works within browser security constraints.
+
+## Preview Functionality Enhancement
+
+**Update:** 2025-08-20 20:30  
+**Additional Commits:** `30eb9c4`, `27b63f8`, `d79ce39`
+
+### Individual Song Preview Implementation
+
+The preview functionality has been significantly enhanced to provide a better user experience by moving from project-level to individual song-level previews with automatic integration of the `abc_file_dir_preference` setting.
+
+#### Key Changes:
+
+**1. Preview Button Location:**
+- **Before:** Single "Preview PDFs" button in ProjectDetailView (project-level)
+- **After:** Individual "Preview" button for each song in ProjectSongManager (song-level)
+
+**2. Automatic Directory Integration:**
+- Preview modal now automatically uses the project's `abc_file_dir_preference` as the default directory
+- Auto-search for PDFs when opening preview if default directory is available
+- Users can still manually override the directory if needed
+
+**3. Enhanced Button Styling:**
+- Consistent design system across all action buttons
+- Color-coded actions: Green (Preview), Blue (Edit), Red (Remove)
+- Proper Tailwind CSS classes with focus states and accessibility
+
+#### Technical Implementation:
+
+**Frontend Changes:**
+
+**1. ProjectSongManager.vue:**
+```vue
+<!-- Individual preview button for each song -->
+<button @click="previewSong(projectSong)" 
+        class="inline-flex items-center px-3 py-1 border border-transparent 
+               text-xs font-medium rounded-md text-white bg-green-600 
+               hover:bg-green-700 focus:outline-none focus:ring-2 
+               focus:ring-offset-2 focus:ring-green-500">
+  <svg class="w-4 h-4 mr-1"><!-- eye icon --></svg>
+  Preview
+</button>
+```
+
+**2. PreviewModal.vue Enhancement:**
+```vue
+interface Props {
+  song: SongResponse
+  project?: { abc_file_dir_preference?: string } | null
+}
+
+// Auto-initialize with project preference
+onMounted(() => {
+  if (props.project?.abc_file_dir_preference) {
+    abcFileDir.value = props.project.abc_file_dir_preference
+    findPDFs() // Auto-search for PDFs
+  }
+})
+```
+
+**3. Project Data Integration:**
+- ProjectSongManager loads project data via `projectApi.get()`
+- Project data passed to PreviewModal for directory preference access
+- Maintains separation of concerns while enabling smart defaults
+
+#### User Experience Improvements:
+
+**1. Contextual Previews:**
+- Each song has its own preview button directly in the song list
+- No need to navigate to project-level actions for preview
+- Immediate visual feedback with proper button styling
+
+**2. Smart Defaults:**
+- Preview modal opens with project's ABC directory pre-filled
+- Automatic PDF search eliminates manual "Find PDFs" step
+- Consistent directory usage across all songs in a project
+
+**3. Workflow Optimization:**
+- Faster access to individual song previews
+- Reduced clicks and navigation steps
+- Better integration with project settings
+
+#### Benefits:
+
+1. **Improved UX:** Direct access to preview from song list
+2. **Smart Automation:** Uses project settings automatically
+3. **Consistent Styling:** Professional button design across the application
+4. **Better Context:** Preview is contextual to individual songs
+5. **Reduced Friction:** Fewer manual steps required for preview
+
+#### Architecture:
+
+```
+ProjectSongManager → loads project data
+       ↓
+Individual Song Preview Buttons → PreviewModal
+       ↓
+Auto-uses project.abc_file_dir_preference → PDF Discovery
+       ↓
+Displays available PDFs for specific song
+```
+
+This enhancement provides a more intuitive and efficient workflow for users who want to preview individual songs while leveraging the project's ABC directory configuration for seamless integration.
