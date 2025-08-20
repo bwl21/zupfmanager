@@ -39,7 +39,7 @@
               ABC File Directory
             </label>
             <div class="space-y-2">
-              <!-- Directory Input with Browse Button -->
+              <!-- Directory Input -->
               <div class="flex space-x-2">
                 <div class="flex-1 relative">
                   <input

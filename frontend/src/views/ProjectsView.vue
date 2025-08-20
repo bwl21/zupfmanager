@@ -137,7 +137,7 @@
               />
             </div>
             <p class="mt-1 text-xs text-gray-500">
-              Full path to directory containing ABC notation files. Click "Browse" to help locate the directory.
+              Full path to directory containing ABC notation files.
             </p>
             <!-- Directory selection info -->
             <!-- Path validation warning -->
