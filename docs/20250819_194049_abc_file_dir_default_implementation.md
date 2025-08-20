@@ -172,6 +172,63 @@ Co-authored-by: Ona <no-reply@ona.com>
 - `cmd/project-build.go` (6 lines added, 2 lines modified)
 - `pkg/core/import.go` (49 lines added)
 
+## Directory Picker Widget Enhancement
+
+**Update:** 2025-08-20 10:23  
+**Additional Commit:** `f1026a1`
+
+### Enhanced Frontend Implementation
+
+The solution was further enhanced with a proper directory picker widget and database-based persistence:
+
+#### Frontend Improvements:
+1. **Directory Picker Widget:**
+   - Browse button with folder icon
+   - Support for modern File System Access API
+   - Fallback to `webkitdirectory` for broader browser support
+   - Visual loading states and improved UX
+
+2. **Database Persistence:**
+   - Removed localStorage dependency
+   - Directory preference stored in project configuration
+   - Multi-device consistency
+   - Automatic saving when directory is selected
+
+#### Backend Enhancements:
+1. **New API Endpoint:** `PUT /api/v1/projects/{id}/abc-file-dir`
+   - Updates `abc_file_dir_preference` in project config
+   - Returns updated project configuration
+
+2. **Enhanced Priority System:**
+   ```
+   1. Explicit --abc-file-dir flag
+   2. Project abc_file_dir_preference (user selection)
+   3. Project abc_file_dir config
+   4. Last import directory
+   5. Empty string
+   ```
+
+#### Technical Implementation:
+- **Frontend:** Modern directory selection with File System Access API fallback
+- **Backend:** Project config field `abc_file_dir_preference`
+- **Persistence:** Database-based storage in project configuration JSON
+- **API:** RESTful endpoint for preference updates
+
+#### User Experience:
+1. User clicks "Browse" button in build modal
+2. System opens directory picker (native or web-based)
+3. Selected directory is immediately saved to project configuration
+4. Directory appears as default in future build operations
+5. Preference persists across sessions and devices
+
 ## Conclusion
 
-The implementation successfully provides a convenient default for the `--abc-file-dir` parameter while maintaining full backward compatibility. The solution is robust, handles edge cases appropriately, and integrates seamlessly with the existing codebase architecture.
+The implementation successfully provides a convenient default for the `--abc-file-dir` parameter while maintaining full backward compatibility. The enhanced solution includes:
+
+- **Intuitive UI:** Directory picker widget with browse functionality
+- **Robust Persistence:** Database-based storage for multi-device consistency  
+- **Modern Browser Support:** File System Access API with graceful fallbacks
+- **Flexible Priority System:** Multiple fallback levels for different use cases
+- **Seamless Integration:** Works with existing project configuration system
+
+The solution is robust, handles edge cases appropriately, and integrates seamlessly with the existing codebase architecture while providing a significantly improved user experience.
