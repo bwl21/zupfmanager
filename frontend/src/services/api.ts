@@ -19,7 +19,11 @@ import type {
   BuildStatusResponse,
   BuildResultResponse,
   BuildListResponse,
-  BuildDefaultsResponse
+  BuildDefaultsResponse,
+  GeneratePreviewRequest,
+  GeneratePreviewResponse,
+  PreviewPDFListResponse,
+  MessageResponse
 } from '@/types/api'
 
 // Create axios instance with base configuration
@@ -82,16 +86,16 @@ export const songApi = {
   },
 
   // Preview API
-  generatePreview: (id: number, data: { abc_file_dir: string; config?: any }): Promise<{ pdf_files: string[]; preview_dir: string }> =>
+  generatePreview: (id: number, data: GeneratePreviewRequest): Promise<GeneratePreviewResponse> =>
     api.post(`/api/v1/songs/${id}/generate-preview`, data).then((res) => res.data),
 
-  listPreviewPDFs: (id: number): Promise<{ pdfs: Array<{ filename: string; size: number; created_at: string }>; count: number }> =>
+  listPreviewPDFs: (id: number): Promise<PreviewPDFListResponse> =>
     api.get(`/api/v1/songs/${id}/preview-pdfs`).then((res) => res.data),
 
   getPreviewPDFUrl: (id: number, filename: string): string =>
     `${api.defaults.baseURL}/api/v1/songs/${id}/preview-pdf/${filename}`,
 
-  cleanupPreviewPDFs: (id: number): Promise<{ message: string }> =>
+  cleanupPreviewPDFs: (id: number): Promise<MessageResponse> =>
     api.delete(`/api/v1/songs/${id}/preview-pdfs`).then((res) => res.data)
 }
 
