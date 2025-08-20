@@ -18,15 +18,34 @@
           <form @submit.prevent="importSingleFile" class="space-y-4">
             <div>
               <label for="file_path" class="block text-sm font-medium text-gray-700">File Path</label>
-              <input
-                id="file_path"
-                v-model="singleFileForm.file_path"
-                type="text"
-                required
-                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="/path/to/song.abc"
-              />
-              <p class="mt-1 text-xs text-gray-500">Enter the full path to the ABC file</p>
+              <div class="mt-1 flex space-x-2">
+                <input
+                  id="file_path"
+                  v-model="singleFileForm.file_path"
+                  type="text"
+                  required
+                  class="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="/path/to/song.abc"
+                  @input="clearFileInfo"
+                />
+                <button
+                  type="button"
+                  @click="selectFile"
+                  class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  title="Browse for ABC file"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </button>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">Enter the full path to the ABC file or click Browse to select</p>
+              <!-- File selection info -->
+              <div v-if="selectedFileInfo" class="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
+                <p class="text-green-800 font-medium">File selected: {{ selectedFileInfo.name }}</p>
+                <p class="text-green-600">Size: {{ formatFileSize(selectedFileInfo.size) }}</p>
+                <p class="text-green-600 mt-1">Please enter the complete path to this file in the field above.</p>
+              </div>
             </div>
             <button
               type="submit"
@@ -49,15 +68,34 @@
           <form @submit.prevent="importDirectory" class="space-y-4">
             <div>
               <label for="directory_path" class="block text-sm font-medium text-gray-700">Directory Path</label>
-              <input
-                id="directory_path"
-                v-model="directoryForm.directory_path"
-                type="text"
-                required
-                class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                placeholder="/path/to/songs/"
-              />
-              <p class="mt-1 text-xs text-gray-500">Enter the full path to the directory containing ABC files</p>
+              <div class="mt-1 flex space-x-2">
+                <input
+                  id="directory_path"
+                  v-model="directoryForm.directory_path"
+                  type="text"
+                  required
+                  class="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="/path/to/songs/"
+                  @input="clearDirectoryInfo"
+                />
+                <button
+                  type="button"
+                  @click="selectDirectory"
+                  class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  title="Browse for directory"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H6a2 2 0 00-2 2z" />
+                  </svg>
+                </button>
+              </div>
+              <p class="mt-1 text-xs text-gray-500">Enter the full path to the directory containing ABC files or click Browse to select</p>
+              <!-- Directory selection info -->
+              <div v-if="selectedDirectoryInfo" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                <p class="text-blue-800 font-medium">Directory selected: {{ selectedDirectoryInfo.name }}</p>
+                <p class="text-blue-600">Found {{ selectedDirectoryInfo.abcCount }} ABC files</p>
+                <p class="text-blue-600 mt-1">Please enter the complete path to this directory in the field above.</p>
+              </div>
             </div>
             <button
               type="submit"
@@ -216,6 +254,24 @@
         </div>
       </div>
     </div>
+    
+    <!-- Hidden file inputs for file/directory selection -->
+    <input
+      ref="fileInput"
+      type="file"
+      accept=".abc"
+      @change="handleFileSelection"
+      class="hidden"
+    />
+    <input
+      ref="directoryInput"
+      type="file"
+      webkitdirectory
+      directory
+      multiple
+      @change="handleDirectorySelection"
+      class="hidden"
+    />
   </div>
 </template>
 
@@ -241,6 +297,12 @@ const directoryForm = reactive({
 const lastImportResult = ref<ImportResponse | null>(null)
 const importError = ref<any>(null)
 
+// File/Directory picker state
+const fileInput = ref<HTMLInputElement | null>(null)
+const directoryInput = ref<HTMLInputElement | null>(null)
+const selectedFileInfo = ref<{name: string, size: number} | null>(null)
+const selectedDirectoryInfo = ref<{name: string, abcCount: number} | null>(null)
+
 // Single file import mutation
 const { mutate: importFileMutation, isPending: isImportingSingle } = useMutation({
   mutationFn: importApi.file,
@@ -248,6 +310,7 @@ const { mutate: importFileMutation, isPending: isImportingSingle } = useMutation
     lastImportResult.value = data
     importError.value = null
     singleFileForm.file_path = ''
+    selectedFileInfo.value = null
     // Invalidate songs query to refresh the list
     queryClient.invalidateQueries({ queryKey: ['songs'] })
   },
@@ -264,6 +327,7 @@ const { mutate: importDirectoryMutation, isPending: isImportingDirectory } = use
     lastImportResult.value = data
     importError.value = null
     directoryForm.directory_path = ''
+    selectedDirectoryInfo.value = null
     // Invalidate songs query to refresh the list
     queryClient.invalidateQueries({ queryKey: ['songs'] })
   },
@@ -274,11 +338,100 @@ const { mutate: importDirectoryMutation, isPending: isImportingDirectory } = use
 })
 
 function importSingleFile() {
-  importFileMutation({ file_path: singleFileForm.file_path })
+  // Clean up placeholder text before importing
+  let filePath = singleFileForm.file_path
+  if (filePath.startsWith('[Enter full path to:')) {
+    alert('Please enter the complete file path before importing.')
+    return
+  }
+  importFileMutation({ file_path: filePath })
 }
 
 function importDirectory() {
-  importDirectoryMutation({ directory_path: directoryForm.directory_path })
+  // Clean up placeholder text before importing
+  let directoryPath = directoryForm.directory_path
+  if (directoryPath.startsWith('[Enter full path to:')) {
+    alert('Please enter the complete directory path before importing.')
+    return
+  }
+  importDirectoryMutation({ directory_path: directoryPath })
+}
+
+function selectFile() {
+  fileInput.value?.click()
+}
+
+function selectDirectory() {
+  directoryInput.value?.click()
+}
+
+function handleFileSelection(event: Event) {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (files && files.length > 0) {
+    const file = files[0]
+    
+    // Check if it's an ABC file
+    if (!file.name.toLowerCase().endsWith('.abc')) {
+      alert('Please select an ABC file (.abc extension)')
+      target.value = ''
+      return
+    }
+
+    selectedFileInfo.value = {
+      name: file.name,
+      size: file.size
+    }
+    
+    // Don't automatically update the field - let user enter the full path
+    if (!singleFileForm.file_path) {
+      singleFileForm.file_path = `[Enter full path to: ${file.name}]`
+    }
+    
+    // Reset the input
+    target.value = ''
+  }
+}
+
+function handleDirectorySelection(event: Event) {
+  const target = event.target as HTMLInputElement
+  const files = target.files
+  if (files && files.length > 0) {
+    const firstFile = files[0]
+    const relativePath = firstFile.webkitRelativePath
+    
+    let directoryName = ''
+    let abcCount = 0
+    
+    if (relativePath) {
+      // Extract the root directory name from the relative path
+      const pathParts = relativePath.split('/')
+      directoryName = pathParts[0]
+      
+      // Count ABC files found
+      const abcFiles = Array.from(files)
+        .filter((file: File) => file.name.toLowerCase().endsWith('.abc'))
+      abcCount = abcFiles.length
+      
+      console.log(`Found ${abcCount} ABC files in directory: ${directoryName}`)
+    } else {
+      // Fallback if webkitRelativePath is not available
+      directoryName = 'Selected Directory'
+    }
+    
+    selectedDirectoryInfo.value = {
+      name: directoryName,
+      abcCount: abcCount
+    }
+    
+    // Don't automatically update the field - let user enter the full path
+    if (!directoryForm.directory_path) {
+      directoryForm.directory_path = `[Enter full path to: ${directoryName}]`
+    }
+    
+    // Reset the input
+    target.value = ''
+  }
 }
 
 function importTestSongs() {
@@ -289,5 +442,22 @@ function importTestSongs() {
 function clearResults() {
   lastImportResult.value = null
   importError.value = null
+}
+
+const clearFileInfo = () => {
+  selectedFileInfo.value = null
+}
+
+
+const clearDirectoryInfo = () => {
+  selectedDirectoryInfo.value = null
+}
+
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 </script>
