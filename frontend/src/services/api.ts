@@ -92,8 +92,10 @@ export const songApi = {
   listPreviewPDFs: (id: number): Promise<PreviewPDFListResponse> =>
     api.get(`/api/v1/songs/${id}/preview-pdfs`).then((res) => res.data),
 
-  getPreviewPDFUrl: (id: number, filename: string): string =>
-    `${api.defaults.baseURL}/api/v1/songs/${id}/preview-pdf/${filename}`,
+  getPreviewPDFUrl: (id: number, filename: string, abcFileDir: string): string => {
+    const params = new URLSearchParams({ abc_file_dir: abcFileDir })
+    return `${api.defaults.baseURL}/api/v1/songs/${id}/preview-pdf/${filename}?${params}`
+  },
 
   cleanupPreviewPDFs: (id: number): Promise<MessageResponse> =>
     api.delete(`/api/v1/songs/${id}/preview-pdfs`).then((res) => res.data)

@@ -400,9 +400,9 @@ Added comprehensive PDF preview functionality that allows users to generate and 
 
 #### Architecture Overview:
 ```
-Frontend (Vue.js) → API Endpoints → Song Service → Zupfnoter → PDF Generation
+Frontend (Vue.js) → API Endpoints → Song Service → File System Search
                                                   ↓
-                                            Temporary Storage → PDF Serving
+                                            ABC Directory → PDF Discovery → PDF Serving
 ```
 
 #### Backend Implementation:
@@ -426,20 +426,20 @@ type SongService interface {
 - `GET /api/v1/songs/{id}/preview-pdf/{filename}` - Serve PDF file
 - `DELETE /api/v1/songs/{id}/preview-pdfs` - Cleanup preview PDFs
 
-**3. Preview Storage Strategy:**
-- **Location:** `/tmp/zupfmanager/previews/song-{id}/pdf/`
+**3. PDF Discovery Strategy:**
+- **Location:** Same directory as ABC files (abc-file-dir)
 - **Naming:** `{abc_filename}*.pdf` (multiple variants per song)
-- **Lifecycle:** User-controlled cleanup + temporary storage
-- **Security:** Path traversal protection, filename validation
+- **Lifecycle:** Managed by user's external workflow
+- **Security:** Path traversal protection, filename validation, song ownership verification
 
 #### Frontend Implementation:
 
 **1. Preview Modal Component:**
 ```vue
 <PreviewModal>
-  <!-- Generate Section -->
+  <!-- Find PDFs Section -->
   <input v-model="abcFileDir" placeholder="/path/to/abc/files" />
-  <button @click="generatePreview">Generate Preview PDFs</button>
+  <button @click="findPDFs">Find PDFs</button>
   
   <!-- PDF List -->
   <div v-for="pdf in pdfs" class="pdf-item">
@@ -459,73 +459,74 @@ type SongService interface {
 export const songApi = {
   // Existing methods...
   
-  generatePreview: (id: number, data: { abc_file_dir: string }) => Promise<GeneratePreviewResponse>
-  listPreviewPDFs: (id: number) => Promise<PreviewPDFListResponse>
-  getPreviewPDFUrl: (id: number, filename: string) => string
-  cleanupPreviewPDFs: (id: number) => Promise<MessageResponse>
+  generatePreview: (id: number, data: { abc_file_dir: string }) => Promise<GeneratePreviewResponse> // Now finds existing PDFs
+  listPreviewPDFs: (id: number) => Promise<PreviewPDFListResponse> // Deprecated
+  getPreviewPDFUrl: (id: number, filename: string, abcFileDir: string) => string
+  cleanupPreviewPDFs: (id: number) => Promise<MessageResponse> // Not applicable
 }
 ```
 
 #### Technical Features:
 
-**1. PDF Generation Process:**
+**1. PDF Discovery Process:**
 1. User selects song and provides ABC file directory
-2. System creates temporary preview directory
-3. Zupfnoter generates multiple PDF variants (A3, M, O, B, X layouts)
-4. PDFs stored in organized temporary structure
+2. System searches for existing PDFs matching the song filename
+3. Finds multiple PDF variants (A3, M, O, B, X layouts) created by external workflow
+4. PDFs remain in their original location (ABC directory)
 5. File list returned to frontend for display
 
 **2. PDF Serving:**
-- Direct file serving with proper MIME types
-- Security validation (no path traversal)
+- Direct file serving from ABC directory with proper MIME types
+- Security validation (no path traversal, song ownership verification)
 - Opens in new browser tab for viewing
-- Supports all Zupfnoter-generated PDF variants
+- Supports all externally-generated PDF variants
 
 **3. Lifecycle Management:**
-- User-initiated cleanup via "Clear All" button
-- Temporary storage in system temp directory
-- Automatic cleanup on system restart
-- Per-song isolation prevents conflicts
+- PDFs managed by external workflow (interactive Zupfnoter)
+- No cleanup needed - files remain in ABC directory
+- No temporary storage - uses existing user files
+- Per-song isolation through filename matching
 
 #### User Experience:
 
 **1. Preview Workflow:**
 1. Navigate to song detail page
 2. Click "Preview PDFs" button
-3. Enter ABC file directory path
-4. Click "Generate Preview PDFs"
-5. View generated PDFs in list
+3. Enter ABC file directory path (where ABC and PDF files are located)
+4. Click "Find PDFs"
+5. View discovered PDFs in list
 6. Click "Open" to view PDF in new tab
 
 **2. Management Features:**
-- **Refresh:** Update PDF list without regeneration
-- **Clear All:** Remove all preview PDFs for song
-- **Real-time Updates:** List updates after generation/cleanup
-- **Error Handling:** Clear error messages for failed operations
+- **Refresh:** Update PDF list by re-scanning directory
+- **Real-time Updates:** List updates after directory scan
+- **Error Handling:** Clear error messages for failed directory access
+- **External Workflow Integration:** Works with PDFs created outside zupfmanager
 
 #### Benefits:
 
-1. **Quick Preview:** View PDF outputs without full project build
-2. **Multiple Variants:** See all Zupfnoter layout options
+1. **Quick Preview:** View existing PDF outputs without full project build
+2. **Multiple Variants:** See all externally-created layout options
 3. **No Project Required:** Works with individual ABC files
-4. **Temporary Storage:** No permanent disk usage
-5. **User Control:** Manual cleanup and regeneration
+4. **No Storage Overhead:** Uses existing user files
+5. **External Workflow Integration:** Works with interactive Zupfnoter workflow
 
 #### Technical Considerations:
 
 **1. Performance:**
-- Isolated PDF generation per song
-- Temporary storage prevents accumulation
-- Concurrent generation support via goroutines
+- Fast file system search per song
+- No storage overhead - uses existing files
+- Efficient filename pattern matching
 
 **2. Security:**
 - Path traversal protection in filename handling
-- Temporary directory isolation
-- No permanent file system modifications
+- Song ownership verification (filename must match song)
+- Read-only access to user's ABC directory
 
 **3. Error Handling:**
-- Zupfnoter execution error capture
-- File system error handling
+- Directory access error handling
+- File system search error handling
 - User-friendly error messages in UI
+- Graceful handling of missing directories
 
 The solution is robust, handles edge cases appropriately, and integrates seamlessly with the existing codebase architecture while providing a clear, unambiguous user experience that works within browser security constraints.

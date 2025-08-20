@@ -18,9 +18,9 @@
 
       <!-- Content -->
       <div class="mt-4">
-        <!-- Generate Preview Section -->
+        <!-- Find PDFs Section -->
         <div class="mb-6">
-          <h4 class="text-md font-medium text-gray-900 mb-3">Generate Preview</h4>
+          <h4 class="text-md font-medium text-gray-900 mb-3">Find Existing PDFs</h4>
           <div class="space-y-3">
             <div>
               <label for="abc_file_dir" class="block text-sm font-medium text-gray-700">ABC File Directory</label>
@@ -32,14 +32,14 @@
                 class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="/path/to/abc/files"
               />
-              <p class="mt-1 text-xs text-gray-500">Enter the directory containing the ABC file</p>
+              <p class="mt-1 text-xs text-gray-500">Enter the directory containing the ABC file and PDFs</p>
             </div>
             <button
-              @click="generatePreview"
-              :disabled="isGenerating || !abcFileDir.trim()"
+              @click="findPDFs"
+              :disabled="isSearching || !abcFileDir.trim()"
               class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
             >
-              {{ isGenerating ? 'Generating...' : 'Generate Preview PDFs' }}
+              {{ isSearching ? 'Searching...' : 'Find PDFs' }}
             </button>
           </div>
         </div>
@@ -51,17 +51,10 @@
             <div class="flex space-x-2">
               <button
                 @click="refreshPDFs"
-                :disabled="isRefreshing"
+                :disabled="isRefreshing || !abcFileDir.trim()"
                 class="text-sm text-blue-600 hover:text-blue-800 transition-colors disabled:opacity-50"
               >
                 {{ isRefreshing ? 'Refreshing...' : 'Refresh' }}
-              </button>
-              <button
-                @click="cleanupPDFs"
-                :disabled="isCleaningUp || !pdfs.length"
-                class="text-sm text-red-600 hover:text-red-800 transition-colors disabled:opacity-50"
-              >
-                {{ isCleaningUp ? 'Cleaning...' : 'Clear All' }}
               </button>
             </div>
           </div>
@@ -77,8 +70,8 @@
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <p class="mt-2 text-sm text-gray-500">No preview PDFs available</p>
-            <p class="text-xs text-gray-400">Generate preview PDFs to see them here</p>
+            <p class="mt-2 text-sm text-gray-500">No PDFs found</p>
+            <p class="text-xs text-gray-400">Enter the ABC directory to search for existing PDFs</p>
           </div>
 
           <!-- PDF List -->
@@ -146,37 +139,25 @@ const queryClient = useQueryClient()
 // State
 const abcFileDir = ref('')
 const error = ref('')
-
-// Queries
-const { data: pdfData, isLoading: isLoadingPDFs, refetch: refetchPDFs } = useQuery({
-  queryKey: ['song-preview-pdfs', props.song.id],
-  queryFn: () => songApi.listPreviewPDFs(props.song.id),
-  refetchOnWindowFocus: false
-})
-
-const pdfs = computed(() => pdfData.value?.pdfs || [])
+const pdfs = ref<Array<{ filename: string; size: number; created_at: string }>>([])
+const isLoadingPDFs = ref(false)
 
 // Mutations
-const { mutate: generatePreviewMutation, isPending: isGenerating } = useMutation({
+const { mutate: findPDFsMutation, isPending: isSearching } = useMutation({
   mutationFn: (data: { abc_file_dir: string }) => 
     songApi.generatePreview(props.song.id, data),
-  onSuccess: () => {
+  onSuccess: (response) => {
     error.value = ''
-    refetchPDFs()
+    // Convert filenames to PDF objects with mock data since we don't have file stats
+    pdfs.value = response.pdf_files.map(filename => ({
+      filename,
+      size: 0, // We don't have size info when just finding files
+      created_at: new Date().toISOString()
+    }))
   },
   onError: (err: any) => {
-    error.value = err.message || 'Failed to generate preview'
-  }
-})
-
-const { mutate: cleanupMutation, isPending: isCleaningUp } = useMutation({
-  mutationFn: () => songApi.cleanupPreviewPDFs(props.song.id),
-  onSuccess: () => {
-    error.value = ''
-    refetchPDFs()
-  },
-  onError: (err: any) => {
-    error.value = err.message || 'Failed to cleanup PDFs'
+    error.value = err.message || 'Failed to find PDFs'
+    pdfs.value = []
   }
 })
 
@@ -184,18 +165,20 @@ const { mutate: cleanupMutation, isPending: isCleaningUp } = useMutation({
 const isRefreshing = ref(false)
 
 // Methods
-const generatePreview = () => {
+const findPDFs = () => {
   if (!abcFileDir.value.trim()) return
   
-  generatePreviewMutation({
+  findPDFsMutation({
     abc_file_dir: abcFileDir.value.trim()
   })
 }
 
 const refreshPDFs = async () => {
+  if (!abcFileDir.value.trim()) return
+  
   isRefreshing.value = true
   try {
-    await refetchPDFs()
+    await findPDFs()
     error.value = ''
   } catch (err: any) {
     error.value = err.message || 'Failed to refresh PDFs'
@@ -204,17 +187,18 @@ const refreshPDFs = async () => {
   }
 }
 
-const cleanupPDFs = () => {
-  cleanupMutation()
-}
-
 const openPDF = (filename: string) => {
-  const url = songApi.getPreviewPDFUrl(props.song.id, filename)
+  if (!abcFileDir.value.trim()) {
+    error.value = 'ABC file directory is required to open PDF'
+    return
+  }
+  
+  const url = songApi.getPreviewPDFUrl(props.song.id, filename, abcFileDir.value.trim())
   window.open(url, '_blank')
 }
 
 const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 Bytes'
+  if (bytes === 0) return 'Unknown size'
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
@@ -225,8 +209,5 @@ const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleString()
 }
 
-// Load PDFs on mount
-onMounted(() => {
-  refetchPDFs()
-})
+// No automatic loading on mount since we need the ABC directory first
 </script>

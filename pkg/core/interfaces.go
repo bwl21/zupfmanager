@@ -145,17 +145,24 @@ type PreviewPDF struct {
 	CreatedAt string `json:"created_at"`
 }
 
-// GeneratePreviewRequest represents the request to generate preview PDFs
+// GeneratePreviewRequest represents the request to find preview PDFs
 type GeneratePreviewRequest struct {
 	SongID     int                    `json:"song_id" validate:"required,min=1"`
 	AbcFileDir string                 `json:"abc_file_dir" validate:"required"`
-	Config     map[string]interface{} `json:"config,omitempty"`
+	Config     map[string]interface{} `json:"config,omitempty"` // Not used for finding existing PDFs
 }
 
-// GeneratePreviewResponse represents the response from preview generation
+// GeneratePreviewResponse represents the response from preview search
 type GeneratePreviewResponse struct {
 	PDFFiles   []string `json:"pdf_files"`
-	PreviewDir string   `json:"preview_dir"`
+	PreviewDir string   `json:"preview_dir"` // Now returns the ABC directory
+}
+
+// GetPreviewPDFRequest represents the request to get a specific PDF
+type GetPreviewPDFRequest struct {
+	SongID     int    `json:"song_id" validate:"required,min=1"`
+	Filename   string `json:"filename" validate:"required"`
+	AbcFileDir string `json:"abc_file_dir" validate:"required"`
 }
 
 // SongService interface defines song operations
@@ -167,9 +174,10 @@ type SongService interface {
 	
 	// Preview operations
 	GeneratePreview(ctx context.Context, req GeneratePreviewRequest) (*GeneratePreviewResponse, error)
-	ListPreviewPDFs(ctx context.Context, songID int) ([]*PreviewPDF, error)
-	GetPreviewPDF(ctx context.Context, songID int, filename string) (string, error) // returns file path
-	CleanupPreviewPDFs(ctx context.Context, songID int) error
+	ListPreviewPDFs(ctx context.Context, songID int) ([]*PreviewPDF, error) // Deprecated - use GeneratePreview
+	GetPreviewPDF(ctx context.Context, songID int, filename string) (string, error) // Deprecated - use GetPreviewPDFFromDir
+	GetPreviewPDFFromDir(ctx context.Context, songID int, filename string, abcFileDir string) (string, error)
+	CleanupPreviewPDFs(ctx context.Context, songID int) error // Not applicable for ABC directory PDFs
 }
 
 // ImportService interface defines import operations

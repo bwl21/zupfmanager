@@ -2,17 +2,14 @@ package core
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/bwl21/zupfmanager/internal/ent/predicate"
 	"github.com/bwl21/zupfmanager/internal/ent/song"
-	"github.com/bwl21/zupfmanager/internal/zupfnoter"
 )
 
 // songService implements SongService interface
@@ -84,7 +81,7 @@ func (s *songService) SearchAdvanced(ctx context.Context, query string, options 
 	return SongsFromEnt(entSongs), nil
 }
 
-// GeneratePreview generates preview PDFs for a song
+// GeneratePreview searches for existing PDFs for a song in the ABC directory
 func (s *songService) GeneratePreview(ctx context.Context, req GeneratePreviewRequest) (*GeneratePreviewResponse, error) {
 	// Get the song
 	entSong, err := s.db.Song.Get(ctx, req.SongID)
@@ -92,57 +89,17 @@ func (s *songService) GeneratePreview(ctx context.Context, req GeneratePreviewRe
 		return nil, fmt.Errorf("failed to get song: %w", err)
 	}
 	
-	// Create preview directory
-	previewDir := filepath.Join(os.TempDir(), "zupfmanager", "previews", fmt.Sprintf("song-%d", req.SongID))
-	err = os.MkdirAll(previewDir, 0755)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create preview directory: %w", err)
+	// Check if ABC file directory exists
+	if _, err := os.Stat(req.AbcFileDir); os.IsNotExist(err) {
+		return nil, fmt.Errorf("ABC file directory does not exist: %s", req.AbcFileDir)
 	}
 	
-	// Create PDF output directory
-	pdfDir := filepath.Join(previewDir, "pdf")
-	err = os.MkdirAll(pdfDir, 0755)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create PDF directory: %w", err)
-	}
-	
-	// Create config file if provided
-	var configFile string
-	if req.Config != nil && len(req.Config) > 0 {
-		tempConfigFile, err := os.CreateTemp("", "zupfnoter-preview-*.json")
-		if err != nil {
-			return nil, fmt.Errorf("failed to create temp config file: %w", err)
-		}
-		defer os.Remove(tempConfigFile.Name())
-		
-		err = json.NewEncoder(tempConfigFile).Encode(req.Config)
-		if err != nil {
-			return nil, fmt.Errorf("failed to encode config: %w", err)
-		}
-		tempConfigFile.Close()
-		configFile = tempConfigFile.Name()
-	}
-	
-	// Run zupfnoter to generate PDFs
-	abcFilePath := filepath.Join(req.AbcFileDir, entSong.Filename)
-	var args []string
-	if configFile != "" {
-		args = []string{abcFilePath, pdfDir, configFile}
-	} else {
-		args = []string{abcFilePath, pdfDir}
-	}
-	
-	_, _, err = zupfnoter.Run(ctx, args...)
-	if err != nil {
-		return nil, fmt.Errorf("zupfnoter failed: %w", err)
-	}
-	
-	// Find generated PDF files
+	// Find existing PDF files for this song
 	baseFilename := strings.TrimSuffix(entSong.Filename, ".abc")
-	pattern := filepath.Join(pdfDir, baseFilename+"*.pdf")
+	pattern := filepath.Join(req.AbcFileDir, baseFilename+"*.pdf")
 	pdfFiles, err := filepath.Glob(pattern)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find generated PDFs: %w", err)
+		return nil, fmt.Errorf("failed to search for PDF files: %w", err)
 	}
 	
 	// Extract just the filenames
@@ -153,52 +110,45 @@ func (s *songService) GeneratePreview(ctx context.Context, req GeneratePreviewRe
 	
 	return &GeneratePreviewResponse{
 		PDFFiles:   filenames,
-		PreviewDir: previewDir,
+		PreviewDir: req.AbcFileDir, // Return the ABC directory as the "preview dir"
 	}, nil
 }
 
-// ListPreviewPDFs lists available preview PDFs for a song
+// ListPreviewPDFs lists available preview PDFs for a song (requires abc_file_dir to be set)
 func (s *songService) ListPreviewPDFs(ctx context.Context, songID int) ([]*PreviewPDF, error) {
-	previewDir := filepath.Join(os.TempDir(), "zupfmanager", "previews", fmt.Sprintf("song-%d", songID), "pdf")
-	
-	// Check if preview directory exists
-	if _, err := os.Stat(previewDir); os.IsNotExist(err) {
-		return []*PreviewPDF{}, nil
-	}
-	
-	// Find PDF files
-	pattern := filepath.Join(previewDir, "*.pdf")
-	pdfFiles, err := filepath.Glob(pattern)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find PDF files: %w", err)
-	}
-	
-	var previews []*PreviewPDF
-	for _, pdfFile := range pdfFiles {
-		stat, err := os.Stat(pdfFile)
-		if err != nil {
-			continue // Skip files we can't stat
-		}
-		
-		previews = append(previews, &PreviewPDF{
-			Filename:  filepath.Base(pdfFile),
-			Size:      stat.Size(),
-			CreatedAt: stat.ModTime().Format(time.RFC3339),
-		})
-	}
-	
-	return previews, nil
+	// This method now requires the ABC file directory to be provided via a different approach
+	// Since we don't store the directory path, we return empty list
+	// The frontend should use GeneratePreview (which is now "FindPreview") to get PDFs
+	return []*PreviewPDF{}, nil
 }
 
-// GetPreviewPDF returns the file path for a preview PDF
+// GetPreviewPDF returns the file path for a preview PDF (requires abc_file_dir context)
 func (s *songService) GetPreviewPDF(ctx context.Context, songID int, filename string) (string, error) {
+	// This method now needs to be called with the ABC directory context
+	// Since we don't store the directory path, this will need to be refactored
+	// to accept the directory as a parameter
+	return "", fmt.Errorf("GetPreviewPDF requires ABC directory context - use GetPreviewPDFFromDir instead")
+}
+
+// GetPreviewPDFFromDir returns the file path for a preview PDF from a specific directory
+func (s *songService) GetPreviewPDFFromDir(ctx context.Context, songID int, filename string, abcFileDir string) (string, error) {
 	// Validate filename to prevent path traversal
 	if strings.Contains(filename, "..") || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
 		return "", fmt.Errorf("invalid filename")
 	}
 	
-	previewDir := filepath.Join(os.TempDir(), "zupfmanager", "previews", fmt.Sprintf("song-%d", songID), "pdf")
-	filePath := filepath.Join(previewDir, filename)
+	// Get the song to validate the filename belongs to this song
+	entSong, err := s.db.Song.Get(ctx, songID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get song: %w", err)
+	}
+	
+	baseFilename := strings.TrimSuffix(entSong.Filename, ".abc")
+	if !strings.HasPrefix(filename, baseFilename) {
+		return "", fmt.Errorf("filename does not belong to this song")
+	}
+	
+	filePath := filepath.Join(abcFileDir, filename)
 	
 	// Check if file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
@@ -208,14 +158,10 @@ func (s *songService) GetPreviewPDF(ctx context.Context, songID int, filename st
 	return filePath, nil
 }
 
-// CleanupPreviewPDFs removes all preview PDFs for a song
+// CleanupPreviewPDFs is not applicable when PDFs are stored in the ABC directory
 func (s *songService) CleanupPreviewPDFs(ctx context.Context, songID int) error {
-	previewDir := filepath.Join(os.TempDir(), "zupfmanager", "previews", fmt.Sprintf("song-%d", songID))
-	
-	if _, err := os.Stat(previewDir); os.IsNotExist(err) {
-		return nil // Nothing to clean up
-	}
-	
-	return os.RemoveAll(previewDir)
+	// Since PDFs are now stored in the ABC directory alongside the ABC files,
+	// we don't clean them up automatically as they are part of the user's workflow
+	return fmt.Errorf("cleanup not supported - PDFs are stored in ABC directory")
 }
 

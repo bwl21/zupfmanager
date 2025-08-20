@@ -168,6 +168,7 @@ func (h *SongHandler) ListPreviewPDFs(c *gin.Context) {
 // @Produce application/pdf
 // @Param id path int true "Song ID"
 // @Param filename path string true "PDF filename"
+// @Param abc_file_dir query string true "ABC file directory"
 // @Success 200 {file} application/pdf
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 404 {object} models.ErrorResponse
@@ -193,7 +194,16 @@ func (h *SongHandler) GetPreviewPDF(c *gin.Context) {
 		return
 	}
 
-	filePath, err := h.services.Song.GetPreviewPDF(c.Request.Context(), id, filename)
+	abcFileDir := c.Query("abc_file_dir")
+	if abcFileDir == "" {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "missing abc_file_dir",
+			Message: "abc_file_dir query parameter is required",
+		})
+		return
+	}
+
+	filePath, err := h.services.Song.GetPreviewPDFFromDir(c.Request.Context(), id, filename, abcFileDir)
 	if err != nil {
 		c.JSON(http.StatusNotFound, models.ErrorResponse{
 			Error:   "PDF not found",
