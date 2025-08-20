@@ -134,28 +134,12 @@
                 type="text"
                 class="flex-1 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Full path to ABC files directory (e.g., /home/user/music/abc)"
-                @input="clearDirectoryInfo"
               />
-              <button
-                type="button"
-                @click="openDirectoryPicker"
-                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                title="Browse to help locate the directory"
-              >
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H6a2 2 0 00-2 2z" />
-                </svg>
-              </button>
             </div>
             <p class="mt-1 text-xs text-gray-500">
               Full path to directory containing ABC notation files. Click "Browse" to help locate the directory.
             </p>
             <!-- Directory selection info -->
-            <div v-if="selectedDirectoryInfo" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-              <p class="text-blue-800 font-medium">Directory selected: {{ selectedDirectoryInfo.name }}</p>
-              <p class="text-blue-600">Found {{ selectedDirectoryInfo.abcCount }} ABC files</p>
-              <p class="text-blue-600 mt-1">Please enter the complete path to this directory in the field above.</p>
-            </div>
             <!-- Path validation warning -->
             <div v-if="projectForm.abc_file_dir_preference && !isValidPath(projectForm.abc_file_dir_preference)" class="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
               <div class="flex">
@@ -199,16 +183,6 @@
           </div>
         </form>
         
-        <!-- Hidden file input for directory selection -->
-        <input
-          ref="directoryInput"
-          type="file"
-          webkitdirectory
-          directory
-          multiple
-          @change="handleDirectorySelection"
-          class="hidden"
-        />
       </div>
     </div>
   </div>
@@ -241,8 +215,6 @@ const projectForm = reactive({
 })
 
 // Directory picker state
-const directoryInput = ref<HTMLInputElement | null>(null)
-const selectedDirectoryInfo = ref<{name: string, abcCount: number} | null>(null)
 
 // Create project mutation
 const { mutate: createProject, isPending: isCreating } = useMutation({
@@ -277,7 +249,6 @@ function resetForm() {
   projectForm.short_name = ''
   projectForm.default_config = true
   projectForm.abc_file_dir_preference = ''
-  selectedDirectoryInfo.value = null
 }
 
 function editProject(project: ProjectResponse) {
@@ -325,91 +296,6 @@ async function submitProject() {
   }
 }
 
-// Directory picker functions
-const openDirectoryPicker = async () => {
-  // Try to use the modern File System Access API first
-  if ('showDirectoryPicker' in window) {
-    try {
-      const dirHandle = await (window as any).showDirectoryPicker({
-        mode: 'read'
-      })
-      
-      // Get the directory name (this is what we can reliably get)
-      const directoryName = dirHandle.name
-      
-      // Show directory info to user
-      selectedDirectoryInfo.value = {
-        name: directoryName,
-        abcCount: 0 // We can't count files with this API
-      }
-      
-      // Don't automatically update the field - let user enter the full path
-      if (!projectForm.abc_file_dir_preference) {
-        projectForm.abc_file_dir_preference = `[Enter full path to: ${directoryName}]`
-      }
-      
-      return
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        console.log('File System Access API failed, falling back to input method:', err)
-      }
-    }
-  }
-  
-  // Fallback to traditional file input method
-  if (directoryInput.value) {
-    directoryInput.value.click()
-  }
-}
-
-const handleDirectorySelection = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const files = target.files
-  
-  if (files && files.length > 0) {
-    // Use webkitRelativePath to get directory structure
-    const firstFile = files[0]
-    const relativePath = firstFile.webkitRelativePath
-    
-    let directoryName = ''
-    let abcCount = 0
-    
-    if (relativePath) {
-      // Extract the root directory name from the relative path
-      const pathParts = relativePath.split('/')
-      directoryName = pathParts[0]
-      
-      // Count ABC files found
-      const abcFiles = Array.from(files)
-        .filter(file => file.name.toLowerCase().endsWith('.abc'))
-      abcCount = abcFiles.length
-      
-      console.log(`Found ${abcCount} ABC files in directory: ${directoryName}`)
-    } else {
-      // Fallback if webkitRelativePath is not available
-      directoryName = 'Selected Directory'
-    }
-    
-    // Show directory info to user
-    selectedDirectoryInfo.value = {
-      name: directoryName,
-      abcCount: abcCount
-    }
-    
-    // Don't automatically update the field - let user enter the full path
-    // Only suggest if the field is empty
-    if (!projectForm.abc_file_dir_preference) {
-      projectForm.abc_file_dir_preference = `[Enter full path to: ${directoryName}]`
-    }
-    
-    // Reset the input so the same directory can be selected again
-    target.value = ''
-  }
-}
-
-const clearDirectoryInfo = () => {
-  selectedDirectoryInfo.value = null
-}
 
 const isValidPath = (path: string) => {
   if (!path || path.trim() === '') return true // Empty is valid (uses defaults)

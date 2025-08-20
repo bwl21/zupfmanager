@@ -47,46 +47,18 @@
                     type="text"
                     :placeholder="isLoadingDefaults ? 'Loading defaults...' : 'Full path to ABC files directory (e.g., /home/user/music/abc)'"
                     :disabled="isLoadingDefaults"
-                    @input="clearDirectoryInfo"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-50 disabled:text-gray-500"
                   />
                   <div v-if="isLoadingDefaults" class="absolute right-3 top-1/2 transform -translate-y-1/2">
                     <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
                   </div>
                 </div>
-                <button
-                  @click="openDirectoryPicker"
-                  type="button"
-                  :disabled="isLoadingDefaults"
-                  class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Browse to help locate the directory"
-                >
-                  <svg class="h-4 w-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-5l-2-2H6a2 2 0 00-2 2z" />
-                  </svg>
-                  Browse
-                </button>
               </div>
 
-              <!-- Hidden file input for directory selection -->
-              <input
-                ref="directoryInput"
-                type="file"
-                webkitdirectory
-                directory
-                multiple
-                @change="handleDirectorySelection"
-                class="hidden"
-              />
             </div>
             <p class="mt-1 text-xs text-gray-500">
-              Full path to directory containing ABC notation files. Click "Browse" to help locate the directory, then enter or verify the complete path.
+              Full path to directory containing ABC notation files.
             </p>
-            <div v-if="selectedDirectoryInfo" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-              <p class="text-blue-800 font-medium">Directory selected: {{ selectedDirectoryInfo.name }}</p>
-              <p class="text-blue-600">Found {{ selectedDirectoryInfo.abcCount }} ABC files</p>
-              <p class="text-blue-600 mt-1">Please enter the complete path to this directory in the field above.</p>
-            </div>
           </div>
 
           <!-- Priority Threshold -->
@@ -206,8 +178,6 @@ const emit = defineEmits<{
 // State
 const isStarting = ref(false)
 const isLoadingDefaults = ref(false)
-const directoryInput = ref<HTMLInputElement | null>(null)
-const selectedDirectoryInfo = ref<{name: string, abcCount: number} | null>(null)
 const buildConfig = ref<BuildProjectRequest>({
   output_dir: '',
   abc_file_dir: '',
@@ -267,90 +237,6 @@ const loadDefaults = async () => {
   }
 }
 
-const openDirectoryPicker = async () => {
-  // Try to use the modern File System Access API first
-  if ('showDirectoryPicker' in window) {
-    try {
-      const dirHandle = await (window as any).showDirectoryPicker({
-        mode: 'read'
-      })
-      
-      // Get the directory name (this is what we can reliably get)
-      const directoryName = dirHandle.name
-      
-      // Show directory info to user
-      selectedDirectoryInfo.value = {
-        name: directoryName,
-        abcCount: 0 // We can't count files with this API
-      }
-      
-      // Don't automatically update the field - let user enter the full path
-      if (!buildConfig.value.abc_file_dir) {
-        buildConfig.value.abc_file_dir = `[Enter full path to: ${directoryName}]`
-      }
-      
-      return
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
-        console.log('File System Access API failed, falling back to input method:', err)
-      }
-    }
-  }
-  
-  // Fallback to traditional file input method
-  if (directoryInput.value) {
-    directoryInput.value.click()
-  }
-}
-
-const handleDirectorySelection = async (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const files = target.files
-  
-  if (files && files.length > 0) {
-    // Use webkitRelativePath to get directory structure
-    const firstFile = files[0]
-    const relativePath = firstFile.webkitRelativePath
-    
-    let directoryName = ''
-    let abcCount = 0
-    
-    if (relativePath) {
-      // Extract the root directory name from the relative path
-      const pathParts = relativePath.split('/')
-      directoryName = pathParts[0]
-      
-      // Count ABC files found
-      const abcFiles = Array.from(files)
-        .filter(file => file.name.toLowerCase().endsWith('.abc'))
-      abcCount = abcFiles.length
-      
-      console.log(`Found ${abcCount} ABC files in directory: ${directoryName}`)
-    } else {
-      // Fallback if webkitRelativePath is not available
-      directoryName = 'Selected Directory'
-    }
-    
-    // Show directory info to user
-    selectedDirectoryInfo.value = {
-      name: directoryName,
-      abcCount: abcCount
-    }
-    
-    // Don't automatically update the field - let user enter the full path
-    // Only suggest if the field is empty
-    if (!buildConfig.value.abc_file_dir) {
-      buildConfig.value.abc_file_dir = `[Enter full path to: ${directoryName}]`
-    }
-    
-    // Reset the input so the same directory can be selected again
-    target.value = ''
-  }
-}
-
-const clearDirectoryInfo = () => {
-  selectedDirectoryInfo.value = null
-}
 
 const saveAbcFileDirPreference = async (directoryPath: string) => {
   try {
