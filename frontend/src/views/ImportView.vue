@@ -42,9 +42,9 @@
               <p class="mt-1 text-xs text-gray-500">Enter the full path to the ABC file or click Browse to select</p>
               <!-- File selection info -->
               <div v-if="selectedFileInfo" class="mt-2 p-2 bg-green-50 border border-green-200 rounded text-xs">
-                <p class="text-green-800 font-medium">File selected: {{ selectedFileInfo.name }}</p>
+                <p class="text-green-800 font-medium">✓ File selected: {{ selectedFileInfo.name }}</p>
                 <p class="text-green-600">Size: {{ formatFileSize(selectedFileInfo.size) }}</p>
-                <p class="text-green-600 mt-1">Please enter the complete path to this file in the field above.</p>
+                <p class="text-green-600 mt-1"><strong>Now enter the complete path to this file above</strong> (e.g., /home/user/Documents/{{ selectedFileInfo.name }})</p>
               </div>
             </div>
             <button
@@ -92,9 +92,9 @@
               <p class="mt-1 text-xs text-gray-500">Enter the full path to the directory containing ABC files or click Browse to select</p>
               <!-- Directory selection info -->
               <div v-if="selectedDirectoryInfo" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
-                <p class="text-blue-800 font-medium">Directory selected: {{ selectedDirectoryInfo.name }}</p>
+                <p class="text-blue-800 font-medium">✓ Directory selected: {{ selectedDirectoryInfo.name }}</p>
                 <p class="text-blue-600">Found {{ selectedDirectoryInfo.abcCount }} ABC files</p>
-                <p class="text-blue-600 mt-1">Please enter the complete path to this directory in the field above.</p>
+                <p class="text-blue-600 mt-1"><strong>Now enter the complete path to this directory above</strong> (e.g., /home/user/Documents/{{ selectedDirectoryInfo.name }})</p>
               </div>
             </div>
             <button
@@ -338,20 +338,18 @@ const { mutate: importDirectoryMutation, isPending: isImportingDirectory } = use
 })
 
 function importSingleFile() {
-  // Clean up placeholder text before importing
-  let filePath = singleFileForm.file_path
-  if (filePath.startsWith('[Enter full path to:')) {
-    alert('Please enter the complete file path before importing.')
+  let filePath = singleFileForm.file_path.trim()
+  if (!filePath) {
+    alert('Please enter the complete file path.')
     return
   }
   importFileMutation({ file_path: filePath })
 }
 
 function importDirectory() {
-  // Clean up placeholder text before importing
-  let directoryPath = directoryForm.directory_path
-  if (directoryPath.startsWith('[Enter full path to:')) {
-    alert('Please enter the complete directory path before importing.')
+  let directoryPath = directoryForm.directory_path.trim()
+  if (!directoryPath) {
+    alert('Please enter the complete directory path.')
     return
   }
   importDirectoryMutation({ directory_path: directoryPath })
@@ -383,10 +381,8 @@ function handleFileSelection(event: Event) {
       size: file.size
     }
     
-    // Don't automatically update the field - let user enter the full path
-    if (!singleFileForm.file_path) {
-      singleFileForm.file_path = `[Enter full path to: ${file.name}]`
-    }
+    // Clear the field and let user enter the full path
+    singleFileForm.file_path = ''
     
     // Reset the input
     target.value = ''
@@ -424,10 +420,8 @@ function handleDirectorySelection(event: Event) {
       abcCount: abcCount
     }
     
-    // Don't automatically update the field - let user enter the full path
-    if (!directoryForm.directory_path) {
-      directoryForm.directory_path = `[Enter full path to: ${directoryName}]`
-    }
+    // Clear the field and let user enter the full path
+    directoryForm.directory_path = ''
     
     // Reset the input
     target.value = ''
