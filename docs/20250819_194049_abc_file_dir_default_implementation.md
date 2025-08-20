@@ -203,6 +203,38 @@ The initial implementation incorrectly stored the `abc_file_dir_preference` in t
 - **Maintainability:** Easier to manage different types of configuration
 - **Future-Proof:** Allows for additional zupfmanager-specific settings
 
+## Full Path Requirement Fix
+
+**Update:** 2025-08-20 11:35  
+**Additional Commit:** `0bf2104`
+
+### Critical Path Handling Issue
+
+The initial directory picker implementation only stored directory names (e.g., `music-folder`) instead of full absolute paths (e.g., `/home/user/music-folder`). This caused failures in Zupfnoter, which requires complete file system paths.
+
+#### Root Cause:
+Browser security restrictions prevent direct access to full file system paths. The `webkitRelativePath` API only provides relative paths within the selected directory structure.
+
+#### Solution Implemented:
+1. **Hybrid Approach:** Directory picker helps locate directories, but users must enter full paths manually
+2. **Path Validation:** Visual warnings for incomplete or invalid paths
+3. **Multi-Platform Support:** Handles Unix/Linux (`/path`) and Windows (`C:\path`) formats
+4. **Smart Saving:** Only saves preferences when valid absolute paths are provided
+
+#### UX Improvements:
+- **Clear Instructions:** Placeholder text shows expected path format
+- **Visual Feedback:** Directory selection shows found ABC files count
+- **Path Validation:** Real-time warnings for incomplete paths
+- **Examples:** Shows platform-specific path examples in warnings
+
+#### Technical Implementation:
+- **Path Validation Function:** `isValidPath()` checks for absolute path patterns
+- **Directory Info Display:** Shows selected directory name and ABC file count
+- **Conditional Saving:** Only saves valid paths as preferences
+- **Cross-Platform:** Supports Windows, macOS, and Linux path formats
+
+This ensures Zupfnoter receives the complete paths it needs for successful ABC file processing.
+
 ### Enhanced Frontend Implementation
 
 The solution was further enhanced with a proper directory picker widget and database-based persistence:
