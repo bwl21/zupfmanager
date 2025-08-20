@@ -142,6 +142,7 @@
     <PreviewModal
       v-if="showPreviewModal && previewingSong && previewingSong.song"
       :song="previewingSong.song"
+      :project="project"
       @close="handlePreviewClose"
     />
   </div>
@@ -149,8 +150,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { projectSongApi } from '@/services/api'
-import type { ProjectSongResponse } from '@/types/api'
+import { projectSongApi, projectApi } from '@/services/api'
+import type { ProjectSongResponse, ProjectResponse } from '@/types/api'
 import AddSongModal from './AddSongModal.vue'
 import EditProjectSongModal from './EditProjectSongModal.vue'
 import PreviewModal from './PreviewModal.vue'
@@ -163,6 +164,7 @@ const props = defineProps<Props>()
 
 // State
 const projectSongs = ref<ProjectSongResponse[]>([])
+const project = ref<ProjectResponse | null>(null)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const showAddSongModal = ref(false)
@@ -183,6 +185,14 @@ const loadProjectSongs = async () => {
     error.value = err instanceof Error ? err.message : 'Failed to load project songs'
   } finally {
     isLoading.value = false
+  }
+}
+
+const loadProject = async () => {
+  try {
+    project.value = await projectApi.get(props.projectId)
+  } catch (err) {
+    console.error('Failed to load project:', err)
   }
 }
 
@@ -239,5 +249,6 @@ const getDifficultyColor = (difficulty: string) => {
 // Lifecycle
 onMounted(() => {
   loadProjectSongs()
+  loadProject()
 })
 </script>

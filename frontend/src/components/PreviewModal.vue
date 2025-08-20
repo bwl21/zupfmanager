@@ -127,6 +127,7 @@ import type { SongResponse } from '@/types/api'
 
 interface Props {
   song: SongResponse
+  project?: { abc_file_dir_preference?: string } | null
 }
 
 const props = defineProps<Props>()
@@ -141,6 +142,15 @@ const abcFileDir = ref('')
 const error = ref('')
 const pdfs = ref<Array<{ filename: string; size: number; created_at: string }>>([])
 const isLoadingPDFs = ref(false)
+
+// Initialize abc_file_dir with project preference
+onMounted(() => {
+  if (props.project?.abc_file_dir_preference) {
+    abcFileDir.value = props.project.abc_file_dir_preference
+    // Auto-search for PDFs if we have a default directory
+    findPDFs()
+  }
+})
 
 // Mutations
 const { mutate: findPDFsMutation, isPending: isSearching } = useMutation({
