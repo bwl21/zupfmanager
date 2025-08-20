@@ -172,3 +172,8 @@ type BuildDefaultsResponse struct {
 	PriorityThreshold int    `json:"priority_threshold" example:"4" minimum:"1" maximum:"4"`
 	SampleID          string `json:"sample_id" example:""`
 } // @name BuildDefaultsResponse
+
+// UpdateAbcFileDirRequest represents a request to update ABC file directory preference
+type UpdateAbcFileDirRequest struct {
+	AbcFileDir string `json:"abc_file_dir" binding:"required" example:"/path/to/abc/files"`
+} // @name UpdateAbcFileDirRequest

@@ -117,7 +117,8 @@ func (s *Server) setupRoutes() {
 			projects.GET("/:id", s.projectHandler.GetProject)
 			projects.PUT("/:id", s.projectHandler.UpdateProject)
 			projects.DELETE("/:id", s.projectHandler.DeleteProject)
-			
+			projects.PUT("/:id/abc-file-dir", s.projectHandler.UpdateAbcFileDirPreference)
+
 			// Project-Song relationship endpoints
 			projects.GET("/:id/songs", s.projectSongHandler.ListProjectSongs)
 			projects.POST("/:id/songs/:songId", s.projectSongHandler.AddSongToProject)

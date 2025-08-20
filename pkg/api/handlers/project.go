@@ -365,8 +365,10 @@ func (h *ProjectHandler) GetBuildDefaults(c *gin.Context) {
 		SampleID:          "",
 	}
 
-	// Check if project has abc_file_dir configured
-	if abcFileDir, ok := project.Config["abc_file_dir"].(string); ok && abcFileDir != "" {
+	// Priority order: abc_file_dir_preference > abc_file_dir > last import directory
+	if preference, ok := project.Config["abc_file_dir_preference"].(string); ok && preference != "" {
+		defaults.AbcFileDir = preference
+	} else if abcFileDir, ok := project.Config["abc_file_dir"].(string); ok && abcFileDir != "" {
 		defaults.AbcFileDir = abcFileDir
 	} else {
 		// Try to get the last import directory
@@ -377,6 +379,90 @@ func (h *ProjectHandler) GetBuildDefaults(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, defaults)
+}
+
+// UpdateAbcFileDirPreference updates the abc_file_dir preference for a project
+// @Summary Update ABC file directory preference
+// @Description Update the preferred ABC file directory for a project
+// @Tags projects
+// @Accept json
+// @Produce json
+// @Param id path int true "Project ID"
+// @Param request body models.UpdateAbcFileDirRequest true "Update ABC file dir request"
+// @Success 200 {object} models.ProjectResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/projects/{id}/abc-file-dir [put]
+func (h *ProjectHandler) UpdateAbcFileDirPreference(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid project ID",
+			Message: "Project ID must be a valid integer",
+		})
+		return
+	}
+
+	var req models.UpdateAbcFileDirRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid request",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Get the existing project
+	project, err := h.services.Project.Get(c.Request.Context(), projectID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, models.ErrorResponse{
+			Error:   "Project not found",
+			Message: "The specified project does not exist",
+		})
+		return
+	}
+
+	// Update the config with the new abc_file_dir preference
+	updatedConfig := make(map[string]interface{})
+	if project.Config != nil {
+		// Copy existing config
+		for k, v := range project.Config {
+			updatedConfig[k] = v
+		}
+	}
+	
+	// Set the new preference
+	updatedConfig["abc_file_dir_preference"] = req.AbcFileDir
+
+	// Update the project config directly via the database client
+	_, err = h.services.DB().Project.UpdateOneID(projectID).SetConfig(updatedConfig).Save(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Failed to update project",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// Return the updated project
+	updatedProject, err := h.services.Project.Get(c.Request.Context(), projectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Failed to retrieve updated project",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	response := models.ProjectResponse{
+		ID:        updatedProject.ID,
+		Title:     updatedProject.Title,
+		ShortName: updatedProject.ShortName,
+		Config:    updatedProject.Config,
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 // GetProject gets a project by ID

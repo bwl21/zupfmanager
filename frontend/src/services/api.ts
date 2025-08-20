@@ -59,7 +59,10 @@ export const projectApi = {
   update: (id: number, data: UpdateProjectRequest): Promise<ProjectResponse> =>
     api.put(`/api/v1/projects/${id}`, data).then((res) => res.data),
 
-  delete: (id: number): Promise<void> => api.delete(`/api/v1/projects/${id}`)
+  delete: (id: number): Promise<void> => api.delete(`/api/v1/projects/${id}`),
+
+  updateAbcFileDir: (id: number, abcFileDir: string): Promise<ProjectResponse> =>
+    api.put(`/api/v1/projects/${id}/abc-file-dir`, { abc_file_dir: abcFileDir }).then((res) => res.data)
 }
 
 // Song API
