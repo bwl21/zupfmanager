@@ -146,6 +146,7 @@ export interface UpdateProjectRequest {
   config?: Record<string, any> | null
   config_file?: string
   default_config?: boolean
+  abc_file_dir_preference?: string
 }
 
 export interface ProjectResponse {
