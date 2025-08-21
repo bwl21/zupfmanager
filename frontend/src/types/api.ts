@@ -168,6 +168,11 @@ export interface SongResponse {
   genre?: string
   copyright?: string
   tocinfo?: string
+  projects?: Array<{
+    id: number
+    title: string
+    short_name: string
+  }>
 }
 
 export interface SongListResponse {

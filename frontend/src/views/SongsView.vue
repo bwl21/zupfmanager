@@ -103,6 +103,20 @@
               </svg>
             </div>
             <p class="text-sm text-gray-600 mb-1">{{ song.filename }}</p>
+            
+            <!-- Project Badges -->
+            <div v-if="song.projects && song.projects.length > 0" class="flex flex-wrap gap-1 mb-2">
+              <button
+                v-for="project in song.projects"
+                :key="project.id"
+                @click.stop="$router.push(`/projects/${project.id}`)"
+                class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors cursor-pointer"
+                :title="`Go to project: ${project.title}`"
+              >
+                {{ project.short_name }}
+              </button>
+            </div>
+            
             <div class="flex items-center justify-between text-xs text-gray-500">
               <span v-if="song.genre" class="bg-gray-100 px-2 py-1 rounded">{{ song.genre }}</span>
               <span v-else class="bg-gray-100 px-2 py-1 rounded">No genre</span>
@@ -162,11 +176,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { RouterLink } from 'vue-router'
-import { songApi } from '@/services/api'
+import { songApi, projectApi } from '@/services/api'
 import { useDebounceFn } from '@vueuse/core'
+import type { SongResponse } from '@/types/api'
 
 // Search state
 const searchQuery = ref('')
@@ -189,17 +204,87 @@ const { data: searchResults, isLoading: isSearching, error: searchError } = useQ
   enabled: computed(() => searchQuery.value.length > 0)
 })
 
-// Displayed songs (either all songs or search results)
+
+// Enhanced songs with project information
+const songsWithProjects = ref<SongResponse[]>([])
+
+// Load project information for songs
+const loadProjectsForSongs = async (songs: SongResponse[]) => {
+  try {
+    // Get all projects
+    const projectsResponse = await projectApi.list()
+    const projects = projectsResponse.projects
+    
+    // For each song, find which projects it belongs to
+    const enhancedSongs = await Promise.all(
+      songs.map(async (song) => {
+        const songProjects = []
+        
+        // Check each project for this song
+        for (const project of projects) {
+          try {
+            const projectSongs = await projectApi.getSongs(project.id)
+            const isInProject = projectSongs.project_songs.some(ps => ps.song_id === song.id)
+            
+            if (isInProject) {
+              songProjects.push({
+                id: project.id,
+                title: project.title,
+                short_name: project.short_name
+              })
+            }
+          } catch (err) {
+            // Skip projects that can't be loaded
+            console.warn(`Failed to load songs for project ${project.id}:`, err)
+          }
+        }
+        
+        return {
+          ...song,
+          projects: songProjects
+        }
+      })
+    )
+    
+    songsWithProjects.value = enhancedSongs
+  } catch (err) {
+    console.error('Failed to load project information:', err)
+    // Fallback to original songs without project info
+    songsWithProjects.value = songs
+  }
+}
+
+// Watch for changes in song data and load project info
 const displayedSongs = computed(() => {
-  return searchQuery.value ? searchResults.value : allSongs.value
+  const songs = searchQuery.value ? searchResults.value : allSongs.value
+  if (!songs) return null
+  
+  return {
+    songs: songsWithProjects.value.length > 0 ? songsWithProjects.value : songs.songs,
+    count: songs.count
+  }
+})
+
+// Load project information when songs are loaded
+onMounted(async () => {
+  if (allSongs.value?.songs) {
+    await loadProjectsForSongs(allSongs.value.songs)
+  }
 })
 
 // Debounced search function
-const debouncedSearch = useDebounceFn(() => {
-  // The query will automatically refetch due to reactive dependencies
+const debouncedSearch = useDebounceFn(async () => {
+  // After search results are loaded, enhance them with project info
+  if (searchResults.value?.songs) {
+    await loadProjectsForSongs(searchResults.value.songs)
+  }
 }, 300)
 
 function clearSearch() {
   searchQuery.value = ''
+  // Reset to all songs with project info
+  if (allSongs.value?.songs) {
+    loadProjectsForSongs(allSongs.value.songs)
+  }
 }
 </script>
