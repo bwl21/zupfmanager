@@ -48,16 +48,33 @@
                   </p>
                 </div>
                 
-                <!-- Difficulty Badge -->
-                <span :class="getDifficultyColor(projectSong.difficulty)" 
-                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium">
-                  {{ projectSong.difficulty }}
-                </span>
+                <!-- Difficulty Badge/Select -->
+                <div class="relative">
+                  <select
+                    :value="projectSong.difficulty"
+                    @change="updateDifficulty(projectSong, ($event.target as HTMLSelectElement).value)"
+                    :class="getDifficultyColor(projectSong.difficulty)"
+                    class="appearance-none px-2.5 py-0.5 rounded-full text-xs font-medium border-0 cursor-pointer hover:opacity-80 focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="easy">easy</option>
+                    <option value="medium">medium</option>
+                    <option value="hard">hard</option>
+                    <option value="expert">expert</option>
+                  </select>
+                </div>
                 
-                <!-- Priority Badge -->
-                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                  Priority {{ projectSong.priority }}
-                </span>
+                <!-- Priority Badge/Input -->
+                <div class="relative">
+                  <input
+                    type="number"
+                    :value="projectSong.priority"
+                    @blur="updatePriority(projectSong, parseInt(($event.target as HTMLInputElement).value))"
+                    @keyup.enter="($event.target as HTMLInputElement).blur()"
+                    min="1"
+                    max="99"
+                    class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border-0 w-16 text-center cursor-pointer hover:bg-blue-200 focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 focus:outline-none"
+                  />
+                </div>
               </div>
               
               <!-- Comment -->
@@ -243,6 +260,40 @@ const handleSongUpdated = () => {
 const handlePreviewClose = () => {
   showPreviewModal.value = false
   previewingSong.value = null
+}
+
+const updateDifficulty = async (projectSong: ProjectSongResponse, newDifficulty: string) => {
+  try {
+    await projectSongApi.update(props.projectId, projectSong.song_id, {
+      difficulty: newDifficulty,
+      priority: projectSong.priority,
+      comment: projectSong.comment
+    })
+    // Update local state
+    projectSong.difficulty = newDifficulty
+  } catch (err) {
+    console.error('Failed to update difficulty:', err)
+    // Optionally show error message to user
+  }
+}
+
+const updatePriority = async (projectSong: ProjectSongResponse, newPriority: number) => {
+  if (isNaN(newPriority) || newPriority < 1 || newPriority > 99) {
+    return // Invalid input, don't update
+  }
+  
+  try {
+    await projectSongApi.update(props.projectId, projectSong.song_id, {
+      difficulty: projectSong.difficulty,
+      priority: newPriority,
+      comment: projectSong.comment
+    })
+    // Update local state
+    projectSong.priority = newPriority
+  } catch (err) {
+    console.error('Failed to update priority:', err)
+    // Optionally show error message to user
+  }
 }
 
 const getDifficultyColor = (difficulty: string) => {
