@@ -47,12 +47,12 @@
                      {{ projectSong.song?.filename }}
                    </p>
                    
-                   <!-- Project Badges -->
-                   <div v-if="projectSong.song?.projects && projectSong.song.projects.length > 0" class="flex flex-wrap gap-1 mt-1">
+                   <!-- Project Badges (excluding current project) -->
+                   <div v-if="getOtherProjects(projectSong.song?.projects).length > 0" class="flex flex-wrap gap-1 mt-1">
                      <button
-                       v-for="project in projectSong.song.projects"
+                       v-for="project in getOtherProjects(projectSong.song?.projects)"
                        :key="project.id"
-                       @click.stop="$router.push(`/projects/${project.id}`)"
+                       @click="navigateToProject(project.id)"
                        class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors cursor-pointer"
                        :title="`Go to project: ${project.title}`"
                      >
@@ -179,6 +179,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { projectSongApi, projectApi } from '@/services/api'
 import type { ProjectSongResponse, ProjectResponse, SongResponse } from '@/types/api'
 import AddSongModal from './AddSongModal.vue'
@@ -190,6 +191,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const router = useRouter()
 
 // State
 const projectSongs = ref<ProjectSongResponse[]>([])
@@ -268,6 +270,16 @@ const loadProjectsForSongs = async (songs: SongResponse[]) => {
     console.error('Failed to load project information:', err)
     return songs.map(song => ({ ...song, projects: [] }))
   }
+}
+
+// Helper functions
+const getOtherProjects = (projects?: Array<{id: number, title: string, short_name: string}>) => {
+  if (!projects) return []
+  return projects.filter(project => project.id !== props.projectId)
+}
+
+const navigateToProject = (projectId: number) => {
+  router.push(`/projects/${projectId}`)
 }
 
 // Methods
