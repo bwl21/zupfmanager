@@ -143,6 +143,7 @@ export interface CreateProjectRequest {
 export interface UpdateProjectRequest {
   title: string
   short_name: string
+  config?: Record<string, any> | null
   config_file?: string
   default_config?: boolean
 }
