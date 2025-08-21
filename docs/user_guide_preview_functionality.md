@@ -1,7 +1,7 @@
 # User Guide: Preview Functionality
 
-**Last Updated:** 2025-08-20  
-**Version:** 1.0  
+**Last Updated:** 2025-08-21  
+**Version:** 1.1  
 
 ## Overview
 
@@ -15,6 +15,7 @@ Each song in your project now has its own **Preview** button:
 
 1. Navigate to a project (Projects → Select Project)
 2. In the "Songs in Project" section, find the song you want to preview
+   - **Note:** Songs are automatically sorted alphabetically by title for easy navigation
 3. Click the green **Preview** button next to the song
 4. The preview modal will open automatically
 
@@ -142,3 +143,38 @@ Use the **Refresh PDFs** button to:
 - Refresh after moving or renaming PDF files
 
 This ensures you always see the most current PDF files available.
+
+## Song Organization
+
+### Alphabetical Sorting
+
+**New in Version 1.1:** Songs in the project view are automatically sorted alphabetically by title:
+
+- **Automatic:** No manual sorting required
+- **Case-insensitive:** "Apple" and "apple" sort together
+- **German locale:** Proper handling of umlauts (ä, ö, ü) and ß
+- **Consistent:** Order remains the same regardless of when songs were added
+- **Real-time:** New songs automatically appear in correct alphabetical position
+
+### Finding Songs Quickly
+
+With alphabetical sorting, you can:
+- **Scan efficiently:** Jump to approximate location based on first letter
+- **Predict location:** Know where to look for specific song titles
+- **Navigate large projects:** Easily manage projects with many songs
+- **Maintain organization:** Professional, organized appearance
+
+### Song Display Order
+
+Songs are sorted by:
+1. **Primary:** Song title (alphabetical, A-Z)
+2. **Fallback:** Songs without titles appear as "Unknown Song"
+3. **Locale:** German character ordering (ä after a, ö after o, etc.)
+
+**Examples of sorting order:**
+- "Alle meine Entchen"
+- "Amazing Grace" 
+- "Ännchen von Tharau"
+- "Beethoven Sonata"
+- "Über den Wolken"
+- "Unknown Song" (for songs without titles)

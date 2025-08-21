@@ -1,9 +1,9 @@
  # ABC FSongs ile Directory Default Implementation
 
-**Date:** 2025-08-19 19:40:49 (Updated: 2025-08-20 20:29:00)  
-**Feature:** Default --abc-file-dir from most recent import + Preview Integration  
+****Date:** 2025-08-19 19:40:49 (Updated: 2025-08-21 15:50:00)  
+**Feature:** Default --abc-file-dir from most recent import + Preview Integration + Song Sorting  
 **Branch:** feature/abc-file-dir-default  
-**Latest Commit:** d79ce39  
+**Latest Commit:** 4ec7638  
 
 ## Problem Statement
 
@@ -632,3 +632,83 @@ Displays available PDFs for specific song
 ```
 
 This enhancement provides a more intuitive and efficient workflow for users who want to preview individual songs while leveraging the project's ABC directory configuration for seamless integration.
+
+## Song Sorting Enhancement
+
+**Update:** 2025-08-21 15:50  
+**Additional Commit:** `4ec7638`
+
+### Alphabetical Song Sorting in Project View
+
+The project song list now displays songs in alphabetical order by title, providing better organization and easier navigation for users managing multiple songs in a project.
+
+#### Implementation Details:
+
+**Frontend Enhancement:**
+
+**1. Computed Property for Sorting:**
+```vue
+const sortedProjectSongs = computed(() => {
+  return [...projectSongs.value].sort((a, b) => {
+    const titleA = a.song?.title || 'Unknown Song'
+    const titleB = b.song?.title || 'Unknown Song'
+    return titleA.localeCompare(titleB, 'de', { sensitivity: 'base' })
+  })
+})
+```
+
+**2. Template Integration:**
+```vue
+<li v-for="projectSong in sortedProjectSongs" :key="projectSong.id">
+  <!-- Song display content -->
+</li>
+```
+
+#### Key Features:
+
+**1. Alphabetical Ordering:**
+- Songs sorted by title in ascending alphabetical order
+- Consistent display regardless of database order or addition sequence
+
+**2. Localization Support:**
+- Uses German locale (`'de'`) for proper character sorting
+- Handles umlauts and special characters correctly (ä, ö, ü, ß)
+
+**3. Case-Insensitive Sorting:**
+- `sensitivity: 'base'` option ignores case differences
+- "Apple" and "apple" sort together naturally
+
+**4. Fallback Handling:**
+- Songs without titles display as "Unknown Song"
+- Fallback values participate in sorting consistently
+
+**5. Reactive Updates:**
+- Computed property automatically re-sorts when songs are added/removed
+- No manual refresh needed after song list changes
+
+#### User Experience Benefits:
+
+1. **Better Organization:** Easy to find specific songs in large projects
+2. **Predictable Order:** Consistent sorting regardless of when songs were added
+3. **Improved Navigation:** Alphabetical order matches user expectations
+4. **Reduced Cognitive Load:** No need to scan randomly ordered lists
+5. **Professional Appearance:** Clean, organized project presentation
+
+#### Technical Considerations:
+
+**Performance:**
+- Lightweight sorting operation using native JavaScript
+- Computed property caches results until dependencies change
+- Minimal performance impact even with large song lists
+
+**Internationalization:**
+- German locale ensures proper sorting for German song titles
+- Can be easily extended for other locales if needed
+- Handles special characters and diacritics correctly
+
+**Maintainability:**
+- Clean separation of sorting logic in computed property
+- Easy to modify sorting criteria or add secondary sorting
+- No impact on existing API or data structures
+
+This enhancement improves the overall user experience by providing a logical, predictable organization of songs within projects, making it easier for users to manage and navigate their musical collections.
