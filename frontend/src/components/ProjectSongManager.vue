@@ -49,15 +49,15 @@
                    
                    <!-- Project Badges (excluding current project) -->
                    <div v-if="getOtherProjects(projectSong.song?.projects).length > 0" class="flex flex-wrap gap-1 mt-1">
-                     <RouterLink
+                     <button
                        v-for="project in getOtherProjects(projectSong.song?.projects)"
                        :key="project.id"
-                       :to="`/projects/${project.id}`"
+                       @click="navigateToProject(project.id)"
                        class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200 transition-colors cursor-pointer"
                        :title="`Go to project: ${project.title}`"
                      >
                        {{ project.short_name }}
-                     </RouterLink>
+                     </button>
                    </div>
                  </div>
 
@@ -281,7 +281,8 @@ const getOtherProjects = (projects?: Array<{id: number, title: string, short_nam
 const navigateToProject = async (projectId: number) => {
   console.log('Navigating to project:', projectId)
   try {
-    await router.push(`/projects/${projectId}`)
+    // Use replace instead of push to force navigation
+    await router.replace(`/projects/${projectId}`)
     console.log('Navigation completed')
   } catch (error) {
     console.error('Navigation failed:', error)
