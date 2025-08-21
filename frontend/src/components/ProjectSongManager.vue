@@ -63,17 +63,18 @@
                   </select>
                 </div>
                 
-                <!-- Priority Badge/Input -->
+                <!-- Priority Badge/Select -->
                 <div class="relative">
-                  <input
-                    type="number"
+                  <select
                     :value="projectSong.priority"
-                    @blur="updatePriority(projectSong, parseInt(($event.target as HTMLInputElement).value))"
-                    @keyup.enter="($event.target as HTMLInputElement).blur()"
-                    min="1"
-                    max="99"
-                    class="px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border-0 w-16 text-center cursor-pointer hover:bg-blue-200 focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 focus:outline-none"
-                  />
+                    @change="updatePriority(projectSong, parseInt(($event.target as HTMLSelectElement).value))"
+                    class="appearance-none px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border-0 cursor-pointer hover:bg-blue-200 focus:ring-2 focus:ring-offset-1 focus:ring-blue-500 focus:outline-none"
+                  >
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                  </select>
                 </div>
               </div>
               
@@ -278,7 +279,7 @@ const updateDifficulty = async (projectSong: ProjectSongResponse, newDifficulty:
 }
 
 const updatePriority = async (projectSong: ProjectSongResponse, newPriority: number) => {
-  if (isNaN(newPriority) || newPriority < 1 || newPriority > 99) {
+  if (isNaN(newPriority) || newPriority < 1 || newPriority > 4) {
     return // Invalid input, don't update
   }
   
