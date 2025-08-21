@@ -15,12 +15,13 @@ type Project struct {
 
 // Song represents a song domain entity
 type Song struct {
-	ID        int    `json:"id"`
-	Title     string `json:"title"`
-	Filename  string `json:"filename"`
-	Genre     string `json:"genre"`
-	Copyright string `json:"copyright"`
-	Tocinfo   string `json:"tocinfo"`
+	ID        int        `json:"id"`
+	Title     string     `json:"title"`
+	Filename  string     `json:"filename"`
+	Genre     string     `json:"genre"`
+	Copyright string     `json:"copyright"`
+	Tocinfo   string     `json:"tocinfo"`
+	Projects  []*Project `json:"projects,omitempty"`
 }
 
 // ProjectSong represents a project-song relationship

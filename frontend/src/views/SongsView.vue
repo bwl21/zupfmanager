@@ -205,95 +205,10 @@ const { data: searchResults, isLoading: isSearching, error: searchError } = useQ
 })
 
 
-// Enhanced songs with project information
-const songsWithProjects = ref<SongResponse[]>([])
-
-// Load project information for songs efficiently
-const loadProjectsForSongs = async (songs: SongResponse[]) => {
-  try {
-    // Get all projects first
-    const projectsResponse = await projectApi.list()
-    const projects = projectsResponse.projects
-    
-    // Create a map to store song-to-projects relationships
-    const songProjectMap = new Map<number, Array<{id: number, title: string, short_name: string}>>()
-    
-    // Initialize map with empty arrays for all songs
-    songs.forEach(song => {
-      songProjectMap.set(song.id, [])
-    })
-    
-    // Load all project-song relationships in parallel
-    const projectSongPromises = projects.map(async (project) => {
-      try {
-        const projectSongs = await projectApi.getSongs(project.id)
-        return {
-          project: {
-            id: project.id,
-            title: project.title,
-            short_name: project.short_name
-          },
-          songIds: projectSongs.project_songs.map(ps => ps.song_id)
-        }
-      } catch (err) {
-        console.warn(`Failed to load songs for project ${project.id}:`, err)
-        return null
-      }
-    })
-    
-    // Wait for all project-song relationships to load
-    const projectSongResults = await Promise.all(projectSongPromises)
-    
-    // Build the song-to-projects map
-    projectSongResults.forEach(result => {
-      if (result) {
-        result.songIds.forEach(songId => {
-          const songProjects = songProjectMap.get(songId)
-          if (songProjects) {
-            songProjects.push(result.project)
-          }
-        })
-      }
-    })
-    
-    // Enhance songs with project information
-    const enhancedSongs = songs.map(song => ({
-      ...song,
-      projects: songProjectMap.get(song.id) || []
-    }))
-    
-    songsWithProjects.value = enhancedSongs
-  } catch (err) {
-    console.error('Failed to load project information:', err)
-    // Fallback to original songs without project info
-    songsWithProjects.value = songs.map(song => ({ ...song, projects: [] }))
-  }
-}
-
-// Watch for changes in song data and load project info
+// Display songs directly from API responses (now include project info)
 const displayedSongs = computed(() => {
-  const songs = searchQuery.value ? searchResults.value : allSongs.value
-  if (!songs) return null
-  
-  return {
-    songs: songsWithProjects.value.length > 0 ? songsWithProjects.value : songs.songs,
-    count: songs.count
-  }
+  return searchQuery.value ? searchResults.value : allSongs.value
 })
-
-// Watch for changes in allSongs and load project info
-watch(allSongs, async (newSongs) => {
-  if (newSongs?.songs) {
-    await loadProjectsForSongs(newSongs.songs)
-  }
-}, { immediate: true })
-
-// Watch for changes in searchResults and load project info
-watch(searchResults, async (newResults) => {
-  if (newResults?.songs) {
-    await loadProjectsForSongs(newResults.songs)
-  }
-}, { immediate: true })
 
 // Debounced search function
 const debouncedSearch = useDebounceFn(() => {

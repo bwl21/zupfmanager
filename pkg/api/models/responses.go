@@ -84,13 +84,21 @@ type ProjectListResponse struct {
 
 // SongResponse represents a song response
 type SongResponse struct {
-	ID        int    `json:"id" example:"1"`
-	Title     string `json:"title" example:"Amazing Grace"`
-	Filename  string `json:"filename" example:"amazing_grace.abc"`
-	Genre     string `json:"genre,omitempty" example:"Hymn"`
-	Copyright string `json:"copyright,omitempty" example:"Public Domain"`
-	Tocinfo   string `json:"tocinfo,omitempty" example:"John Newton"`
+	ID        int                `json:"id" example:"1"`
+	Title     string             `json:"title" example:"Amazing Grace"`
+	Filename  string             `json:"filename" example:"amazing_grace.abc"`
+	Genre     string             `json:"genre,omitempty" example:"Hymn"`
+	Copyright string             `json:"copyright,omitempty" example:"Public Domain"`
+	Tocinfo   string             `json:"tocinfo,omitempty" example:"John Newton"`
+	Projects  []ProjectReference `json:"projects,omitempty"`
 } // @name SongResponse
+
+// ProjectReference represents a minimal project reference
+type ProjectReference struct {
+	ID        int    `json:"id" example:"1"`
+	Title     string `json:"title" example:"Christmas Songs"`
+	ShortName string `json:"short_name" example:"xmas"`
+} // @name ProjectReference
 
 // SongListResponse represents a list of songs response
 type SongListResponse struct {

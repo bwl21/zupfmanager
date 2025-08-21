@@ -256,7 +256,7 @@ func (s *projectService) UpdateProjectSong(ctx context.Context, req UpdateProjec
 	return ProjectSongFromEnt(updatedProjectSong), nil
 }
 
-// ListProjectSongs lists all songs in a project
+// ListProjectSongs lists all songs in a project with their project associations
 func (s *projectService) ListProjectSongs(ctx context.Context, projectID int) ([]*ProjectSong, error) {
 	// Check if project exists
 	projectExists, err := s.db.Project.Query().Where(project.ID(projectID)).Exist(ctx)
@@ -278,7 +278,68 @@ func (s *projectService) ListProjectSongs(ctx context.Context, projectID int) ([
 		return nil, err
 	}
 
-	return ProjectSongsFromEnt(entProjectSongs), nil
+	// Convert to core models
+	projectSongs := ProjectSongsFromEnt(entProjectSongs)
+
+	// Get all song IDs from this project
+	songIDs := make([]int, len(projectSongs))
+	for i, ps := range projectSongs {
+		if ps.Song != nil {
+			songIDs[i] = ps.Song.ID
+		}
+	}
+
+	// Load all project associations for these songs in a single query
+	if len(songIDs) > 0 {
+		allProjectSongs, err := s.db.ProjectSong.Query().
+			Where(projectsong.SongIDIn(songIDs...)).
+			WithProject().
+			All(ctx)
+		
+		if err != nil {
+			return nil, err
+		}
+
+		// Create a map of song ID to projects
+		songProjectMap := make(map[int][]*Project)
+		for _, ps := range allProjectSongs {
+			if project, err := ps.Edges.ProjectOrErr(); err == nil {
+				songID := ps.SongID
+				if songProjectMap[songID] == nil {
+					songProjectMap[songID] = make([]*Project, 0)
+				}
+				
+				// Convert ent project to core project
+				coreProject := &Project{
+					ID:        project.ID,
+					Title:     project.Title,
+					ShortName: project.ShortName,
+				}
+				
+				// Check if project already exists in the slice
+				exists := false
+				for _, existingProject := range songProjectMap[songID] {
+					if existingProject.ID == coreProject.ID {
+						exists = true
+						break
+					}
+				}
+				
+				if !exists {
+					songProjectMap[songID] = append(songProjectMap[songID], coreProject)
+				}
+			}
+		}
+
+		// Assign project associations to songs
+		for _, ps := range projectSongs {
+			if ps.Song != nil {
+				ps.Song.Projects = songProjectMap[ps.Song.ID]
+			}
+		}
+	}
+
+	return projectSongs, nil
 }
 
 // BuildProject starts a project build operation

@@ -185,72 +185,14 @@ const songConfig = ref<AddSongToProjectRequest>({
   comment: ''
 })
 
-// Load project information for songs efficiently
-const loadProjectsForSongs = async (songs: SongResponse[]) => {
-  try {
-    // Get all projects first
-    const projectsResponse = await projectApi.list()
-    const projects = projectsResponse.projects
-    
-    // Create a map to store song-to-projects relationships
-    const songProjectMap = new Map<number, Array<{id: number, title: string, short_name: string}>>()
-    
-    // Initialize map with empty arrays for all songs
-    songs.forEach(song => {
-      songProjectMap.set(song.id, [])
-    })
-    
-    // Load all project-song relationships in parallel
-    const projectSongPromises = projects.map(async (project) => {
-      try {
-        const projectSongs = await projectApi.getSongs(project.id)
-        return {
-          project: {
-            id: project.id,
-            title: project.title,
-            short_name: project.short_name
-          },
-          songIds: projectSongs.project_songs.map(ps => ps.song_id)
-        }
-      } catch (err) {
-        console.warn(`Failed to load songs for project ${project.id}:`, err)
-        return null
-      }
-    })
-    
-    // Wait for all project-song relationships to load
-    const projectSongResults = await Promise.all(projectSongPromises)
-    
-    // Build the song-to-projects map
-    projectSongResults.forEach(result => {
-      if (result) {
-        result.songIds.forEach(songId => {
-          const songProjects = songProjectMap.get(songId)
-          if (songProjects) {
-            songProjects.push(result.project)
-          }
-        })
-      }
-    })
-    
-    // Enhance songs with project information
-    return songs.map(song => ({
-      ...song,
-      projects: songProjectMap.get(song.id) || []
-    }))
-  } catch (err) {
-    console.error('Failed to load project information:', err)
-    return songs.map(song => ({ ...song, projects: [] }))
-  }
-}
 
 // Methods
 const loadSongs = async () => {
   isLoadingSongs.value = true
   try {
     const response = await songApi.list()
-    const songsWithProjects = await loadProjectsForSongs(response.songs)
-    availableSongs.value = songsWithProjects
+    // Songs now include project associations directly from the API
+    availableSongs.value = response.songs
   } catch (err) {
     console.error('Failed to load songs:', err)
   } finally {
@@ -267,8 +209,8 @@ const searchSongs = async () => {
   isLoadingSongs.value = true
   try {
     const response = await songApi.search(searchQuery.value)
-    const songsWithProjects = await loadProjectsForSongs(response.songs)
-    availableSongs.value = songsWithProjects
+    // Songs now include project associations directly from the API
+    availableSongs.value = response.songs
   } catch (err) {
     console.error('Failed to search songs:', err)
   } finally {

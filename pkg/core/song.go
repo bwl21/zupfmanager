@@ -9,12 +9,73 @@ import (
 
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/bwl21/zupfmanager/internal/ent/predicate"
+	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
 	"github.com/bwl21/zupfmanager/internal/ent/song"
 )
 
 // songService implements SongService interface
 type songService struct {
 	db *database.Client
+}
+
+// loadProjectAssociations loads project associations for the given songs
+func (s *songService) loadProjectAssociations(ctx context.Context, songs []*Song) error {
+	if len(songs) == 0 {
+		return nil
+	}
+	
+	songIDs := make([]int, len(songs))
+	for i, song := range songs {
+		songIDs[i] = song.ID
+	}
+	
+	// Get all project-song relationships for these songs
+	allProjectSongs, err := s.db.ProjectSong.Query().
+		Where(projectsong.SongIDIn(songIDs...)).
+		WithProject().
+		All(ctx)
+	
+	if err != nil {
+		return err
+	}
+	
+	// Create a map of song ID to projects
+	songProjectMap := make(map[int][]*Project)
+	for _, ps := range allProjectSongs {
+		if project, err := ps.Edges.ProjectOrErr(); err == nil {
+			songID := ps.SongID
+			if songProjectMap[songID] == nil {
+				songProjectMap[songID] = make([]*Project, 0)
+			}
+			
+			// Convert ent project to core project
+			coreProject := &Project{
+				ID:        project.ID,
+				Title:     project.Title,
+				ShortName: project.ShortName,
+			}
+			
+			// Check if project already exists in the slice
+			exists := false
+			for _, existingProject := range songProjectMap[songID] {
+				if existingProject.ID == coreProject.ID {
+					exists = true
+					break
+				}
+			}
+			
+			if !exists {
+				songProjectMap[songID] = append(songProjectMap[songID], coreProject)
+			}
+		}
+	}
+
+	// Assign project associations to songs
+	for _, song := range songs {
+		song.Projects = songProjectMap[song.ID]
+	}
+	
+	return nil
 }
 
 // NewSongServiceWithDeps creates a new song service with dependencies
@@ -24,13 +85,21 @@ func NewSongServiceWithDeps(db *database.Client) SongService {
 	}
 }
 
-// List returns all songs
+// List returns all songs with their project associations
 func (s *songService) List(ctx context.Context) ([]*Song, error) {
 	entSongs, err := s.db.Song.Query().All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return SongsFromEnt(entSongs), nil
+	
+	songs := SongsFromEnt(entSongs)
+	
+	// Load project associations
+	if err := s.loadProjectAssociations(ctx, songs); err != nil {
+		return nil, err
+	}
+	
+	return songs, nil
 }
 
 // Get returns a song by ID
@@ -50,7 +119,15 @@ func (s *songService) Search(ctx context.Context, query string) ([]*Song, error)
 	if err != nil {
 		return nil, err
 	}
-	return SongsFromEnt(entSongs), nil
+	
+	songs := SongsFromEnt(entSongs)
+	
+	// Load project associations
+	if err := s.loadProjectAssociations(ctx, songs); err != nil {
+		return nil, err
+	}
+	
+	return songs, nil
 }
 
 // SearchAdvanced performs advanced search with options
@@ -78,7 +155,15 @@ func (s *songService) SearchAdvanced(ctx context.Context, query string, options 
 	if err != nil {
 		return nil, err
 	}
-	return SongsFromEnt(entSongs), nil
+	
+	songs := SongsFromEnt(entSongs)
+	
+	// Load project associations
+	if err := s.loadProjectAssociations(ctx, songs); err != nil {
+		return nil, err
+	}
+	
+	return songs, nil
 }
 
 // GeneratePreview searches for existing PDFs for a song in the ABC directory

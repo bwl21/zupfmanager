@@ -45,7 +45,7 @@ func (h *SongHandler) ListSongs(c *gin.Context) {
 	}
 
 	for i, song := range songs {
-		response.Songs[i] = models.SongResponse{
+		songResponse := models.SongResponse{
 			ID:        song.ID,
 			Title:     song.Title,
 			Filename:  song.Filename,
@@ -53,6 +53,21 @@ func (h *SongHandler) ListSongs(c *gin.Context) {
 			Copyright: song.Copyright,
 			Tocinfo:   song.Tocinfo,
 		}
+
+		// Add project associations if available
+		if song.Projects != nil {
+			projectRefs := make([]models.ProjectReference, len(song.Projects))
+			for j, proj := range song.Projects {
+				projectRefs[j] = models.ProjectReference{
+					ID:        proj.ID,
+					Title:     proj.Title,
+					ShortName: proj.ShortName,
+				}
+			}
+			songResponse.Projects = projectRefs
+		}
+
+		response.Songs[i] = songResponse
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -359,7 +374,7 @@ func (h *SongHandler) SearchSongs(c *gin.Context) {
 	}
 
 	for i, song := range songs {
-		response.Songs[i] = models.SongResponse{
+		songResponse := models.SongResponse{
 			ID:        song.ID,
 			Title:     song.Title,
 			Filename:  song.Filename,
@@ -367,6 +382,21 @@ func (h *SongHandler) SearchSongs(c *gin.Context) {
 			Copyright: song.Copyright,
 			Tocinfo:   song.Tocinfo,
 		}
+
+		// Add project associations if available
+		if song.Projects != nil {
+			projectRefs := make([]models.ProjectReference, len(song.Projects))
+			for j, proj := range song.Projects {
+				projectRefs[j] = models.ProjectReference{
+					ID:        proj.ID,
+					Title:     proj.Title,
+					ShortName: proj.ShortName,
+				}
+			}
+			songResponse.Projects = projectRefs
+		}
+
+		response.Songs[i] = songResponse
 	}
 
 	c.JSON(http.StatusOK, response)

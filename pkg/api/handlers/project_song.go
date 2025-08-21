@@ -350,7 +350,7 @@ func (h *ProjectSongHandler) ListProjectSongs(c *gin.Context) {
 
 		// Add song details if available
 		if ps.Song != nil {
-			responses[i].Song = &models.SongResponse{
+			songResponse := &models.SongResponse{
 				ID:        ps.Song.ID,
 				Title:     ps.Song.Title,
 				Filename:  ps.Song.Filename,
@@ -358,6 +358,21 @@ func (h *ProjectSongHandler) ListProjectSongs(c *gin.Context) {
 				Copyright: ps.Song.Copyright,
 				Tocinfo:   ps.Song.Tocinfo,
 			}
+
+			// Add project associations if available
+			if ps.Song.Projects != nil {
+				projectRefs := make([]models.ProjectReference, len(ps.Song.Projects))
+				for j, proj := range ps.Song.Projects {
+					projectRefs[j] = models.ProjectReference{
+						ID:        proj.ID,
+						Title:     proj.Title,
+						ShortName: proj.ShortName,
+					}
+				}
+				songResponse.Projects = projectRefs
+			}
+
+			responses[i].Song = songResponse
 		}
 	}
 
