@@ -85,7 +85,7 @@
             </div>
             
             <!-- Actions -->
-            <div class="flex items-center space-x-1">
+            <div class="flex items-center gap-2">
               <button
                 @click="previewSong(projectSong)"
                 class="inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-1 focus:ring-offset-1 focus:ring-green-500"
