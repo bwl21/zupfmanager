@@ -176,7 +176,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { RouterLink } from 'vue-router'
 import { songApi, projectApi } from '@/services/api'
@@ -210,10 +210,13 @@ const songsWithProjects = ref<SongResponse[]>([])
 
 // Load project information for songs
 const loadProjectsForSongs = async (songs: SongResponse[]) => {
+  console.log('Loading project info for', songs.length, 'songs')
+  
   try {
     // Get all projects
     const projectsResponse = await projectApi.list()
     const projects = projectsResponse.projects
+    console.log('Found', projects.length, 'projects')
     
     // For each song, find which projects it belongs to
     const enhancedSongs = await Promise.all(
@@ -239,6 +242,10 @@ const loadProjectsForSongs = async (songs: SongResponse[]) => {
           }
         }
         
+        if (songProjects.length > 0) {
+          console.log(`Song "${song.title}" is in projects:`, songProjects.map(p => p.short_name))
+        }
+        
         return {
           ...song,
           projects: songProjects
@@ -246,11 +253,12 @@ const loadProjectsForSongs = async (songs: SongResponse[]) => {
       })
     )
     
+    console.log('Enhanced songs with project info:', enhancedSongs.filter(s => s.projects && s.projects.length > 0).length)
     songsWithProjects.value = enhancedSongs
   } catch (err) {
     console.error('Failed to load project information:', err)
     // Fallback to original songs without project info
-    songsWithProjects.value = songs
+    songsWithProjects.value = songs.map(song => ({ ...song, projects: [] }))
   }
 }
 
@@ -265,26 +273,28 @@ const displayedSongs = computed(() => {
   }
 })
 
-// Load project information when songs are loaded
-onMounted(async () => {
-  if (allSongs.value?.songs) {
-    await loadProjectsForSongs(allSongs.value.songs)
+// Watch for changes in allSongs and load project info
+watch(allSongs, async (newSongs) => {
+  if (newSongs?.songs) {
+    await loadProjectsForSongs(newSongs.songs)
   }
-})
+}, { immediate: true })
+
+// Watch for changes in searchResults and load project info
+watch(searchResults, async (newResults) => {
+  if (newResults?.songs) {
+    await loadProjectsForSongs(newResults.songs)
+  }
+}, { immediate: true })
 
 // Debounced search function
-const debouncedSearch = useDebounceFn(async () => {
-  // After search results are loaded, enhance them with project info
-  if (searchResults.value?.songs) {
-    await loadProjectsForSongs(searchResults.value.songs)
-  }
+const debouncedSearch = useDebounceFn(() => {
+  // The query will automatically refetch due to reactive dependencies
+  // Project info will be loaded by the searchResults watcher
 }, 300)
 
 function clearSearch() {
   searchQuery.value = ''
-  // Reset to all songs with project info
-  if (allSongs.value?.songs) {
-    loadProjectsForSongs(allSongs.value.songs)
-  }
+  // Project info will be loaded by the allSongs watcher
 }
 </script>

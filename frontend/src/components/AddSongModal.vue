@@ -52,9 +52,22 @@
               ]"
             >
               <div class="flex justify-between items-start">
-                <div>
+                <div class="flex-1">
                   <p class="text-sm font-medium text-gray-900">{{ song.title }}</p>
                   <p class="text-sm text-gray-500">{{ song.filename }}</p>
+                  
+                  <!-- Project Badges -->
+                  <div v-if="song.projects && song.projects.length > 0" class="flex flex-wrap gap-1 mt-1">
+                    <span
+                      v-for="project in song.projects"
+                      :key="project.id"
+                      class="inline-flex items-center px-1.5 py-0.5 text-xs font-medium rounded bg-blue-100 text-blue-800"
+                      :title="`In project: ${project.title}`"
+                    >
+                      {{ project.short_name }}
+                    </span>
+                  </div>
+                  
                   <p v-if="song.genre" class="text-xs text-gray-400 mt-1">{{ song.genre }}</p>
                 </div>
                 <div v-if="selectedSong?.id === song.id" class="text-indigo-600">
@@ -146,7 +159,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { songApi, projectSongApi } from '@/services/api'
+import { songApi, projectSongApi, projectApi } from '@/services/api'
 import type { SongResponse, AddSongToProjectRequest } from '@/types/api'
 
 interface Props {
@@ -172,12 +185,54 @@ const songConfig = ref<AddSongToProjectRequest>({
   comment: ''
 })
 
+// Load project information for songs (same logic as SongsView)
+const loadProjectsForSongs = async (songs: SongResponse[]) => {
+  try {
+    const projectsResponse = await projectApi.list()
+    const projects = projectsResponse.projects
+    
+    const enhancedSongs = await Promise.all(
+      songs.map(async (song) => {
+        const songProjects = []
+        
+        for (const project of projects) {
+          try {
+            const projectSongs = await projectApi.getSongs(project.id)
+            const isInProject = projectSongs.project_songs.some(ps => ps.song_id === song.id)
+            
+            if (isInProject) {
+              songProjects.push({
+                id: project.id,
+                title: project.title,
+                short_name: project.short_name
+              })
+            }
+          } catch (err) {
+            console.warn(`Failed to load songs for project ${project.id}:`, err)
+          }
+        }
+        
+        return {
+          ...song,
+          projects: songProjects
+        }
+      })
+    )
+    
+    return enhancedSongs
+  } catch (err) {
+    console.error('Failed to load project information:', err)
+    return songs.map(song => ({ ...song, projects: [] }))
+  }
+}
+
 // Methods
 const loadSongs = async () => {
   isLoadingSongs.value = true
   try {
     const response = await songApi.list()
-    availableSongs.value = response.songs
+    const songsWithProjects = await loadProjectsForSongs(response.songs)
+    availableSongs.value = songsWithProjects
   } catch (err) {
     console.error('Failed to load songs:', err)
   } finally {
@@ -194,7 +249,8 @@ const searchSongs = async () => {
   isLoadingSongs.value = true
   try {
     const response = await songApi.search(searchQuery.value)
-    availableSongs.value = response.songs
+    const songsWithProjects = await loadProjectsForSongs(response.songs)
+    availableSongs.value = songsWithProjects
   } catch (err) {
     console.error('Failed to search songs:', err)
   } finally {
