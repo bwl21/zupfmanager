@@ -224,6 +224,39 @@ curl -X POST http://localhost:5173/api/v1/import/directory \
   -d '{"directory_path": "/workspaces/zupfmanager/test_songs/"}'
 ```
 
+## 📝 Recent Changes
+
+### 2025-08-21: Performance Optimization for Project Loading
+- **Fixed slow search performance** in SongsView caused by inefficient project loading
+- **Optimized project-song relationship loading** from O(N×M) to O(M) API calls
+- **Implemented parallel processing** for loading all project-song relationships simultaneously
+- **Added efficient mapping** using Map data structure for O(1) lookups
+- **Applied same optimization** to AddSongModal for consistent performance
+- **Improved error handling** so individual project failures don't break the entire process
+
+**Technical Details:**
+- Changed from sequential API calls for each song-project combination
+- Now loads all projects first, then fetches all project-song relationships in parallel
+- Uses a Map to efficiently associate songs with their projects
+- Reduces API calls from potentially hundreds to just the number of projects
+
+### 2025-08-21: Project Association Display
+- Added project badges to song views (SongsView and AddSongModal)
+- Project badges are clickable and navigate to the respective project
+- Enhanced song data loading to include project associations
+
+### 2025-08-21: Inline Editing Features
+- Implemented inline editing for difficulty (dropdown) and priority (dropdown 1-4) in ProjectSongManager
+- Added auto-save functionality for immediate persistence
+- Unified spacing for all interactive elements (difficulty, priority, preview, edit, remove buttons)
+- Enhanced user experience with immediate feedback
+
+### 2025-08-21: Song Sorting and Preview Enhancements
+- Added alphabetical sorting by title for songs in project view with German locale support
+- Moved preview functionality from project-level to individual song-level
+- Integrated project's abc_file_dir_preference with song previews
+- Auto-initializes directory path and searches for PDFs when project directory is available
+
 ## 🚀 Deployment
 
 ### Production Build

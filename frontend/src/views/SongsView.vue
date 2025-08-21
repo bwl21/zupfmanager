@@ -208,52 +208,60 @@ const { data: searchResults, isLoading: isSearching, error: searchError } = useQ
 // Enhanced songs with project information
 const songsWithProjects = ref<SongResponse[]>([])
 
-// Load project information for songs
+// Load project information for songs efficiently
 const loadProjectsForSongs = async (songs: SongResponse[]) => {
-  console.log('Loading project info for', songs.length, 'songs')
-  
   try {
-    // Get all projects
+    // Get all projects first
     const projectsResponse = await projectApi.list()
     const projects = projectsResponse.projects
-    console.log('Found', projects.length, 'projects')
     
-    // For each song, find which projects it belongs to
-    const enhancedSongs = await Promise.all(
-      songs.map(async (song) => {
-        const songProjects = []
-        
-        // Check each project for this song
-        for (const project of projects) {
-          try {
-            const projectSongs = await projectApi.getSongs(project.id)
-            const isInProject = projectSongs.project_songs.some(ps => ps.song_id === song.id)
-            
-            if (isInProject) {
-              songProjects.push({
-                id: project.id,
-                title: project.title,
-                short_name: project.short_name
-              })
-            }
-          } catch (err) {
-            // Skip projects that can't be loaded
-            console.warn(`Failed to load songs for project ${project.id}:`, err)
-          }
-        }
-        
-        if (songProjects.length > 0) {
-          console.log(`Song "${song.title}" is in projects:`, songProjects.map(p => p.short_name))
-        }
-        
+    // Create a map to store song-to-projects relationships
+    const songProjectMap = new Map<number, Array<{id: number, title: string, short_name: string}>>()
+    
+    // Initialize map with empty arrays for all songs
+    songs.forEach(song => {
+      songProjectMap.set(song.id, [])
+    })
+    
+    // Load all project-song relationships in parallel
+    const projectSongPromises = projects.map(async (project) => {
+      try {
+        const projectSongs = await projectApi.getSongs(project.id)
         return {
-          ...song,
-          projects: songProjects
+          project: {
+            id: project.id,
+            title: project.title,
+            short_name: project.short_name
+          },
+          songIds: projectSongs.project_songs.map(ps => ps.song_id)
         }
-      })
-    )
+      } catch (err) {
+        console.warn(`Failed to load songs for project ${project.id}:`, err)
+        return null
+      }
+    })
     
-    console.log('Enhanced songs with project info:', enhancedSongs.filter(s => s.projects && s.projects.length > 0).length)
+    // Wait for all project-song relationships to load
+    const projectSongResults = await Promise.all(projectSongPromises)
+    
+    // Build the song-to-projects map
+    projectSongResults.forEach(result => {
+      if (result) {
+        result.songIds.forEach(songId => {
+          const songProjects = songProjectMap.get(songId)
+          if (songProjects) {
+            songProjects.push(result.project)
+          }
+        })
+      }
+    })
+    
+    // Enhance songs with project information
+    const enhancedSongs = songs.map(song => ({
+      ...song,
+      projects: songProjectMap.get(song.id) || []
+    }))
+    
     songsWithProjects.value = enhancedSongs
   } catch (err) {
     console.error('Failed to load project information:', err)
