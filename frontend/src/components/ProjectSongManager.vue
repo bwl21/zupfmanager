@@ -35,7 +35,7 @@
     <!-- Songs List -->
     <div v-else-if="projectSongs.length > 0" class="bg-white shadow overflow-hidden sm:rounded-md">
       <ul class="divide-y divide-gray-200">
-        <li v-for="projectSong in projectSongs" :key="projectSong.id" class="px-6 py-4">
+        <li v-for="projectSong in sortedProjectSongs" :key="projectSong.id" class="px-6 py-4">
           <div class="flex items-center justify-between">
             <div class="flex-1 min-w-0">
               <div class="flex items-center space-x-3">
@@ -172,6 +172,15 @@ const showEditModal = ref(false)
 const showPreviewModal = ref(false)
 const editingProjectSong = ref<ProjectSongResponse | null>(null)
 const previewingSong = ref<ProjectSongResponse | null>(null)
+
+// Computed property for sorted songs
+const sortedProjectSongs = computed(() => {
+  return [...projectSongs.value].sort((a, b) => {
+    const titleA = a.song?.title || 'Unknown Song'
+    const titleB = b.song?.title || 'Unknown Song'
+    return titleA.localeCompare(titleB, 'de', { sensitivity: 'base' })
+  })
+})
 
 // Methods
 const loadProjectSongs = async () => {
