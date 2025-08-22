@@ -119,8 +119,22 @@ watch(configText, (newValue) => {
 })
 
 // Methods
-const resetToDefault = () => {
-  configText.value = JSON.stringify({}, null, 2)
+const resetToDefault = async () => {
+  try {
+    // Load default configuration from backend
+    const response = await fetch('/default-project-config.json')
+    if (response.ok) {
+      const defaultConfig = await response.json()
+      configText.value = JSON.stringify(defaultConfig, null, 2)
+    } else {
+      // Fallback to empty config if default file not accessible
+      configText.value = JSON.stringify({}, null, 2)
+    }
+  } catch (error) {
+    console.error('Failed to load default configuration:', error)
+    // Fallback to empty config
+    configText.value = JSON.stringify({}, null, 2)
+  }
 }
 
 const saveConfiguration = async () => {
