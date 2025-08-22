@@ -1,12 +1,12 @@
 <template>
-  <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" @click="$emit('close')">
-    <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white" @click.stop>
+  <div class="fixed inset-0 bg-gray-600 bg-opacity-75 flex items-center justify-center z-50 p-4" @click="$emit('close')">
+    <div class="bg-white rounded-lg shadow-xl w-4/5 h-4/5 max-w-6xl max-h-screen flex flex-col" @click.stop>
       <!-- Header -->
-      <div class="flex items-center justify-between pb-4 border-b border-gray-200">
-        <h3 class="text-lg font-medium text-gray-900">Project Configuration</h3>
+      <div class="flex items-center justify-between p-6 border-b border-gray-200 flex-shrink-0">
+        <h3 class="text-xl font-semibold text-gray-900">Project Configuration</h3>
         <button
           @click="$emit('close')"
-          class="text-gray-400 hover:text-gray-600 transition-colors"
+          class="text-gray-400 hover:text-gray-600 transition-colors p-1"
         >
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -15,32 +15,31 @@
       </div>
 
       <!-- Content -->
-      <div class="mt-4">
-        <div class="mb-4">
-          <p class="text-sm text-gray-600 mb-2">
+      <div class="flex-1 overflow-hidden flex flex-col p-6">
+        <div class="mb-4 flex-shrink-0">
+          <p class="text-sm text-gray-600">
             This configuration is used by Zupfnoter for rendering ABC notation. 
             Modify with caution as incorrect values may cause rendering issues.
           </p>
         </div>
 
         <!-- Configuration Editor -->
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
+        <div class="flex-1 flex flex-col space-y-4">
+          <div class="flex-1 flex flex-col">
+            <label class="block text-sm font-medium text-gray-700 mb-2 flex-shrink-0">
               Configuration JSON
             </label>
             <textarea
               v-model="configText"
-              rows="20"
-              class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+              class="flex-1 w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 font-mono text-sm resize-none"
               placeholder="Enter JSON configuration..."
             />
           </div>
 
           <!-- Validation Error -->
-          <div v-if="validationError" class="bg-red-50 border border-red-200 rounded-md p-3">
+          <div v-if="validationError" class="bg-red-50 border border-red-200 rounded-md p-3 flex-shrink-0">
             <div class="flex">
-              <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div class="ml-3">
@@ -53,7 +52,7 @@
       </div>
 
       <!-- Footer -->
-      <div class="flex items-center justify-end space-x-3 pt-4 border-t border-gray-200 mt-6">
+      <div class="flex items-center justify-end space-x-3 p-6 border-t border-gray-200 flex-shrink-0">
         <button
           @click="resetToDefault"
           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
