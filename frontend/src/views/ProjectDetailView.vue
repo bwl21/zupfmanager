@@ -183,7 +183,10 @@ const confirmDelete = () => {
 }
 
 const handleConfigUpdated = (updatedProject: ProjectResponse) => {
-  // Refetch the project data to update the UI
+  // Update the data directly and also refetch to ensure consistency
+  if (data.value) {
+    data.value.config = updatedProject.config
+  }
   refetch()
 }
 

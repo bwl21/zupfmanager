@@ -55,9 +55,17 @@ func (s *projectService) Create(ctx context.Context, req CreateProjectRequest) (
 	}
 
 	// Load configuration
-	config, err := s.loadConfig(req.ConfigFile, req.DefaultConfig)
-	if err != nil {
-		return nil, err
+	var config map[string]interface{}
+	var err error
+	
+	// Priority: direct config > config file > default config
+	if req.Config != nil && len(req.Config) > 0 {
+		config = req.Config
+	} else {
+		config, err = s.loadConfig(req.ConfigFile, req.DefaultConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Create project in database
@@ -82,9 +90,17 @@ func (s *projectService) Update(ctx context.Context, req UpdateProjectRequest) (
 	}
 
 	// Load configuration
-	config, err := s.loadConfig(req.ConfigFile, req.DefaultConfig)
-	if err != nil {
-		return nil, err
+	var config map[string]interface{}
+	var err error
+	
+	// Priority: direct config > config file > default config
+	if req.Config != nil && len(req.Config) > 0 {
+		config = req.Config
+	} else {
+		config, err = s.loadConfig(req.ConfigFile, req.DefaultConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Update project in database

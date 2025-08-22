@@ -38,19 +38,21 @@ type ProjectSong struct {
 
 // CreateProjectRequest represents the data needed to create a project
 type CreateProjectRequest struct {
-	Title         string `json:"title" validate:"required,min=1"`
-	ShortName     string `json:"short_name" validate:"required,min=1,max=50,alphanum"`
-	ConfigFile    string `json:"config_file,omitempty"`
-	DefaultConfig bool   `json:"default_config,omitempty"`
+	Title         string                 `json:"title" validate:"required,min=1"`
+	ShortName     string                 `json:"short_name" validate:"required,min=1,max=50,alphanum"`
+	ConfigFile    string                 `json:"config_file,omitempty"`
+	DefaultConfig bool                   `json:"default_config,omitempty"`
+	Config        map[string]interface{} `json:"config,omitempty"`
 }
 
 // UpdateProjectRequest represents the data needed to update a project
 type UpdateProjectRequest struct {
-	ID            int    `json:"id" validate:"required,min=1"`
-	Title         string `json:"title" validate:"required,min=1"`
-	ShortName     string `json:"short_name" validate:"required,min=1,max=50,alphanum"`
-	ConfigFile    string `json:"config_file,omitempty"`
-	DefaultConfig bool   `json:"default_config,omitempty"`
+	ID            int                    `json:"id" validate:"required,min=1"`
+	Title         string                 `json:"title" validate:"required,min=1"`
+	ShortName     string                 `json:"short_name" validate:"required,min=1,max=50,alphanum"`
+	ConfigFile    string                 `json:"config_file,omitempty"`
+	DefaultConfig bool                   `json:"default_config,omitempty"`
+	Config        map[string]interface{} `json:"config,omitempty"`
 }
 
 // AddSongToProjectRequest represents the data needed to add a song to a project

@@ -53,18 +53,20 @@ type HealthResponse struct {
 
 // CreateProjectRequest represents a create project request
 type CreateProjectRequest struct {
-	Title         string `json:"title" binding:"required" example:"My Music Project"`
-	ShortName     string `json:"short_name" binding:"required" example:"my-project"`
-	ConfigFile    string `json:"config_file,omitempty" example:"/path/to/config.json"`
-	DefaultConfig bool   `json:"default_config,omitempty" example:"true"`
+	Title         string                 `json:"title" binding:"required" example:"My Music Project"`
+	ShortName     string                 `json:"short_name" binding:"required" example:"my-project"`
+	ConfigFile    string                 `json:"config_file,omitempty" example:"/path/to/config.json"`
+	DefaultConfig bool                   `json:"default_config,omitempty" example:"true"`
+	Config        map[string]interface{} `json:"config,omitempty"`
 } // @name CreateProjectRequest
 
 // UpdateProjectRequest represents an update project request
 type UpdateProjectRequest struct {
-	Title         string `json:"title" binding:"required" example:"Updated Project"`
-	ShortName     string `json:"short_name" binding:"required" example:"updated-project"`
-	ConfigFile    string `json:"config_file,omitempty" example:"/path/to/config.json"`
-	DefaultConfig bool   `json:"default_config,omitempty" example:"false"`
+	Title         string                 `json:"title" binding:"required" example:"Updated Project"`
+	ShortName     string                 `json:"short_name" binding:"required" example:"updated-project"`
+	ConfigFile    string                 `json:"config_file,omitempty" example:"/path/to/config.json"`
+	DefaultConfig bool                   `json:"default_config,omitempty" example:"false"`
+	Config        map[string]interface{} `json:"config,omitempty"`
 } // @name UpdateProjectRequest
 
 // ProjectResponse represents a project response

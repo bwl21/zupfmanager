@@ -99,11 +99,19 @@ const validationError = ref('')
 const isSaving = ref(false)
 
 // Initialize configuration text
-onMounted(() => {
+onMounted(async () => {
   if (props.project.config) {
     configText.value = JSON.stringify(props.project.config, null, 2)
   } else {
-    configText.value = JSON.stringify({}, null, 2)
+    // Load default configuration when project has no config
+    try {
+      const defaultConfig = await projectApi.getDefaultConfig()
+      configText.value = JSON.stringify(defaultConfig, null, 2)
+    } catch (error) {
+      console.error('Failed to load default configuration:', error)
+      // Fallback to empty config
+      configText.value = JSON.stringify({}, null, 2)
+    }
   }
 })
 
@@ -141,7 +149,7 @@ const saveConfiguration = async () => {
     const updatedProject = await projectApi.update(props.project.id, {
       title: props.project.title,
       short_name: props.project.short_name,
-      config: Object.keys(config).length > 0 ? config : null
+      config: config
     })
 
     emit('updated', updatedProject)

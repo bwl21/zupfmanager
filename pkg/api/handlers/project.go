@@ -48,6 +48,7 @@ func (h *ProjectHandler) CreateProject(c *gin.Context) {
 		ShortName:     req.ShortName,
 		ConfigFile:    req.ConfigFile,
 		DefaultConfig: req.DefaultConfig,
+		Config:        req.Config,
 	}
 
 	project, err := h.services.Project.Create(c.Request.Context(), coreReq)
@@ -549,6 +550,7 @@ func (h *ProjectHandler) UpdateProject(c *gin.Context) {
 		ShortName:     req.ShortName,
 		ConfigFile:    req.ConfigFile,
 		DefaultConfig: req.DefaultConfig,
+		Config:        req.Config,
 	}
 
 	project, err := h.services.Project.Update(c.Request.Context(), coreReq)
