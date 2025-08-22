@@ -6,14 +6,18 @@ Zupfmanager is a specialized tool for managing and building music projects for z
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Features
-# Features - This section describes the main features of the Zupfmanager.
 
-- Manage music projects with customizable configurations
-- Organize songs in projects with priority and difficulty settings
-- Import ABC notation files into the song database
-- Build projects to generate sheet music in PDF format
-- Command-line interface (CLI) for automation and scripting
-- Terminal user interface (TUI) for interactive usage
+- **Project Management**: Manage music projects with customizable configurations
+- **Song Organization**: Organize songs in projects with priority and difficulty settings
+- **ABC Import**: Import ABC notation files into the song database
+- **Sheet Music Generation**: Build projects to generate sheet music in PDF format
+- **Web Interface**: Modern Vue.js frontend with improved modal dialogs for configuration editing
+- **Command-line Interface (CLI)**: Full automation and scripting support
+- **Terminal User Interface (TUI)**: Interactive usage for quick operations
+
+### Recent Improvements
+
+- **Enhanced Project Configuration Modal**: Improved layout with 80% viewport coverage, centered positioning, and expandable textarea for better JSON editing experience
 
 ## Installation
 # Installation - This section describes how to install the Zupfmanager.
