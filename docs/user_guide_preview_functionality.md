@@ -68,6 +68,122 @@ The preview system looks for PDFs using this pattern:
 - **Time Saving:** Faster access to previews
 - **Error Reduction:** Less chance of typos in directory paths
 
+## PDF Directory Organization
+
+### Configuring PDF Output Folders
+
+When building projects with Zupfnoter, you can automatically organize different PDF types into separate folders using **Folder Patterns**.
+
+### Setting Up Folder Patterns
+
+1. Go to Projects → Select Project → **Edit Configuration**
+2. Add or modify the `folderPatterns` section in the JSON configuration:
+
+```json
+{
+  "folderPatterns": {
+    "*_-*_a3.pdf": "klein",
+    "*_-*_a4.pdf": "gross", 
+    "*_partitur.pdf": "partituren",
+    "*_sammlung*.pdf": "sammlungen",
+    "*.pdf": "alle_anderen"
+  }
+}
+```
+
+### How Folder Patterns Work
+
+- **Pattern Matching:** PDF filenames are matched against patterns using wildcards (`*`)
+- **First Match Wins:** The first matching pattern determines the target folder
+- **Order Matters:** Place more specific patterns before general ones
+- **Automatic Creation:** Folders are created automatically during project builds
+
+### Common Pattern Examples
+
+| Pattern | Matches | Goes to Folder |
+|---------|---------|----------------|
+| `*_klein.pdf` | `song_klein.pdf` | `einzelstimmen_klein/` |
+| `*_gross.pdf` | `song_gross.pdf` | `einzelstimmen_gross/` |
+| `*_a3.pdf` | `melody_a3.pdf` | `a3_format/` |
+| `*_a4.pdf` | `melody_a4.pdf` | `a4_format/` |
+| `*_partitur*.pdf` | `song_partitur_full.pdf` | `partituren/` |
+| `*_sammlung*.pdf` | `christmas_sammlung.pdf` | `sammlungen/` |
+| `*.pdf` | Any remaining PDF | `alle_anderen/` |
+
+### Resulting Directory Structure
+
+After a project build, your output directory will be organized like this:
+
+```
+/your_output_directory/
+├── klein/                 # Small format PDFs
+│   ├── song1_-1_a3.pdf
+│   └── song2_-2_a3.pdf
+├── gross/                 # Large format PDFs  
+│   ├── song1_-1_a4.pdf
+│   └── song2_-2_a4.pdf
+├── partituren/            # Score PDFs
+│   ├── song1_partitur.pdf
+│   └── song2_partitur.pdf
+├── sammlungen/            # Collection PDFs
+│   └── christmas_sammlung.pdf
+└── alle_anderen/          # Catch-all folder
+    └── special_format.pdf
+```
+
+### Best Practices for Folder Patterns
+
+1. **Start Specific:** Put specific patterns first, general patterns last
+2. **Use Descriptive Names:** Choose folder names that clearly indicate content
+3. **Include Catch-All:** Always end with `"*.pdf": "default_folder"` 
+4. **Test Patterns:** Verify patterns match your expected filenames
+5. **Document Patterns:** Keep notes about your folder organization system
+
+### Example Configurations
+
+**Simple Organization:**
+```json
+{
+  "folderPatterns": {
+    "*_klein.pdf": "klein",
+    "*_gross.pdf": "gross",
+    "*.pdf": "sonstige"
+  }
+}
+```
+
+**Detailed Organization:**
+```json
+{
+  "folderPatterns": {
+    "*_einzelstimme_klein.pdf": "einzelstimmen/klein",
+    "*_einzelstimme_gross.pdf": "einzelstimmen/gross",
+    "*_partitur_*.pdf": "partituren/vollpartitur", 
+    "*_partitur.pdf": "partituren/einfach",
+    "*_sammlung_*.pdf": "sammlungen",
+    "*_probe*.pdf": "probeblätter",
+    "*.pdf": "verschiedenes"
+  }
+}
+```
+
+### Troubleshooting Folder Patterns
+
+**PDFs in Wrong Folders:**
+- Check pattern order (specific before general)
+- Verify wildcard placement matches actual filenames
+- Test with a small build first
+
+**Folders Not Created:**
+- Ensure patterns actually match generated filenames
+- Check that project build completed successfully
+- Verify output directory permissions
+
+**Missing PDFs:**
+- Check if patterns are too restrictive
+- Ensure catch-all pattern `"*.pdf"` exists
+- Review Zupfnoter build logs for errors
+
 ## Troubleshooting
 
 ### No PDFs Found
