@@ -257,6 +257,52 @@ curl -X POST http://localhost:5173/api/v1/import/directory \
 - Integrated project's abc_file_dir_preference with song previews
 - Auto-initializes directory path and searches for PDFs when project directory is available
 
+## 📁 Project Configuration
+
+### Zupfnoter Configuration
+Each project can have a custom Zupfnoter configuration stored as JSON in the `config` field. Access via "Edit Configuration" button in ProjectDetailView.
+
+### PDF Directory Organization
+Control where different PDF types are placed during project builds using `folderPatterns`:
+
+```json
+{
+  "folderPatterns": {
+    "*_-*_a3.pdf": "klein",
+    "*_-*_a4.pdf": "gross", 
+    "*_partitur.pdf": "partituren",
+    "*_sammlung*.pdf": "sammlungen",
+    "*.pdf": "alle_anderen"
+  }
+}
+```
+
+**How it works:**
+- **Pattern Matching**: Filenames are matched against patterns using wildcards (`*`)
+- **First Match**: The first matching pattern determines the target directory
+- **Order Matters**: More specific patterns should come before general ones
+- **Fallback**: Use `"*.pdf": "default_folder"` as catch-all
+
+**Example Directory Structure:**
+```
+/output_dir/
+├── klein/                 # *_-*_a3.pdf files
+├── gross/                 # *_-*_a4.pdf files  
+├── partituren/            # *_partitur.pdf files
+├── sammlungen/            # *_sammlung*.pdf files
+└── alle_anderen/          # All other PDFs
+```
+
+**Common Patterns:**
+- `*_klein.pdf` → Small format PDFs
+- `*_gross.pdf` → Large format PDFs
+- `*_a3.pdf` → A3 format files
+- `*_a4.pdf` → A4 format files
+- `*_partitur*.pdf` → Score files
+- `*.pdf` → Catch-all for remaining files
+
+The `folderPatterns` are processed by Zupfnoter during project builds to automatically organize generated PDFs into the specified subdirectories.
+
 ## 🚀 Deployment
 
 ### Production Build
