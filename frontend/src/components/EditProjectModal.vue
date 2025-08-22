@@ -32,7 +32,7 @@
         <!-- ABC File Directory -->
         <div>
           <label for="abc_file_dir" class="block text-sm font-medium text-gray-700">ABC Files Directory</label>
-          <div class="mt-1 flex space-x-2">
+          <div class="mt-1 flex gap-4">
             <input
               id="abc_file_dir"
               v-model="projectForm.abc_file_dir_preference"
@@ -56,11 +56,11 @@
             </div>
           </div>
         </div>
-        <div class="flex justify-end space-x-3 pt-4">
+        <div class="flex justify-end gap-4 pt-4">
           <button
             type="button"
             @click="$emit('close')"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 mr-3"
           >
             Cancel
           </button>

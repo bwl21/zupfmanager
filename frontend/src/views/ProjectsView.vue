@@ -25,7 +25,7 @@
         <div class="p-6">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-lg font-semibold text-gray-900">{{ project.title }}</h3>
-            <div class="flex space-x-2">
+            <div class="flex gap-4">
               <button
                 @click.stop="editProject(project)"
                 class="text-gray-400 hover:text-blue-600 transition-colors"
@@ -127,7 +127,7 @@
           <!-- ABC File Directory (only for editing) -->
           <div v-if="editingProject">
             <label for="abc_file_dir" class="block text-sm font-medium text-gray-700">ABC Files Directory</label>
-            <div class="mt-1 flex space-x-2">
+            <div class="mt-1 flex gap-4">
               <input
                 id="abc_file_dir"
                 v-model="projectForm.abc_file_dir_preference"
@@ -165,11 +165,11 @@
               Use default configuration
             </label>
           </div>
-          <div class="flex justify-end space-x-3 pt-4">
+          <div class="flex justify-end gap-4 pt-4">
             <button
               type="button"
               @click="cancelEdit"
-              class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors mr-3"
             >
               Cancel
             </button>

@@ -18,6 +18,7 @@ Zupfmanager is a specialized tool for managing and building music projects for z
 ### Recent Improvements
 
 - **Enhanced Project Configuration Modal**: Improved layout with 80% viewport coverage, centered positioning, and expandable textarea for better JSON editing experience
+- **Consistent Button Spacing**: Implemented uniform button spacing across all components using `gap-4` and explicit margins to ensure buttons never touch each other
 
 ## Installation
 # Installation - This section describes how to install the Zupfmanager.

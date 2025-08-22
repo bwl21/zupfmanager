@@ -48,7 +48,7 @@
         <div>
           <div class="flex items-center justify-between mb-3">
             <h4 class="text-md font-medium text-gray-900">Available PDFs</h4>
-            <div class="flex space-x-2">
+            <div class="flex gap-4">
               <button
                 @click="refreshPDFs"
                 :disabled="isRefreshing || !abcFileDir.trim()"
