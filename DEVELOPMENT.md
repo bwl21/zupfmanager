@@ -262,6 +262,17 @@ curl -X POST http://localhost:5173/api/v1/import/directory \
 ### Zupfnoter Configuration
 Each project can have a custom Zupfnoter configuration stored as JSON in the `config` field. Access via "Edit Configuration" button in ProjectDetailView.
 
+#### Configuration Loading Priority
+1. **Project-specific config**: Individual project configuration (highest priority)
+2. **Local default file**: `default-project-config.json` in application directory
+3. **Embedded default**: Built-in configuration (fallback)
+
+#### Default Configuration Management
+- **New projects**: Automatically get default configuration when "Use default configuration" is checked
+- **Reset functionality**: "Reset to Default" button loads system defaults
+- **Custom defaults**: Place `default-project-config.json` in app directory to override embedded defaults
+- **Embedded fallback**: Ensures functionality even without external configuration files
+
 ### PDF Directory Organization
 Control where different PDF types are placed during project builds using `folderPatterns`:
 

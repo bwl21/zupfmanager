@@ -91,6 +91,27 @@ When building projects with Zupfnoter, you can automatically organize different 
 }
 ```
 
+### Default Configuration
+
+New projects automatically include sensible default folder patterns. You can:
+
+- **Use as-is**: The defaults work for most common use cases
+- **Customize**: Modify patterns to match your specific needs
+- **Reset**: Use "Reset to Default" button to restore original settings
+
+### Configuration Priority
+
+The system loads configuration in this order:
+
+1. **Project-specific config**: Custom configuration set for individual projects
+2. **Local default file**: `default-project-config.json` in the application directory
+3. **Embedded default**: Built-in configuration as final fallback
+
+This allows you to:
+- Override system defaults with a local `default-project-config.json` file
+- Customize individual projects without affecting others
+- Always have working defaults even without external files
+
 ### How Folder Patterns Work
 
 - **Pattern Matching:** PDF filenames are matched against patterns using wildcards (`*`)
@@ -167,6 +188,47 @@ After a project build, your output directory will be organized like this:
 }
 ```
 
+### Managing Configuration
+
+#### Reset to Default
+
+The "Reset to Default" button in the configuration editor:
+
+1. **Loads system defaults**: Restores the complete default configuration
+2. **Includes all patterns**: Automatically adds standard folder patterns
+3. **Preserves customizations**: Only affects the current project
+4. **Works offline**: Uses embedded defaults if no local file exists
+
+#### Creating Custom Defaults
+
+To set organization-wide defaults:
+
+1. Create a `default-project-config.json` file in your application directory
+2. Include your preferred `folderPatterns` and other settings
+3. New projects will automatically use these settings
+4. Existing projects remain unchanged unless reset
+
+**Example custom default file:**
+```json
+{
+  "folderPatterns": {
+    "*_klein.pdf": "einzelstimmen/klein",
+    "*_gross.pdf": "einzelstimmen/gross",
+    "*_partitur.pdf": "partituren",
+    "*.pdf": "sonstige"
+  },
+  "extract": {
+    "0": {
+      "notes": {
+        "T01_number": {
+          "text": "Your Organization #{the_index}"
+        }
+      }
+    }
+  }
+}
+```
+
 ### Troubleshooting Folder Patterns
 
 **PDFs in Wrong Folders:**
@@ -183,6 +245,11 @@ After a project build, your output directory will be organized like this:
 - Check if patterns are too restrictive
 - Ensure catch-all pattern `"*.pdf"` exists
 - Review Zupfnoter build logs for errors
+
+**Configuration Issues:**
+- Use "Reset to Default" if configuration becomes corrupted
+- Check JSON syntax if manual edits cause errors
+- Verify local `default-project-config.json` has valid JSON format
 
 ## Troubleshooting
 
