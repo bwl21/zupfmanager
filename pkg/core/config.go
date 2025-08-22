@@ -56,18 +56,25 @@ func (c *configService) LoadFromFile(path string) (map[string]interface{}, error
 
 // LoadDefault loads the default configuration
 func (c *configService) LoadDefault() (map[string]interface{}, error) {
-	// Try embedded filesystem first
-	if c.embeddedFS != nil {
-		content, err := fs.ReadFile(c.embeddedFS, c.defaultConfigPath)
-		if err == nil {
-			var config map[string]interface{}
-			if err := json.Unmarshal(content, &config); err != nil {
-				return nil, fmt.Errorf("failed to parse embedded config JSON: %w", err)
-			}
-			return config, nil
-		}
+	// Try file system first
+	if config, err := c.LoadFromFile(c.defaultConfigPath); err == nil {
+		return config, nil
 	}
 	
-	// Fallback to file system
-	return c.LoadFromFile(c.defaultConfigPath)
+	// Fallback to embedded filesystem if file doesn't exist
+	if c.embeddedFS != nil {
+		content, err := fs.ReadFile(c.embeddedFS, c.defaultConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read embedded config file %s: %w", c.defaultConfigPath, err)
+		}
+		
+		var config map[string]interface{}
+		if err := json.Unmarshal(content, &config); err != nil {
+			return nil, fmt.Errorf("failed to parse embedded config JSON: %w", err)
+		}
+		return config, nil
+	}
+	
+	// If neither file nor embedded config is available, return empty config
+	return map[string]interface{}{}, nil
 }
