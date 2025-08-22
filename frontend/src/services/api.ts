@@ -69,7 +69,10 @@ export const projectApi = {
     api.put(`/api/v1/projects/${id}/abc-file-dir`, { abc_file_dir: abcFileDir }).then((res) => res.data),
 
   getSongs: (id: number): Promise<ProjectSongsResponse> =>
-    api.get(`/api/v1/projects/${id}/songs`).then((res) => res.data)
+    api.get(`/api/v1/projects/${id}/songs`).then((res) => res.data),
+
+  getDefaultConfig: (): Promise<Record<string, any>> =>
+    api.get('/api/v1/projects/default-config').then((res) => res.data)
 }
 
 // Song API

@@ -129,6 +129,27 @@ func (h *ProjectHandler) ListProjects(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// GetDefaultConfig returns the default project configuration
+// @Summary Get default project configuration
+// @Description Get the default project configuration from default-project-config.json
+// @Tags projects
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/projects/default-config [get]
+func (h *ProjectHandler) GetDefaultConfig(c *gin.Context) {
+	config, err := h.services.Config.LoadDefault()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "failed to load default configuration",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, config)
+}
+
 // BuildProject starts a project build operation
 // @Summary Build project
 // @Description Start building a project to generate ABC files, PDFs, and other outputs

@@ -114,6 +114,7 @@ func (s *Server) setupRoutes() {
 		{
 			projects.GET("", s.projectHandler.ListProjects)
 			projects.POST("", s.projectHandler.CreateProject)
+			projects.GET("/default-config", s.projectHandler.GetDefaultConfig)
 			projects.GET("/:id", s.projectHandler.GetProject)
 			projects.PUT("/:id", s.projectHandler.UpdateProject)
 			projects.DELETE("/:id", s.projectHandler.DeleteProject)
