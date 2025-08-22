@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -54,8 +55,14 @@ Access the API documentation at http://localhost:8080/swagger/index.html`,
 			}
 		}
 
-		// Create services
-		services, err := core.NewServices()
+		// Try to get embedded config filesystem
+		var embeddedConfigFS fs.FS
+		if configFS, err := api.GetDefaultConfigFS(); err == nil {
+			embeddedConfigFS = configFS
+		}
+
+		// Create services with embedded config support
+		services, err := core.NewServicesWithEmbedded(context.Background(), embeddedConfigFS)
 		if err != nil {
 			return err
 		}

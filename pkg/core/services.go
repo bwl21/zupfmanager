@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"io/fs"
 	"sync"
 
 	"github.com/bwl21/zupfmanager/internal/database"
@@ -31,12 +32,23 @@ func NewServices() (*Services, error) {
 
 // NewServicesWithContext creates a new services container with a custom context
 func NewServicesWithContext(ctx context.Context) (*Services, error) {
+	return NewServicesWithEmbedded(ctx, nil)
+}
+
+// NewServicesWithEmbedded creates a new services container with embedded filesystem support
+func NewServicesWithEmbedded(ctx context.Context, embeddedConfigFS fs.FS) (*Services, error) {
 	db, err := database.New()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create database connection: %w", err)
 	}
 
-	config := NewConfigService()
+	var config ConfigService
+	if embeddedConfigFS != nil {
+		config = NewConfigServiceWithEmbedded("default-project-config.json", embeddedConfigFS)
+	} else {
+		config = NewConfigService()
+	}
+	
 	fileSystem := NewFileSystemService()
 	
 	// Create cancellable context for resource management
