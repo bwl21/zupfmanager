@@ -222,7 +222,7 @@ func (s *projectService) createToc(ctx context.Context, project *ent.Project, pr
 			slog.Warn("failed to read default template file, using built-in template", "path", defaultTemplateFile, "error", err)
 			// Use built-in template as last resort
 			toctemplateBytes = []byte(`X:1
-T:Inhaltsverzeichnis
+ sollte T:Inhaltsverzeichnis
 M:4/4
 L:1/4
 K:C
