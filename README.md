@@ -9,7 +9,7 @@ Zupfmanager is a specialized tool for managing and building music projects for z
 
 - **Project Management**: Manage music projects with customizable configurations
 - **Song Organization**: Organize songs in projects with priority and difficulty settings
-- **ABC Import**: Import ABC notation files into the song database
+- **ABC Import**: Import ABC notation files into the song database with automatic path persistence
 - **Sheet Music Generation**: Build projects to generate sheet music in PDF format
 - **Web Interface**: Modern Vue.js frontend with improved modal dialogs for configuration editing
 - **Command-line Interface (CLI)**: Full automation and scripting support
@@ -17,6 +17,7 @@ Zupfmanager is a specialized tool for managing and building music projects for z
 
 ### Recent Improvements
 
+- **Import Path Persistence**: The application now remembers your last import directory and automatically pre-fills it on subsequent visits. Quick Import feature intelligently shows re-import option for your most recent directory.
 - **Enhanced Project Configuration Modal**: Improved layout with 80% viewport coverage, centered positioning, and expandable textarea for better JSON editing experience
 - **Consistent Button Spacing**: Implemented uniform button spacing across all components using `gap-4` and explicit margins to ensure buttons never touch each other
 - **Fixed Project Configuration Management**: Restored full functionality for loading, editing, and saving project configurations with proper default config loading and JSON persistence
@@ -60,6 +61,9 @@ zupfmanager api --port 8080
 # Start integrated server (API + Frontend)
 zupfmanager api --port 8080 --frontend frontend/dist
 
+# Or use the embedded frontend (after 'make build')
+./dist/zupfmanager api --port 8080
+
 # Project Management
 zupfmanager project list                                # List all projects
 zupfmanager project create "My Project" "MP"            # Create a new project
@@ -77,10 +81,29 @@ zupfmanager song search <query>                         # Search for songs
 
 # Import ABC Files
 zupfmanager import <directory>                          # Import ABC files from a directory
+                                                        # The last import path is automatically saved
 
 # Interactive Terminal UI
 zupfmanager ui                                          # Launch the terminal UI
 ```
+
+### Web Interface
+
+The web interface provides a modern, user-friendly way to manage your music projects:
+
+**Import Features:**
+- **Smart Path Persistence**: Automatically remembers your last import directory
+- **Quick Re-import**: One-click re-import from your most recent directory
+- **Drag & Drop Support**: Easy file and directory selection
+- **Real-time Progress**: Live feedback during import operations
+
+**Project Management:**
+- **Visual Project Overview**: See all projects and their songs at a glance
+- **Inline Configuration Editing**: Edit project configurations with syntax highlighting
+- **Build Status Tracking**: Monitor build progress and view results
+- **Song Assignment**: Easily add/remove songs from projects with priority and difficulty settings
+
+Access the web interface by starting the API server and opening http://localhost:8080 in your browser.
 
 ### Terminal User Interface
 
