@@ -84,7 +84,7 @@
     </div>
 
     <!-- Quick Import Suggestions -->
-    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+    <div v-if="lastImportPathData?.path" class="bg-blue-50 border border-blue-200 rounded-lg p-6">
       <div class="flex">
         <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -92,15 +92,15 @@
         <div class="ml-3">
           <h3 class="text-sm font-medium text-blue-800">Quick Import</h3>
           <p class="mt-1 text-sm text-blue-700">
-            Try importing the test songs from: <code class="bg-blue-100 px-1 rounded">/workspaces/zupfmanager/test_songs/</code>
+            Re-import from your last used directory: <code class="bg-blue-100 px-1 rounded">{{ lastImportPathData.path }}</code>
           </p>
           <div class="mt-3">
             <button
-              @click="importTestSongs"
+              @click="importLastPath"
               :disabled="isImportingDirectory"
               class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50"
             >
-              Import Test Songs
+              Re-import from Last Path
             </button>
           </div>
         </div>
@@ -331,9 +331,12 @@ function importDirectory() {
 }
 
 
-function importTestSongs() {
-  directoryForm.directory_path = '/workspaces/zupfmanager/test_songs/'
-  importDirectory()
+async function importLastPath() {
+  const result = await loadLastImportPath()
+  if (result?.path && result.path.trim() !== '') {
+    directoryForm.directory_path = result.path
+    importDirectory()
+  }
 }
 
 async function useLastPath() {
