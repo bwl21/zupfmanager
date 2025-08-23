@@ -145,8 +145,32 @@ dev:
 	@echo "Starting development server..."
 	@go run . api --port 8080 --frontend frontend/dist
 
+# Testing targets
+test:
+	@echo "Running all tests..."
+	@go test -v ./...
+
+test-coverage:
+	@echo "Running tests with coverage..."
+	@go test -v -cover ./...
+	@go test -coverprofile=coverage.out ./...
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "Coverage report generated: coverage.html"
+
+test-integration: build
+	@echo "Running integration tests..."
+	@go test -v -tags=integration ./...
+
+test-race:
+	@echo "Running tests with race detection..."
+	@go test -v -race ./...
+
+test-bench:
+	@echo "Running benchmarks..."
+	@go test -v -bench=. ./...
+
 # Phony targets
-.PHONY: all build build-external build-backend frontend frontend-deps frontend-copy frontend-embed build-embedded build-linux build-macos-amd64 build-macos-arm64 build-macos build-windows build-all package-linux package-macos-amd64 package-macos-arm64 package-windows package-all clean dev completion
+.PHONY: all build build-external build-backend frontend frontend-deps frontend-copy frontend-embed build-embedded build-linux build-macos-amd64 build-macos-arm64 build-macos build-windows build-all package-linux package-macos-amd64 package-macos-arm64 package-windows package-all clean dev completion test test-coverage test-integration test-race test-bench
 
 # Prepare frontend for embedding
 frontend-embed: frontend
