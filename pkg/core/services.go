@@ -16,8 +16,9 @@ type Services struct {
 	Song       SongService
 	Import     ImportService
 	Config     ConfigService
+	Settings   SettingsService
 	FileSystem FileSystemService
-	
+
 	// Resource management
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -54,12 +55,15 @@ func NewServicesWithEmbedded(ctx context.Context, embeddedConfigFS fs.FS) (*Serv
 	// Create cancellable context for resource management
 	serviceCtx, cancel := context.WithCancel(ctx)
 
+	settings := NewSettingsService(db)
+	
 	return &Services{
 		db:         db,
 		Project:    NewProjectServiceWithDeps(db, config, fileSystem),
 		Song:       NewSongServiceWithDeps(db),
-		Import:     NewImportServiceWithDeps(db),
+		Import:     NewImportServiceWithDeps(db, settings),
 		Config:     config,
+		Settings:   settings,
 		FileSystem: fileSystem,
 		ctx:        serviceCtx,
 		cancel:     cancel,

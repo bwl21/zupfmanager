@@ -188,12 +188,23 @@ type SongService interface {
 type ImportService interface {
 	ImportDirectory(ctx context.Context, directory string) ([]ImportResult, error)
 	ImportFile(ctx context.Context, file string) ImportResult
+	GetLastImportPath(ctx context.Context) (string, error)
 }
 
 // ConfigService interface defines configuration operations
 type ConfigService interface {
 	LoadFromFile(path string) (map[string]interface{}, error)
 	LoadDefault() (map[string]interface{}, error)
+}
+
+// SettingsService interface defines settings operations
+type SettingsService interface {
+	Get(ctx context.Context, key string) (string, error)
+	Set(ctx context.Context, key, value string) error
+	GetSetting(ctx context.Context, key string) (string, error)
+	SetSetting(ctx context.Context, key, value string) error
+	GetLastImportPath(ctx context.Context) (string, error)
+	SetLastImportPath(ctx context.Context, path string) error
 }
 
 // FileSystemService interface defines filesystem operations

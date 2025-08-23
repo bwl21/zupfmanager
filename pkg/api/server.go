@@ -100,7 +100,8 @@ func (s *Server) setupRoutes() {
 		// Import endpoints
 		v1.POST("/import/file", s.importHandler.ImportFile)
 		v1.POST("/import/directory", s.importHandler.ImportDirectory)
-		
+		v1.GET("/import/last-path", s.importHandler.GetLastImportPath)
+
 		// Debug: Check if handlers are initialized
 		if s.projectHandler == nil {
 			slog.Error("Project handler is nil!")

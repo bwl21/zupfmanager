@@ -113,7 +113,10 @@ export const importApi = {
     api.post('/api/v1/import/file', data).then((res) => res.data),
 
   directory: (data: ImportDirectoryRequest): Promise<ImportResponse> =>
-    api.post('/api/v1/import/directory', data).then((res) => res.data)
+    api.post('/api/v1/import/directory', data).then((res) => res.data),
+
+  getLastImportPath: (): Promise<{ path: string }> =>
+    api.get('/api/v1/import/last-path').then((res) => res.data)
 }
 
 // Project-Song API

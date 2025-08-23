@@ -5,6 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func setupImportTest(t *testing.T) (*Services, func()) {
@@ -24,6 +27,54 @@ func setupImportTest(t *testing.T) (*Services, func()) {
 		services.Close()
 		cleanup()
 	}
+}
+
+func TestImportService_LastImportPath(t *testing.T) {
+	services, err := NewServices()
+	require.NoError(t, err)
+	defer services.Close()
+
+	ctx := context.Background()
+	testPath := "/test/import/path"
+
+	// Test setting and getting last import path
+	err = services.Settings.Set(ctx, "last_import_path", testPath)
+	require.NoError(t, err)
+
+	retrievedPath, err := services.Import.GetLastImportPath(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, testPath, retrievedPath)
+}
+
+func TestImportService_DirectoryImportSavesPath(t *testing.T) {
+	services, err := NewServices()
+	require.NoError(t, err)
+	defer services.Close()
+
+	ctx := context.Background()
+	
+	// Create a temporary directory with test ABC files
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.abc")
+	
+	abcContent := `X:1
+T:Test Song
+M:4/4
+K:C
+C D E F | G A B c |]`
+	
+	err = os.WriteFile(testFile, []byte(abcContent), 0644)
+	require.NoError(t, err)
+
+	// Import the directory
+	results, err := services.Import.ImportDirectory(ctx, tempDir)
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+
+	// Check that the path was saved
+	savedPath, err := services.Import.GetLastImportPath(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, tempDir, savedPath)
 }
 
 func TestImportService_parseABCMetadata(t *testing.T) {

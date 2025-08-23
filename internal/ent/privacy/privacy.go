@@ -159,6 +159,30 @@ func (f ProjectSongMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mut
 	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.ProjectSongMutation", m)
 }
 
+// The SettingQueryRuleFunc type is an adapter to allow the use of ordinary
+// functions as a query rule.
+type SettingQueryRuleFunc func(context.Context, *ent.SettingQuery) error
+
+// EvalQuery return f(ctx, q).
+func (f SettingQueryRuleFunc) EvalQuery(ctx context.Context, q ent.Query) error {
+	if q, ok := q.(*ent.SettingQuery); ok {
+		return f(ctx, q)
+	}
+	return Denyf("ent/privacy: unexpected query type %T, expect *ent.SettingQuery", q)
+}
+
+// The SettingMutationRuleFunc type is an adapter to allow the use of ordinary
+// functions as a mutation rule.
+type SettingMutationRuleFunc func(context.Context, *ent.SettingMutation) error
+
+// EvalMutation calls f(ctx, m).
+func (f SettingMutationRuleFunc) EvalMutation(ctx context.Context, m ent.Mutation) error {
+	if m, ok := m.(*ent.SettingMutation); ok {
+		return f(ctx, m)
+	}
+	return Denyf("ent/privacy: unexpected mutation type %T, expect *ent.SettingMutation", m)
+}
+
 // The SongQueryRuleFunc type is an adapter to allow the use of ordinary
 // functions as a query rule.
 type SongQueryRuleFunc func(context.Context, *ent.SongQuery) error
@@ -222,6 +246,8 @@ func queryFilter(q ent.Query) (Filter, error) {
 		return q.Filter(), nil
 	case *ent.ProjectSongQuery:
 		return q.Filter(), nil
+	case *ent.SettingQuery:
+		return q.Filter(), nil
 	case *ent.SongQuery:
 		return q.Filter(), nil
 	default:
@@ -234,6 +260,8 @@ func mutationFilter(m ent.Mutation) (Filter, error) {
 	case *ent.ProjectMutation:
 		return m.Filter(), nil
 	case *ent.ProjectSongMutation:
+		return m.Filter(), nil
+	case *ent.SettingMutation:
 		return m.Filter(), nil
 	case *ent.SongMutation:
 		return m.Filter(), nil

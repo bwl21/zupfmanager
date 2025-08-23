@@ -18,13 +18,15 @@ const lastImportDirFile = ".zupfmanager_last_import_dir"
 
 // importService implements ImportService interface
 type importService struct {
-	db *database.Client
+	db       *database.Client
+	settings SettingsService
 }
 
 // NewImportServiceWithDeps creates a new import service with dependencies
-func NewImportServiceWithDeps(db *database.Client) ImportService {
+func NewImportServiceWithDeps(db *database.Client, settings SettingsService) ImportService {
 	return &importService{
-		db: db,
+		db:       db,
+		settings: settings,
 	}
 }
 
@@ -42,7 +44,7 @@ func (s *importService) ImportDirectory(ctx context.Context, directory string) (
 	}
 
 	// Save the directory as the most recent import directory
-	if err := saveLastImportDir(directory); err != nil {
+	if err := s.settings.Set(ctx, "last_import_path", directory); err != nil {
 		// Log the error but don't fail the import
 		fmt.Printf("Warning: failed to save last import directory: %v\n", err)
 	}
@@ -154,6 +156,11 @@ func (s *importService) parseABCMetadata(content []byte) ABCMetadata {
 	}
 
 	return metadata
+}
+
+// GetLastImportPath retrieves the last used import path from settings
+func (s *importService) GetLastImportPath(ctx context.Context) (string, error) {
+	return s.settings.Get(ctx, "last_import_path")
 }
 
 // detectChanges compares existing song with new metadata and returns list of changes

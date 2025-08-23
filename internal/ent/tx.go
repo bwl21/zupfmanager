@@ -16,6 +16,8 @@ type Tx struct {
 	Project *ProjectClient
 	// ProjectSong is the client for interacting with the ProjectSong builders.
 	ProjectSong *ProjectSongClient
+	// Setting is the client for interacting with the Setting builders.
+	Setting *SettingClient
 	// Song is the client for interacting with the Song builders.
 	Song *SongClient
 
@@ -151,6 +153,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Project = NewProjectClient(tx.config)
 	tx.ProjectSong = NewProjectSongClient(tx.config)
+	tx.Setting = NewSettingClient(tx.config)
 	tx.Song = NewSongClient(tx.config)
 }
 

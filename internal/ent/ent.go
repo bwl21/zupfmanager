@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/bwl21/zupfmanager/internal/ent/project"
 	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
+	"github.com/bwl21/zupfmanager/internal/ent/setting"
 	"github.com/bwl21/zupfmanager/internal/ent/song"
 )
 
@@ -77,6 +78,7 @@ func checkColumn(table, column string) error {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			project.Table:     project.ValidColumn,
 			projectsong.Table: projectsong.ValidColumn,
+			setting.Table:     setting.ValidColumn,
 			song.Table:        song.ValidColumn,
 		})
 	})

@@ -166,3 +166,24 @@ func (h *ImportHandler) ImportDirectory(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
+
+// GetLastImportPath returns the last used import path
+// @Summary Get last import path
+// @Description Get the last directory path used for importing ABC files
+// @Tags import
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/import/last-path [get]
+func (h *ImportHandler) GetLastImportPath(c *gin.Context) {
+	path, err := h.services.Import.GetLastImportPath(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "failed to get last import path",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"path": path})
+}

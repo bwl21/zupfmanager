@@ -220,8 +220,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { ref, reactive, onMounted } from 'vue'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/vue-query'
 import { RouterLink } from 'vue-router'
 import { importApi } from '@/services/api'
 import type { ImportResponse } from '@/types/api'
@@ -235,6 +235,20 @@ const singleFileForm = reactive({
 
 const directoryForm = reactive({
   directory_path: ''
+})
+
+// Load last import path
+const { data: lastImportPathData } = useQuery({
+  queryKey: ['lastImportPath'],
+  queryFn: importApi.getLastImportPath,
+  retry: false
+})
+
+// Set default directory path when last import path is loaded
+onMounted(() => {
+  if (lastImportPathData?.value?.path) {
+    directoryForm.directory_path = lastImportPathData.value.path
+  }
 })
 
 // Results state

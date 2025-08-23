@@ -6,6 +6,7 @@ import (
 	"github.com/bwl21/zupfmanager/internal/ent/predicate"
 	"github.com/bwl21/zupfmanager/internal/ent/project"
 	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
+	"github.com/bwl21/zupfmanager/internal/ent/setting"
 	"github.com/bwl21/zupfmanager/internal/ent/song"
 
 	"entgo.io/ent/dialect/sql"
@@ -16,7 +17,7 @@ import (
 
 // schemaGraph holds a representation of ent/schema at runtime.
 var schemaGraph = func() *sqlgraph.Schema {
-	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 3)}
+	graph := &sqlgraph.Schema{Nodes: make([]*sqlgraph.Node, 4)}
 	graph.Nodes[0] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   project.Table,
@@ -53,6 +54,21 @@ var schemaGraph = func() *sqlgraph.Schema {
 		},
 	}
 	graph.Nodes[2] = &sqlgraph.Node{
+		NodeSpec: sqlgraph.NodeSpec{
+			Table:   setting.Table,
+			Columns: setting.Columns,
+			ID: &sqlgraph.FieldSpec{
+				Type:   field.TypeInt,
+				Column: setting.FieldID,
+			},
+		},
+		Type: "Setting",
+		Fields: map[string]*sqlgraph.FieldSpec{
+			setting.FieldKey:   {Type: field.TypeString, Column: setting.FieldKey},
+			setting.FieldValue: {Type: field.TypeString, Column: setting.FieldValue},
+		},
+	}
+	graph.Nodes[3] = &sqlgraph.Node{
 		NodeSpec: sqlgraph.NodeSpec{
 			Table:   song.Table,
 			Columns: song.Columns,
@@ -295,6 +311,56 @@ func (f *ProjectSongFilter) WhereHasSongWith(preds ...predicate.Song) {
 }
 
 // addPredicate implements the predicateAdder interface.
+func (sq *SettingQuery) addPredicate(pred func(s *sql.Selector)) {
+	sq.predicates = append(sq.predicates, pred)
+}
+
+// Filter returns a Filter implementation to apply filters on the SettingQuery builder.
+func (sq *SettingQuery) Filter() *SettingFilter {
+	return &SettingFilter{config: sq.config, predicateAdder: sq}
+}
+
+// addPredicate implements the predicateAdder interface.
+func (m *SettingMutation) addPredicate(pred func(s *sql.Selector)) {
+	m.predicates = append(m.predicates, pred)
+}
+
+// Filter returns an entql.Where implementation to apply filters on the SettingMutation builder.
+func (m *SettingMutation) Filter() *SettingFilter {
+	return &SettingFilter{config: m.config, predicateAdder: m}
+}
+
+// SettingFilter provides a generic filtering capability at runtime for SettingQuery.
+type SettingFilter struct {
+	predicateAdder
+	config
+}
+
+// Where applies the entql predicate on the query filter.
+func (f *SettingFilter) Where(p entql.P) {
+	f.addPredicate(func(s *sql.Selector) {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[2].Type, p, s); err != nil {
+			s.AddError(err)
+		}
+	})
+}
+
+// WhereID applies the entql int predicate on the id field.
+func (f *SettingFilter) WhereID(p entql.IntP) {
+	f.Where(p.Field(setting.FieldID))
+}
+
+// WhereKey applies the entql string predicate on the key field.
+func (f *SettingFilter) WhereKey(p entql.StringP) {
+	f.Where(p.Field(setting.FieldKey))
+}
+
+// WhereValue applies the entql string predicate on the value field.
+func (f *SettingFilter) WhereValue(p entql.StringP) {
+	f.Where(p.Field(setting.FieldValue))
+}
+
+// addPredicate implements the predicateAdder interface.
 func (sq *SongQuery) addPredicate(pred func(s *sql.Selector)) {
 	sq.predicates = append(sq.predicates, pred)
 }
@@ -323,7 +389,7 @@ type SongFilter struct {
 // Where applies the entql predicate on the query filter.
 func (f *SongFilter) Where(p entql.P) {
 	f.addPredicate(func(s *sql.Selector) {
-		if err := schemaGraph.EvalP(schemaGraph.Nodes[2].Type, p, s); err != nil {
+		if err := schemaGraph.EvalP(schemaGraph.Nodes[3].Type, p, s); err != nil {
 			s.AddError(err)
 		}
 	})
