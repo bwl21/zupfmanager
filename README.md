@@ -77,7 +77,10 @@ zupfmanager project build <project-id>                  # Build a project
 # Song Management
 zupfmanager song list                                   # List all songs
 zupfmanager song show <song-id>                         # Show song details
-zupfmanager song search <query>                         # Search for songs
+zupfmanager song search <query>                         # Search for songs by title and filename
+zupfmanager song search <query> --title                 # Search only in song titles
+zupfmanager song search <query> --filename              # Search only in filenames
+zupfmanager song search <query> --genre                 # Search only in genres
 zupfmanager song delete <song-id>                       # Delete a song (with confirmation)
 zupfmanager song delete <song-id> --force               # Delete a song without confirmation
 
@@ -107,6 +110,7 @@ The web interface provides a modern, user-friendly way to manage your music proj
 
 **Song Management:**
 - **Full CRUD Operations**: Create (import), read, update, and delete songs
+- **Advanced Search**: Search by title, filename, or genre with flexible filtering options
 - **Smart Delete Protection**: Prevents deletion of songs used in projects
 - **Dependency Checking**: Shows which projects use a song before deletion
 - **Confirmation Dialogs**: Safe deletion with user confirmation

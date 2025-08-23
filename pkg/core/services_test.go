@@ -28,7 +28,7 @@ func TestServices_Integration(t *testing.T) {
 	t.Run("complete workflow", func(t *testing.T) {
 		// Create test ABC file
 		testDir := t.TempDir()
-		abcFile := filepath.Join(testDir, "test.abc")
+		abcFile := filepath.Join(testDir, "test_filename_search.abc")
 		abcContent := `X:1
 T:Test Song
 M:4/4
@@ -42,12 +42,29 @@ C D E F | G A B c |]`
 		_, err = services.Import.ImportDirectory(ctx, testDir)
 		require.NoError(t, err)
 		
-		// Verify song was imported
-		songs, err := services.Song.List(ctx)
+		// Verify song was imported by searching for it
+		searchResults, err := services.Song.Search(ctx, "Test Song")
 		require.NoError(t, err)
-		require.Len(t, songs, 1)
-		assert.Equal(t, "Test Song", songs[0].Title)
+		require.GreaterOrEqual(t, len(searchResults), 1)
 		
+		// Find our specific song
+		var importedSong *Song
+		for _, song := range searchResults {
+			if song.Filename == "test_filename_search.abc" {
+				importedSong = song
+				break
+			}
+		}
+		require.NotNil(t, importedSong)
+		assert.Equal(t, "Test Song", importedSong.Title)
+		assert.Equal(t, "test_filename_search.abc", importedSong.Filename)
+		
+		// Test search by filename
+		filenameResults, err := services.Song.Search(ctx, "filename_search")
+		require.NoError(t, err)
+		require.Len(t, filenameResults, 1)
+		assert.Equal(t, "test_filename_search.abc", filenameResults[0].Filename)
+
 		// Create a project
 		createReq := CreateProjectRequest{
 			Title:     "Test Project",

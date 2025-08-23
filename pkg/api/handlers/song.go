@@ -368,13 +368,13 @@ func (h *SongHandler) GetSong(c *gin.Context) {
 
 // SearchSongs searches for songs
 // @Summary Search songs
-// @Description Search for songs by query string
+// @Description Search for songs by query string. By default searches in both title and filename. Use specific parameters to limit search scope.
 // @Tags songs
 // @Produce json
 // @Param q query string true "Search query"
-// @Param title query bool false "Search in title" default(true)
-// @Param filename query bool false "Search in filename" default(false)
-// @Param genre query bool false "Search in genre" default(false)
+// @Param title query bool false "Search only in title"
+// @Param filename query bool false "Search only in filename"
+// @Param genre query bool false "Search only in genre"
 // @Success 200 {object} models.SongListResponse
 // @Failure 400 {object} models.ErrorResponse
 // @Failure 500 {object} models.ErrorResponse
@@ -390,29 +390,24 @@ func (h *SongHandler) SearchSongs(c *gin.Context) {
 	}
 
 	// Parse search options
-	searchTitle := c.DefaultQuery("title", "true") == "true"
-	searchFilename := c.DefaultQuery("filename", "false") == "true"
-	searchGenre := c.DefaultQuery("genre", "false") == "true"
-
-	// If no specific fields are selected, default to title search
-	if !searchTitle && !searchFilename && !searchGenre {
-		searchTitle = true
-	}
-
-	options := core.SearchOptions{
-		SearchTitle:    searchTitle,
-		SearchFilename: searchFilename,
-		SearchGenre:    searchGenre,
-	}
+	searchTitle := c.Query("title") == "true"
+	searchFilename := c.Query("filename") == "true"
+	searchGenre := c.Query("genre") == "true"
 
 	var songs []*core.Song
 	var err error
 
-	// Use advanced search if specific options are set
-	if searchFilename || searchGenre || !searchTitle {
-		songs, err = h.services.Song.SearchAdvanced(c.Request.Context(), query, options)
-	} else {
+	// If no specific search fields are specified, use default search (title + filename)
+	if !searchTitle && !searchFilename && !searchGenre {
 		songs, err = h.services.Song.Search(c.Request.Context(), query)
+	} else {
+		// Use advanced search with specific options
+		options := core.SearchOptions{
+			SearchTitle:    searchTitle,
+			SearchFilename: searchFilename,
+			SearchGenre:    searchGenre,
+		}
+		songs, err = h.services.Song.SearchAdvanced(c.Request.Context(), query, options)
 	}
 
 	if err != nil {

@@ -401,6 +401,30 @@ make test-race || exit 1
 3. Use race detection to find concurrency issues
 4. Check coverage reports to identify untested code
 
+## Recent Improvements
+
+### Enhanced Song Search (v1.x)
+
+The song search functionality has been enhanced to provide more flexible searching:
+
+**Default Behavior**: 
+- `song search <query>` now searches both title and filename by default
+- Provides better discoverability of songs by filename patterns
+
+**Advanced Options**:
+- `--title`: Search only in song titles
+- `--filename`: Search only in filenames  
+- `--genre`: Search only in genres
+
+**API Changes**:
+- `/api/v1/songs/search?q=<query>` searches title + filename by default
+- Use specific parameters (`title=true`, `filename=true`, `genre=true`) to limit scope
+
+**Test Coverage**:
+- Added filename search tests in `services_test.go`
+- API handler tests verify correct search behavior
+- CLI tests ensure proper flag handling
+
 ## Contributing
 
 When adding new features:

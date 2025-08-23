@@ -111,10 +111,13 @@ func (s *songService) Get(ctx context.Context, id int) (*Song, error) {
 	return SongFromEnt(entSong), nil
 }
 
-// Search searches for songs by title
+// Search searches for songs by title and filename
 func (s *songService) Search(ctx context.Context, query string) ([]*Song, error) {
 	entSongs, err := s.db.Song.Query().
-		Where(song.TitleContains(query)).
+		Where(song.Or(
+			song.TitleContains(query),
+			song.FilenameContains(query),
+		)).
 		All(ctx)
 	if err != nil {
 		return nil, err

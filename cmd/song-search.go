@@ -38,15 +38,25 @@ var songSearchCmd = &cobra.Command{
 		searchFilename, _ := cmd.Flags().GetBool("filename")
 		searchGenre, _ := cmd.Flags().GetBool("genre")
 
-		// Query matching songs
-		searchOptions := core.SearchOptions{
-			SearchTitle:    searchTitle,
-			SearchFilename: searchFilename,
-			SearchGenre:    searchGenre,
-		}
-		songs, err := services.Song.SearchAdvanced(context.Background(), searchQuery, searchOptions)
-		if err != nil {
-			return err
+		var songs []*core.Song
+
+		// If no specific search fields are specified, search in title and filename by default
+		if !searchTitle && !searchFilename && !searchGenre {
+			songs, err = services.Song.Search(context.Background(), searchQuery)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Use advanced search with specific options
+			searchOptions := core.SearchOptions{
+				SearchTitle:    searchTitle,
+				SearchFilename: searchFilename,
+				SearchGenre:    searchGenre,
+			}
+			songs, err = services.Song.SearchAdvanced(context.Background(), searchQuery, searchOptions)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Check if no results found
