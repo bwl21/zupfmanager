@@ -294,8 +294,9 @@ const { mutate: importFileMutation, isPending: isImportingSingle } = useMutation
     lastImportResult.value = data
     importError.value = null
     singleFileForm.file_path = ''
-    // Invalidate songs query to refresh the list
+    // Invalidate all songs-related queries to refresh the list
     queryClient.invalidateQueries({ queryKey: ['songs'] })
+    queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'songs' })
   },
   onError: (error) => {
     importError.value = error
@@ -309,8 +310,9 @@ const { mutate: importDirectoryMutation, isPending: isImportingDirectory } = use
   onSuccess: async (data) => {
     lastImportResult.value = data
     importError.value = null
-    // Invalidate songs query to refresh the list
+    // Invalidate all songs-related queries to refresh the list
     queryClient.invalidateQueries({ queryKey: ['songs'] })
+    queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'songs' })
     // Reload last import path data for display
     await loadLastImportPath()
     // Don't clear the directory path - keep it for convenience
