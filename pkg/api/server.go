@@ -130,6 +130,7 @@ func (s *Server) setupRoutes() {
 			projects.POST("/:id/build", s.projectHandler.BuildProject)
 			projects.GET("/:id/build/defaults", s.projectHandler.GetBuildDefaults)
 			projects.GET("/:id/builds", s.projectHandler.ListBuilds)
+			projects.DELETE("/:id/builds", s.projectHandler.ClearBuildHistory)
 			projects.GET("/:id/builds/:buildId/status", s.projectHandler.GetBuildStatus)
 		}
 

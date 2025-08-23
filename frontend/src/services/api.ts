@@ -143,7 +143,10 @@ export const projectBuildApi = {
     api.get(`/api/v1/projects/${projectId}/builds/${buildId}/status`).then((res) => res.data),
 
   listBuilds: (projectId: number): Promise<BuildListResponse> =>
-    api.get(`/api/v1/projects/${projectId}/builds`).then((res) => res.data)
+    api.get(`/api/v1/projects/${projectId}/builds`).then((res) => res.data),
+
+  clearHistory: (projectId: number): Promise<MessageResponse> =>
+    api.delete(`/api/v1/projects/${projectId}/builds`).then((res) => res.data)
 }
 
 export default api

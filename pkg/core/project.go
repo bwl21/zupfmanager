@@ -436,6 +436,18 @@ func (s *projectService) ListBuilds(ctx context.Context, projectID int) ([]*Buil
 	return results, nil
 }
 
+// ClearBuildHistory removes all build history for a project
+func (s *projectService) ClearBuildHistory(ctx context.Context, projectID int) error {
+	// Remove all builds for this project from buildResults
+	for buildID, result := range buildResults {
+		if result.ProjectID == projectID {
+			delete(buildResults, buildID)
+			delete(buildStatuses, buildID)
+		}
+	}
+	return nil
+}
+
 // executeBuild runs the actual build process in background
 func (s *projectService) executeBuild(buildID string, req BuildProjectRequest) {
 	status := buildStatuses[buildID]

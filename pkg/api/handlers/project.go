@@ -351,6 +351,40 @@ func (h *ProjectHandler) ListBuilds(c *gin.Context) {
 	})
 }
 
+// ClearBuildHistory clears all build history for a project
+// @Summary Clear build history
+// @Description Remove all build history for a project
+// @Tags projects
+// @Param id path int true "Project ID"
+// @Success 200 {object} models.MessageResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/projects/{id}/builds [delete]
+func (h *ProjectHandler) ClearBuildHistory(c *gin.Context) {
+	projectID, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid project ID",
+			Message: "Project ID must be a valid integer",
+		})
+		return
+	}
+
+	// Clear build history using core service
+	err = h.services.Project.ClearBuildHistory(c.Request.Context(), projectID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "Failed to clear build history",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.MessageResponse{
+		Message: "Build history cleared successfully",
+	})
+}
+
 // GetBuildDefaults returns default values for build configuration
 // @Summary Get build defaults
 // @Description Get default values for build configuration including abc_file_dir from last import

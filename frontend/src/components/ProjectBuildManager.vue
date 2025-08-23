@@ -53,15 +53,27 @@
     <div>
       <div class="flex justify-between items-center mb-4">
         <h4 class="text-md font-medium text-gray-900">Build History</h4>
-        <button
-          @click="loadBuilds"
-          class="text-sm text-gray-600 hover:text-gray-900"
-        >
-          <svg class="inline h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          Refresh
-        </button>
+        <div class="flex gap-2">
+          <button
+            @click="clearBuildHistory"
+            :disabled="isClearingHistory || builds.length === 0"
+            class="text-sm text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <svg class="inline h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            {{ isClearingHistory ? 'Clearing...' : 'Clear History' }}
+          </button>
+          <button
+            @click="loadBuilds"
+            class="text-sm text-gray-600 hover:text-gray-900"
+          >
+            <svg class="inline h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
+        </div>
       </div>
 
       <!-- Loading State -->
@@ -213,6 +225,7 @@ const props = defineProps<Props>()
 const builds = ref<BuildResultResponse[]>([])
 const isLoadingBuilds = ref(false)
 const buildsError = ref<string | null>(null)
+const isClearingHistory = ref(false)
 const showBuildModal = ref(false)
 const showStatusModal = ref(false)
 const selectedBuild = ref<BuildResultResponse | null>(null)
@@ -265,6 +278,24 @@ const refreshBuildStatus = async () => {
 const viewBuildStatus = (build: BuildResultResponse) => {
   selectedBuild.value = build
   showStatusModal.value = true
+}
+
+const clearBuildHistory = async () => {
+  if (!confirm('Are you sure you want to clear all build history? This action cannot be undone.')) {
+    return
+  }
+  
+  isClearingHistory.value = true
+  
+  try {
+    await projectBuildApi.clearHistory(props.projectId)
+    builds.value = []
+    buildsError.value = null
+  } catch (err) {
+    buildsError.value = err instanceof Error ? err.message : 'Failed to clear build history'
+  } finally {
+    isClearingHistory.value = false
+  }
 }
 
 const handleBuildStarted = (build: BuildResultResponse) => {

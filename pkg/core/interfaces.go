@@ -139,6 +139,7 @@ type ProjectService interface {
 	ExecuteProjectBuild(ctx context.Context, req BuildProjectRequest) error
 	GetBuildStatus(ctx context.Context, buildID string) (*BuildStatus, error)
 	ListBuilds(ctx context.Context, projectID int) ([]*BuildResult, error)
+	ClearBuildHistory(ctx context.Context, projectID int) error
 }
 
 // PreviewPDF represents a generated preview PDF
