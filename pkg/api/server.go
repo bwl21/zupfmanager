@@ -86,6 +86,11 @@ func NewServer(services *core.Services, opts ...ServerOptions) *Server {
 	return s
 }
 
+// Router returns the gin router for testing
+func (s *Server) Router() *gin.Engine {
+	return s.router
+}
+
 // setupRoutes configures all API routes
 func (s *Server) setupRoutes() {
 	// Health check

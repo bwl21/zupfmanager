@@ -57,7 +57,19 @@
                 class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 placeholder="/path/to/songs/"
               />
-              <p class="mt-1 text-xs text-gray-500">Enter the full path to the directory containing ABC files</p>
+              <p class="mt-1 text-xs text-gray-500">
+                Enter the full path to the directory containing ABC files
+                <span v-if="lastImportPathData?.path" class="block mt-1">
+                  Last used: {{ lastImportPathData.path }}
+                  <button
+                    @click="useLastPath"
+                    type="button"
+                    class="ml-2 text-blue-600 hover:text-blue-800 text-xs underline"
+                  >
+                    Use this path
+                  </button>
+                </span>
+              </p>
             </div>
             <button
               type="submit"
@@ -220,7 +232,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/vue-query'
 import { RouterLink } from 'vue-router'
 import { importApi } from '@/services/api'
@@ -237,17 +249,36 @@ const directoryForm = reactive({
   directory_path: ''
 })
 
-// Load last import path
-const { data: lastImportPathData } = useQuery({
-  queryKey: ['lastImportPath'],
-  queryFn: importApi.getLastImportPath,
-  retry: false
-})
+// Store last import path data for display
+const lastImportPathData = ref<{ path: string } | null>(null)
 
-// Set default directory path when last import path is loaded
-onMounted(() => {
-  if (lastImportPathData?.value?.path) {
-    directoryForm.directory_path = lastImportPathData.value.path
+// Load last import path data for display purposes
+const loadLastImportPath = async () => {
+  try {
+    const result = await importApi.getLastImportPath()
+    lastImportPathData.value = result
+    return result
+  } catch (err) {
+    console.error('Failed to load last import path for display:', err)
+    return null
+  }
+}
+
+// Load on mount
+onMounted(loadLastImportPath)
+
+// Load last import path on mount
+onMounted(async () => {
+  console.log('Component mounted, loading last import path...')
+  try {
+    const result = await importApi.getLastImportPath()
+    console.log('Last import path API result:', result)
+    if (result?.path && result.path.trim() !== '' && !directoryForm.directory_path) {
+      console.log('Setting directory path to:', result.path)
+      directoryForm.directory_path = result.path
+    }
+  } catch (err) {
+    console.error('Failed to load last import path:', err)
   }
 })
 
@@ -275,12 +306,15 @@ const { mutate: importFileMutation, isPending: isImportingSingle } = useMutation
 // Directory import mutation
 const { mutate: importDirectoryMutation, isPending: isImportingDirectory } = useMutation({
   mutationFn: importApi.directory,
-  onSuccess: (data) => {
+  onSuccess: async (data) => {
     lastImportResult.value = data
     importError.value = null
-    directoryForm.directory_path = ''
     // Invalidate songs query to refresh the list
     queryClient.invalidateQueries({ queryKey: ['songs'] })
+    // Reload last import path data for display
+    await loadLastImportPath()
+    // Don't clear the directory path - keep it for convenience
+    // directoryForm.directory_path = ''
   },
   onError: (error) => {
     importError.value = error
@@ -300,6 +334,13 @@ function importDirectory() {
 function importTestSongs() {
   directoryForm.directory_path = '/workspaces/zupfmanager/test_songs/'
   importDirectory()
+}
+
+async function useLastPath() {
+  const result = await loadLastImportPath()
+  if (result?.path && result.path.trim() !== '') {
+    directoryForm.directory_path = result.path
+  }
 }
 
 function clearResults() {
