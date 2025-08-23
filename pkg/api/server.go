@@ -146,6 +146,7 @@ func (s *Server) setupRoutes() {
 			songs.GET("", s.songHandler.ListSongs)
 			songs.GET("/:id", s.songHandler.GetSong)
 			songs.GET("/search", s.songHandler.SearchSongs)
+			songs.DELETE("/:id", s.songHandler.DeleteSong)
 			
 			// Preview endpoints
 			songs.POST("/:id/generate-preview", s.songHandler.GeneratePreview)

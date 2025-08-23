@@ -104,7 +104,10 @@ export const songApi = {
   },
 
   cleanupPreviewPDFs: (id: number): Promise<MessageResponse> =>
-    api.delete(`/api/v1/songs/${id}/preview-pdfs`).then((res) => res.data)
+    api.delete(`/api/v1/songs/${id}/preview-pdfs`).then((res) => res.data),
+
+  delete: (id: number): Promise<MessageResponse> =>
+    api.delete(`/api/v1/songs/${id}`).then((res) => res.data)
 }
 
 // Import API

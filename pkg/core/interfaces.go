@@ -175,6 +175,7 @@ type SongService interface {
 	Get(ctx context.Context, id int) (*Song, error)
 	Search(ctx context.Context, query string) ([]*Song, error)
 	SearchAdvanced(ctx context.Context, query string, options SearchOptions) ([]*Song, error)
+	Delete(ctx context.Context, id int) error
 	
 	// Preview operations
 	GeneratePreview(ctx context.Context, req GeneratePreviewRequest) (*GeneratePreviewResponse, error)

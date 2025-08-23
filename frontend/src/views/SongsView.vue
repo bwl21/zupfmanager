@@ -126,6 +126,21 @@
               <p v-if="song.copyright" class="truncate">© {{ song.copyright }}</p>
               <p v-if="song.tocinfo" class="truncate">{{ song.tocinfo }}</p>
             </div>
+            
+            <!-- Action Buttons -->
+            <div class="mt-3 flex justify-end gap-2">
+              <button
+                @click.stop="deleteSong(song)"
+                :disabled="(song.projects && song.projects.length > 0) || isDeleting"
+                class="inline-flex items-center px-2 py-1 text-xs font-medium rounded text-red-600 hover:text-red-800 hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                :title="song.projects && song.projects.length > 0 ? 'Cannot delete: song is used in projects' : 'Delete song'"
+              >
+                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -177,11 +192,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { useQuery } from '@tanstack/vue-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { RouterLink } from 'vue-router'
 import { songApi, projectApi } from '@/services/api'
 import { useDebounceFn } from '@vueuse/core'
 import type { SongResponse } from '@/types/api'
+
+const queryClient = useQueryClient()
 
 // Search state
 const searchQuery = ref('')
@@ -219,5 +236,51 @@ const debouncedSearch = useDebounceFn(() => {
 function clearSearch() {
   searchQuery.value = ''
   // Project info will be loaded by the allSongs watcher
+}
+
+// Delete song mutation
+const { mutate: deleteSongMutation, isPending: isDeleting } = useMutation({
+  mutationFn: songApi.delete,
+  onSuccess: (_, songId) => {
+    // Invalidate all songs-related queries to refresh the list
+    queryClient.invalidateQueries({ queryKey: ['songs'] })
+    queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'songs' })
+    
+    // Show success message
+    console.log(`Song ${songId} deleted successfully`)
+  },
+  onError: (error: any) => {
+    let errorMessage = 'Failed to delete song'
+    
+    if (error.response?.status === 409) {
+      errorMessage = error.response.data.message || 'Song is used in projects and cannot be deleted'
+    } else if (error.response?.status === 404) {
+      errorMessage = 'Song not found'
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message
+    } else if (error.message) {
+      errorMessage = error.message
+    }
+    
+    alert(`Error: ${errorMessage}`)
+  }
+})
+
+// Delete song function with confirmation
+function deleteSong(song: SongResponse) {
+  // Double-check project associations
+  if (song.projects && song.projects.length > 0) {
+    const projectNames = song.projects.map(p => p.title).join(', ')
+    alert(`Cannot delete song "${song.title}": it is used in the following project(s):\n\n${projectNames}\n\nRemove the song from all projects first.`)
+    return
+  }
+
+  // Confirmation dialog
+  const message = `Are you sure you want to delete the song "${song.title}"?\n\nFilename: ${song.filename}\nID: ${song.id}\n\nThis action cannot be undone.`
+  const confirmed = confirm(message)
+  
+  if (confirmed) {
+    deleteSongMutation(song.id)
+  }
 }
 </script>

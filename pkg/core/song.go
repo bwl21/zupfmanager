@@ -166,6 +166,35 @@ func (s *songService) SearchAdvanced(ctx context.Context, query string, options 
 	return songs, nil
 }
 
+// Delete removes a song from the database
+func (s *songService) Delete(ctx context.Context, id int) error {
+	// Check if song exists
+	entSong, err := s.db.Song.Get(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to get song: %w", err)
+	}
+	
+	// Check if song is used in any projects
+	projectSongs, err := s.db.ProjectSong.Query().
+		Where(projectsong.SongID(id)).
+		All(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to check project associations: %w", err)
+	}
+	
+	if len(projectSongs) > 0 {
+		return fmt.Errorf("cannot delete song '%s': it is used in %d project(s). Remove it from all projects first", entSong.Title, len(projectSongs))
+	}
+	
+	// Delete the song
+	err = s.db.Song.DeleteOneID(id).Exec(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to delete song: %w", err)
+	}
+	
+	return nil
+}
+
 // GeneratePreview searches for existing PDFs for a song in the ABC directory
 func (s *songService) GeneratePreview(ctx context.Context, req GeneratePreviewRequest) (*GeneratePreviewResponse, error) {
 	// Get the song

@@ -78,6 +78,8 @@ zupfmanager project build <project-id>                  # Build a project
 zupfmanager song list                                   # List all songs
 zupfmanager song show <song-id>                         # Show song details
 zupfmanager song search <query>                         # Search for songs
+zupfmanager song delete <song-id>                       # Delete a song (with confirmation)
+zupfmanager song delete <song-id> --force               # Delete a song without confirmation
 
 # Import ABC Files
 zupfmanager import <directory>                          # Import ABC files from a directory
@@ -102,6 +104,12 @@ The web interface provides a modern, user-friendly way to manage your music proj
 - **Inline Configuration Editing**: Edit project configurations with syntax highlighting
 - **Build Status Tracking**: Monitor build progress and view results
 - **Song Assignment**: Easily add/remove songs from projects with priority and difficulty settings
+
+**Song Management:**
+- **Full CRUD Operations**: Create (import), read, update, and delete songs
+- **Smart Delete Protection**: Prevents deletion of songs used in projects
+- **Dependency Checking**: Shows which projects use a song before deletion
+- **Confirmation Dialogs**: Safe deletion with user confirmation
 
 Access the web interface by starting the API server and opening http://localhost:8080 in your browser.
 

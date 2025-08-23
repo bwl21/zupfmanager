@@ -3,6 +3,7 @@ package handlers
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/bwl21/zupfmanager/pkg/api/models"
 	"github.com/bwl21/zupfmanager/pkg/core"
@@ -71,6 +72,60 @@ func (h *SongHandler) ListSongs(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, response)
+}
+
+// DeleteSong deletes a song by ID
+// @Summary Delete a song
+// @Description Delete a song from the database. The song must not be used in any projects.
+// @Tags songs
+// @Param id path int true "Song ID"
+// @Success 200 {object} models.MessageResponse
+// @Failure 400 {object} models.ErrorResponse
+// @Failure 404 {object} models.ErrorResponse
+// @Failure 409 {object} models.ErrorResponse "Song is used in projects"
+// @Failure 500 {object} models.ErrorResponse
+// @Router /api/v1/songs/{id} [delete]
+func (h *SongHandler) DeleteSong(c *gin.Context) {
+	idStr := c.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "invalid song ID",
+			Message: "song ID must be a number",
+		})
+		return
+	}
+
+	err = h.services.Song.Delete(c.Request.Context(), id)
+	if err != nil {
+		// Check if it's a constraint error (song used in projects)
+		if strings.Contains(err.Error(), "used in") && strings.Contains(err.Error(), "project") {
+			c.JSON(http.StatusConflict, models.ErrorResponse{
+				Error:   "song in use",
+				Message: err.Error(),
+			})
+			return
+		}
+		
+		// Check if it's a not found error
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, models.ErrorResponse{
+				Error:   "song not found",
+				Message: err.Error(),
+			})
+			return
+		}
+		
+		c.JSON(http.StatusInternalServerError, models.ErrorResponse{
+			Error:   "failed to delete song",
+			Message: err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.MessageResponse{
+		Message: "Song deleted successfully",
+	})
 }
 
 // GeneratePreview generates preview PDFs for a song
