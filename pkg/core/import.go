@@ -183,21 +183,6 @@ func (s *importService) detectChanges(existing *ent.Song, metadata ABCMetadata) 
 	return changes
 }
 
-// saveLastImportDir saves the directory path to a state file
-func saveLastImportDir(directory string) error {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get user home directory: %w", err)
-	}
-	
-	stateFile := filepath.Join(homeDir, lastImportDirFile)
-	absDir, err := filepath.Abs(directory)
-	if err != nil {
-		return fmt.Errorf("failed to get absolute path: %w", err)
-	}
-	
-	return os.WriteFile(stateFile, []byte(absDir), 0644)
-}
 
 // GetLastImportDir retrieves the most recent import directory
 func GetLastImportDir() (string, error) {

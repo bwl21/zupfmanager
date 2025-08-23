@@ -59,7 +59,7 @@ func (s *projectService) Create(ctx context.Context, req CreateProjectRequest) (
 	var err error
 	
 	// Priority: direct config > config file > default config
-	if req.Config != nil && len(req.Config) > 0 {
+	if len(req.Config) > 0 {
 		config = req.Config
 	} else {
 		config, err = s.loadConfig(req.ConfigFile, req.DefaultConfig)
@@ -94,7 +94,7 @@ func (s *projectService) Update(ctx context.Context, req UpdateProjectRequest) (
 	var err error
 	
 	// Priority: direct config > config file > default config
-	if req.Config != nil && len(req.Config) > 0 {
+	if len(req.Config) > 0 {
 		config = req.Config
 	} else {
 		config, err = s.loadConfig(req.ConfigFile, req.DefaultConfig)

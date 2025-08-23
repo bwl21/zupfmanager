@@ -118,12 +118,3 @@ func (s *Services) DB() *database.Client {
 	return s.db
 }
 
-// ensureNotClosed checks if services are still open
-func (s *Services) ensureNotClosed() error {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.closed {
-		return fmt.Errorf("services have been closed")
-	}
-	return nil
-}
