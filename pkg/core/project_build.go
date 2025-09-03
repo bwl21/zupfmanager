@@ -72,17 +72,29 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	}
 
 	updateProgress(15, "Preparing directories")
-	os.RemoveAll(filepath.Join(outputDir, "pdf"))
-	os.RemoveAll(filepath.Join(outputDir, "abc"))
-	os.RemoveAll(filepath.Join(outputDir, "log"))
-	os.RemoveAll(filepath.Join(outputDir, "druckdateien"))
-	os.RemoveAll(filepath.Join(outputDir, "referenz"))
+	
+	// Remove existing directories
+	for _, dir := range []string{"pdf", "abc", "log", "druckdateien", "referenz"} {
+		if err := os.RemoveAll(filepath.Join(outputDir, dir)); err != nil {
+			slog.Error("Failed to remove directory", "directory", dir, "error", err)
+			return fmt.Errorf("failed to remove directory %s: %w", dir, err)
+		}
+	}
 
 	// Create base directories
-	_ = os.MkdirAll(outputDir, 0755)
-	_ = os.MkdirAll(filepath.Join(outputDir, "pdf"), 0755)
-	_ = os.MkdirAll(filepath.Join(outputDir, "abc"), 0755)
-	_ = os.MkdirAll(filepath.Join(outputDir, "log"), 0755)
+	dirs := []string{
+		outputDir,
+		filepath.Join(outputDir, "pdf"),
+		filepath.Join(outputDir, "abc"),
+		filepath.Join(outputDir, "log"),
+	}
+
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			slog.Error("Failed to create directory", "directory", dir, "error", err)
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+	}
 
 	// Create druckdateien directory
 	druckdateienDir := filepath.Join(outputDir, "druckdateien")
