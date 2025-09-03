@@ -186,7 +186,8 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	// Merge PDFs for each target folder
 	for folder := range folderSet {
 		sourceDir := filepath.Join(outputDir, "druckdateien", folder)
-		destFile := filepath.Join(outputDir, "druckdateien", folder+".pdf")
+		// Add project short name to the output filename
+		destFile := filepath.Join(outputDir, "druckdateien", fmt.Sprintf("%s_%s.pdf", project.ShortName, folder))
 
 		slog.Info("Merging PDFs for folder", "folder", folder, "source", sourceDir, "dest", destFile)
 
