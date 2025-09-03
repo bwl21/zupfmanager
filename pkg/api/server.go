@@ -8,7 +8,9 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -82,7 +84,6 @@ func NewServer(services *core.Services, opts ...ServerOptions) *Server {
 		gitCommit:          gitCommit,
 	}
 
-	s.setupRoutes()
 	return s
 }
 
@@ -91,14 +92,21 @@ func (s *Server) Router() *gin.Engine {
 	return s.router
 }
 
-// setupRoutes configures all API routes
-func (s *Server) setupRoutes() {
-	// Health check
-	s.router.GET("/health", s.healthCheck)
-	
-	// Version info
-	s.router.GET("/api/version", s.versionInfo)
-	
+// RegisterRoutes registers all API routes
+func (s *Server) RegisterRoutes() {
+	// API routes
+	api := s.router.Group("/api")
+	{
+		// Health check
+		api.GET("/health", s.healthCheck)
+
+		// Open directory in file explorer
+		api.POST("/open-directory", s.openDirectory)
+
+		// Version info
+		api.GET("/version", s.versionInfo)
+	} // Close the api group
+
 	// API v1 routes
 	v1 := s.router.Group("/api/v1")
 	{
@@ -290,12 +298,15 @@ func (s *Server) serveSPA(c *gin.Context) {
 	c.Header("Cache-Control", "no-cache, no-store, must-revalidate") // Don't cache HTML
 	c.Header("Pragma", "no-cache")
 	c.Header("Expires", "0")
-	
-	c.File(indexPath)
 }
 
 // Start starts the API server
 func (s *Server) Start(port int) error {
+	s.RegisterRoutes()
+	return s.startServer(port)
+}
+
+func (s *Server) startServer(port int) error {
 	addr := fmt.Sprintf("0.0.0.0:%d", port)
 	
 	s.server = &http.Server{
@@ -333,6 +344,43 @@ func corsMiddleware() gin.HandlerFunc {
 	}
 }
 
+// openDirectory opens the working directory in the file explorer
+// @Summary Open directory
+// @Description Open the working directory in the system's file explorer
+// @Tags system
+// @Produce json
+// @Success 200 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Router /open-directory [post]
+func (s *Server) openDirectory(c *gin.Context) {
+	wd, err := os.Getwd()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not get working directory"})
+		return
+	}
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", wd)
+	case "windows":
+		cmd = exec.Command("explorer", wd)
+	case "linux":
+		cmd = exec.Command("xdg-open", wd)
+	default:
+		c.JSON(http.StatusNotImplemented, gin.H{"error": "Unsupported operating system"})
+		return
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to open directory: %v", err)})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "Directory opened", "path": wd})
+}
+
 // healthCheck returns server health status
 // @Summary Health check
 // @Description Check if the API server is running
@@ -345,17 +393,21 @@ func (s *Server) healthCheck(c *gin.Context) {
 	if version == "" {
 		version = "dev"
 	}
+
+	// Get current working directory
+	workingDir, _ := os.Getwd()
 	
 	c.JSON(http.StatusOK, gin.H{
 		"status":    "ok",
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"version":   version,
+		"working_directory": workingDir,
 	})
 }
 
 // versionInfo returns detailed version information
 // @Summary Version information
-// @Description Get detailed version information including git commit
+// @Description Get detailed version information including git commit and working directory
 // @Tags version
 // @Produce json
 // @Success 200 {object} map[string]string
@@ -370,11 +422,15 @@ func (s *Server) versionInfo(c *gin.Context) {
 	if gitCommit == "" {
 		gitCommit = "dirty"
 	}
+
+	// Get current working directory
+	workingDir, _ := os.Getwd()
 	
 	c.JSON(http.StatusOK, gin.H{
-		"version":    version,
-		"git_commit": gitCommit,
-		"timestamp":  time.Now().UTC().Format(time.RFC3339),
+		"version":          version,
+		"git_commit":      gitCommit,
+		"timestamp":       time.Now().UTC().Format(time.RFC3339),
+		"working_dir":     workingDir,
 	})
 }
 

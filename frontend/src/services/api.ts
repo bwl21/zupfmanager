@@ -47,7 +47,7 @@ api.interceptors.response.use(
 
 // Health Check API
 export const healthApi = {
-  check: (): Promise<HealthResponse> => api.get('/health').then((res) => res.data)
+  check: (): Promise<HealthResponse> => api.get('/api/health').then((res) => res.data)
 }
 
 // Project API

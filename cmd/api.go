@@ -80,6 +80,13 @@ Access the API documentation at http://localhost:8080/swagger/index.html`,
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
+		// Get and log the current working directory
+		if wd, err := os.Getwd(); err == nil {
+			slog.Info("Current working directory", "path", wd)
+		} else {
+			slog.Warn("Could not get working directory", "error", err)
+		}
+
 		// Handle shutdown signals
 		sigChan := make(chan os.Signal, 1)
 		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)

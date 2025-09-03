@@ -1,7 +1,7 @@
 <template>
   <div class="text-xs text-gray-500">
     <span v-if="versionData">
-      v{{ versionData.version }}
+      {{ versionData.version }}
       <span v-if="versionData.git_commit" class="ml-1">
         ({{ versionData.git_commit.substring(0, 7) }})
       </span>
