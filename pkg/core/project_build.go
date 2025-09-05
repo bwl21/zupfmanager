@@ -192,6 +192,9 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	for _, targetFolder := range folderPatterns {
 		folderSet[targetFolder] = true
 	}
+	
+	// Always include 'noten' folder for HTML PDFs (including TOC)
+	folderSet["noten"] = true
 
 	// Merge PDFs for each target folder
 	for folder := range folderSet {
