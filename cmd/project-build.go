@@ -18,6 +18,7 @@ import (
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/bwl21/zupfmanager/internal/ent"
 	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
+	"github.com/bwl21/zupfmanager/internal/htmlpdf"
 	"github.com/bwl21/zupfmanager/internal/zupfnoter"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
@@ -351,7 +352,48 @@ func buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int,
 		return fmt.Errorf("failed to rename log file: %w", err)
 	}
 
-	// 13. Erfolgreich abgeschlossen.
+	// 13. HTML-zu-PDF Konvertierung (optional)
+	htmlFilename := strings.TrimSuffix(song.Edges.Song.Filename, ".abc") + ".html"
+	htmlPath := filepath.Join(abcFileDir, htmlFilename)
+	
+	if _, err := os.Stat(htmlPath); err == nil {
+		// HTML file exists, convert to PDF
+		converter := htmlpdf.NewChromeDPConverter(
+			htmlpdf.NewTextCleanupInjector("#vb"),
+			htmlpdf.NewPageNumberInjector("bottom-right"),
+		)
+		defer converter.Close()
+		
+		abcBasename := strings.TrimSuffix(song.Edges.Song.Filename, ".abc")
+		pdfFilename := abcBasename + "_noten.pdf"
+		outputPath := filepath.Join(outputDir, "pdf", pdfFilename)
+		
+		request := &htmlpdf.ConversionRequest{
+			HTMLFilePath: htmlPath,
+			OutputPath:   outputPath,
+			SongIndex:    songIndex,
+			Song:         song,
+		}
+		
+		result, err := converter.ConvertToPDF(ctx, request)
+		if err != nil {
+			slog.Warn("HTML to PDF conversion failed", "song", song.Edges.Song.Title, "error", err)
+		} else {
+			slog.Info("HTML to PDF conversion completed", 
+				"song", song.Edges.Song.Title,
+				"output", result.OutputPath,
+				"duration", result.Duration)
+			
+			// Distribute HTML PDF to noten directory
+			targetDir := filepath.Join(outputDir, "druckdateien", "noten")
+			os.MkdirAll(targetDir, 0755)
+			newFilename := fmt.Sprintf("%02d_%s", songIndex, pdfFilename)
+			targetFile := filepath.Join(targetDir, newFilename)
+			copyFile(outputPath, targetFile)
+		}
+	}
+
+	// 14. Erfolgreich abgeschlossen.
 	return nil
 }
 
