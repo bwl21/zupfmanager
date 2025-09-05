@@ -151,7 +151,8 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	}
 	err := eg.Wait()
 	if err != nil {
-		return fmt.Errorf("failed to build songs: %w", err)
+		slog.Warn("Some songs failed to build, but continuing with TOC creation", "error", err)
+		// Don't return here - continue with TOC creation even if some songs failed
 	}
 
 	updateProgress(75, "Processing copyright information")
@@ -175,9 +176,12 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	}
 
 	updateProgress(82, "Creating HTML table of contents")
+	slog.Info("Starting HTML table of contents creation", "project", project.ShortName, "songs", len(projectSongs))
 	if err := s.createHTMLToc(context.Background(), project, projectSongs, outputDir); err != nil {
+		slog.Error("Failed to create HTML table of contents", "error", err)
 		return fmt.Errorf("failed to create HTML table of contents: %w", err)
 	}
+	slog.Info("HTML table of contents creation completed")
 
 	updateProgress(85, "Merging PDF files")
 	// Get folder patterns from project config or use defaults
@@ -289,68 +293,57 @@ W:{{TOC}}
 }
 
 func (s *projectService) createHTMLToc(ctx context.Context, project *ent.Project, projectSongs []*ent.ProjectSong, outputDir string) error {
-	// Create HTML table of contents
-	var tocHTML strings.Builder
+	slog.Info("createHTMLToc called", "project", project.ShortName, "outputDir", outputDir, "songCount", len(projectSongs))
 	
-	// HTML header
-	tocHTML.WriteString(`<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inhaltsverzeichnis</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        h1 { text-align: center; margin-bottom: 40px; }
-        .toc-entry { margin: 8px 0; font-size: 14px; }
-        .toc-number { display: inline-block; width: 30px; font-weight: bold; }
-        .toc-title { font-weight: bold; }
-        .toc-info { color: #666; font-style: italic; }
-    </style>
-</head>
-<body>
-    <h1>Inhaltsverzeichnis</h1>
-`)
-
-	// Generate table of contents entries
-	for id, song := range projectSongs {
-		tocHTML.WriteString(fmt.Sprintf(`    <div class="toc-entry">
-        <span class="toc-number">%02d</span>
-        <span class="toc-title">%s</span>`, id+1, song.Edges.Song.Title))
-		
-		if song.Edges.Song.Tocinfo != "" {
-			tocHTML.WriteString(fmt.Sprintf(`<span class="toc-info"> - %s</span>`, song.Edges.Song.Tocinfo))
-		}
-		
-		tocHTML.WriteString(`
-    </div>`)
-	}
-
-	// HTML footer
-	tocHTML.WriteString(`
-</body>
-</html>`)
-
+	// Create HTML table of contents using built-in template
+	htmlContent := s.generateHTMLTocContent(project, projectSongs)
+	
 	// Write HTML file
 	htmlTocFilename := "00_inhaltsverzeichnis.html"
 	htmlTocPath := filepath.Join(outputDir, "html", htmlTocFilename)
+	htmlDir := filepath.Join(outputDir, "html")
 	
-	err := os.MkdirAll(filepath.Join(outputDir, "html"), 0755)
+	slog.Info("Creating HTML directory", "path", htmlDir)
+	err := os.MkdirAll(htmlDir, 0755)
 	if err != nil {
+		slog.Error("Failed to create HTML directory", "path", htmlDir, "error", err)
 		return fmt.Errorf("failed to create HTML directory: %w", err)
 	}
 	
-	err = os.WriteFile(htmlTocPath, []byte(tocHTML.String()), 0644)
+	slog.Info("Writing HTML TOC file", "path", htmlTocPath, "size", len(htmlContent))
+	err = os.WriteFile(htmlTocPath, []byte(htmlContent), 0644)
 	if err != nil {
+		slog.Error("Failed to write HTML TOC file", "path", htmlTocPath, "error", err)
 		return fmt.Errorf("failed to write HTML TOC file: %w", err)
 	}
+	
+	// Verify file was created
+	if _, err := os.Stat(htmlTocPath); err != nil {
+		slog.Error("HTML TOC file verification failed", "path", htmlTocPath, "error", err)
+		return fmt.Errorf("HTML TOC file verification failed: %w", err)
+	}
+	slog.Info("HTML TOC file created successfully", "path", htmlTocPath)
 
 	// Convert HTML to PDF using the HTML to PDF converter (if available)
 	converter := htmlpdf.NewChromeDPConverter()
 	
+	// Ensure we have an absolute path for the HTML file
+	absHTMLPath, err := filepath.Abs(htmlTocPath)
+	if err != nil {
+		slog.Error("Failed to get absolute path for HTML TOC", "path", htmlTocPath, "error", err)
+		return fmt.Errorf("failed to get absolute path for HTML TOC: %w", err)
+	}
+	
+	// Ensure we have an absolute path for the output PDF
+	absOutputPath, err := filepath.Abs(filepath.Join(outputDir, "pdf", "00_inhaltsverzeichnis_noten.pdf"))
+	if err != nil {
+		slog.Error("Failed to get absolute path for PDF output", "error", err)
+		return fmt.Errorf("failed to get absolute path for PDF output: %w", err)
+	}
+	
 	request := &htmlpdf.ConversionRequest{
-		HTMLFilePath: htmlTocPath,
-		OutputPath:   filepath.Join(outputDir, "pdf", "00_inhaltsverzeichnis_noten.pdf"),
+		HTMLFilePath: absHTMLPath,
+		OutputPath:   absOutputPath,
 		SongIndex:    0, // TOC doesn't need page number
 		Project:      project,
 		DOMInjectors: []htmlpdf.DOMInjector{
@@ -358,6 +351,8 @@ func (s *projectService) createHTMLToc(ctx context.Context, project *ent.Project
 			htmlpdf.NewTextCleanupInjector(),
 		},
 	}
+	
+	slog.Info("Converting HTML TOC to PDF", "htmlPath", absHTMLPath, "outputPath", absOutputPath)
 	
 	_, err = converter.ConvertToPDF(ctx, request)
 	if err != nil {
@@ -373,6 +368,194 @@ func (s *projectService) createHTMLToc(ctx context.Context, project *ent.Project
 
 	slog.Info("created HTML table of contents", "file", htmlTocFilename)
 	return nil
+}
+
+// generateHTMLTocContent creates the HTML content for the table of contents
+// This uses a built-in template that can later be made configurable
+func (s *projectService) generateHTMLTocContent(project *ent.Project, projectSongs []*ent.ProjectSong) string {
+	// Try to load custom template first, fall back to built-in template
+	templateContent := s.getHTMLTocTemplate(project)
+	
+	// Generate table of contents entries
+	var tocEntries strings.Builder
+	for id, song := range projectSongs {
+		tocEntries.WriteString(fmt.Sprintf(`        <tr class="toc-entry">
+            <td class="toc-number">%02d</td>
+            <td class="toc-title">%s</td>`, id+1, song.Edges.Song.Title))
+		
+		if song.Edges.Song.Tocinfo != "" {
+			tocEntries.WriteString(fmt.Sprintf(`
+            <td class="toc-info">%s</td>`, song.Edges.Song.Tocinfo))
+		} else {
+			tocEntries.WriteString(`
+            <td class="toc-info"></td>`)
+		}
+		
+		tocEntries.WriteString(`
+        </tr>`)
+	}
+	
+	// Replace placeholders in template
+	htmlContent := strings.Replace(templateContent, "{{TOC_ENTRIES}}", tocEntries.String(), 1)
+	htmlContent = strings.ReplaceAll(htmlContent, "{{PROJECT_TITLE}}", project.ShortName)
+	
+	return htmlContent
+}
+
+// getHTMLTocTemplate returns the HTML template for table of contents
+// First tries to load from project-specific file, then falls back to built-in template
+func (s *projectService) getHTMLTocTemplate(project *ent.Project) string {
+	// Try project-specific template
+	templateFile := filepath.Join(project.ShortName, "tpl", "999_inhaltsverzeichnis_template.html")
+	if templateBytes, err := os.ReadFile(templateFile); err == nil {
+		slog.Info("using project-specific HTML TOC template", "path", templateFile)
+		return string(templateBytes)
+	}
+	
+	// Try default template
+	defaultTemplateFile := "x/MBT-2025/999_inhaltsverzeichnis_template.html"
+	if templateBytes, err := os.ReadFile(defaultTemplateFile); err == nil {
+		slog.Info("using default HTML TOC template", "path", defaultTemplateFile)
+		return string(templateBytes)
+	}
+	
+	// Use built-in template as fallback
+	slog.Info("using built-in HTML TOC template")
+	return s.getBuiltInHTMLTocTemplate()
+}
+
+// getBuiltInHTMLTocTemplate returns the built-in HTML template for _noten table of contents
+func (s *projectService) getBuiltInHTMLTocTemplate() string {
+	return `<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inhaltsverzeichnis - {{PROJECT_TITLE}}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        body {
+            font-family: "Times New Roman", serif;
+            font-size: 12pt;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+            color: #000;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 3cm;
+            border-bottom: 2px solid #000;
+            padding-bottom: 1cm;
+        }
+        
+        .header h1 {
+            font-size: 24pt;
+            font-weight: bold;
+            margin: 0 0 0.5cm 0;
+            text-transform: uppercase;
+        }
+        
+        .header .subtitle {
+            font-size: 14pt;
+            font-style: italic;
+            margin: 0;
+        }
+        
+        .toc-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1cm;
+        }
+        
+        .toc-table th {
+            background-color: #f0f0f0;
+            border: 1px solid #000;
+            padding: 8pt;
+            text-align: left;
+            font-weight: bold;
+            font-size: 11pt;
+        }
+        
+        .toc-entry td {
+            border: 1px solid #ccc;
+            padding: 6pt 8pt;
+            vertical-align: top;
+        }
+        
+        .toc-number {
+            width: 50pt;
+            text-align: center;
+            font-weight: bold;
+            background-color: #f8f8f8;
+        }
+        
+        .toc-title {
+            font-weight: bold;
+            min-width: 200pt;
+        }
+        
+        .toc-info {
+            font-style: italic;
+            color: #666;
+            width: 150pt;
+        }
+        
+        .footer {
+            margin-top: 2cm;
+            padding-top: 1cm;
+            border-top: 1px solid #ccc;
+            text-align: center;
+            font-size: 10pt;
+            color: #666;
+        }
+        
+        /* Print-specific styles */
+        @media print {
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            .toc-table {
+                page-break-inside: avoid;
+            }
+            
+            .toc-entry {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Inhaltsverzeichnis</h1>
+        <p class="subtitle">Notensammlung {{PROJECT_TITLE}}</p>
+    </div>
+    
+    <table class="toc-table">
+        <thead>
+            <tr>
+                <th class="toc-number">Nr.</th>
+                <th class="toc-title">Titel</th>
+                <th class="toc-info">Zusatzinfo</th>
+            </tr>
+        </thead>
+        <tbody>
+{{TOC_ENTRIES}}
+        </tbody>
+    </table>
+    
+    <div class="footer">
+        <p>Erstellt mit Zupfmanager</p>
+    </div>
+</body>
+</html>`
 }
 
 func (s *projectService) buildSong(ctx context.Context, abcFileDir, outputDir string, songIndex int, song *ent.ProjectSong, projectSampleId string, project *ent.Project) error {
