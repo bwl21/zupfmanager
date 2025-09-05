@@ -20,6 +20,7 @@ type ConversionRequest struct {
 	OutputPath   string            // Target PDF path
 	SongIndex    int               // Page number for DOM injection
 	Song         *ent.ProjectSong  // Song information
+	Project      *ent.Project      // Project information for page number prefix
 	DOMInjectors []DOMInjector     // List of DOM injectors
 	DOMScripts   []string          // JavaScript code for DOM manipulation
 }

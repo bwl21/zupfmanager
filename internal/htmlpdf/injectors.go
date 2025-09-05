@@ -41,7 +41,17 @@ func NewPageNumberInjector(position string) *PageNumberInjector {
 
 // InjectIntoDOM injects page number CSS and HTML element into the DOM
 func (inj *PageNumberInjector) InjectIntoDOM(ctx context.Context, request *ConversionRequest) error {
-	pageNumber := fmt.Sprintf("%02d", request.SongIndex)
+	// Create page number with project prefix (e.g. "MBT-05")
+	var pageNumber string
+	if request.Project != nil && request.Project.ShortName != "" {
+		pageNumber = fmt.Sprintf("%s-%02d", request.Project.ShortName, request.SongIndex)
+	} else if request.Song != nil && request.Song.Edges.Project != nil && request.Song.Edges.Project.ShortName != "" {
+		// Fallback to project from song if direct project not available
+		pageNumber = fmt.Sprintf("%s-%02d", request.Song.Edges.Project.ShortName, request.SongIndex)
+	} else {
+		// Fallback to just the number if no project info available
+		pageNumber = fmt.Sprintf("%02d", request.SongIndex)
+	}
 
 	// 1. Add CSS style to <head>
 	styleScript := fmt.Sprintf(`

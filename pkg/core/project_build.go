@@ -403,6 +403,7 @@ func (s *projectService) buildSongHTML(ctx context.Context, abcFileDir, outputDi
 		OutputPath:   outputPath,
 		SongIndex:    songIndex,
 		Song:         song,
+		Project:      project,     // Add project for page number prefix
 	}
 	
 	result, err := converter.ConvertToPDF(ctx, request)

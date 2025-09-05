@@ -26,6 +26,12 @@ func createTestHTML(content string) (string, error) {
 	return tempFile.Name(), nil
 }
 
+func createTestProject(shortName string) *ent.Project {
+	return &ent.Project{
+		ShortName: shortName,
+	}
+}
+
 func createTestSong(title string) *ent.ProjectSong {
 	return &ent.ProjectSong{
 		Edges: ent.ProjectSongEdges{
@@ -43,6 +49,7 @@ func TestPageNumberInjector(t *testing.T) {
 	request := &ConversionRequest{
 		SongIndex:  42,
 		Song:       createTestSong("Test Song"),
+		Project:    createTestProject("MBT"),
 		DOMScripts: make([]string, 0),
 	}
 
@@ -55,11 +62,11 @@ func TestPageNumberInjector(t *testing.T) {
 		t.Errorf("Expected 2 DOM scripts (CSS + element), got %d", len(request.DOMScripts))
 	}
 
-	// Validate that page number is present
+	// Validate that page number with project prefix is present
 	foundPageNumber := false
 	foundCSS := false
 	for _, script := range request.DOMScripts {
-		if strings.Contains(script, "42") {
+		if strings.Contains(script, "MBT-42") {
 			foundPageNumber = true
 		}
 		if strings.Contains(script, "pageStyle") || strings.Contains(script, "druckParagraph") {
@@ -68,7 +75,7 @@ func TestPageNumberInjector(t *testing.T) {
 	}
 
 	if !foundPageNumber {
-		t.Error("Page number should be injected into DOM scripts")
+		t.Error("Page number with project prefix (MBT-42) should be injected into DOM scripts")
 	}
 	if !foundCSS {
 		t.Error("CSS or page element should be present")
