@@ -25,9 +25,8 @@ func NewPageNumberInjector(position string) *PageNumberInjector {
                 right: 0;
                 margin: 10px;
                 font-weight: bold;
-                background: grey;
+                font-family: Arial, sans-serif;
                 padding: 5px;
-                border: 1px solid black;
                 z-index: 1000;
             }
         }
@@ -181,7 +180,7 @@ func (inj *CustomDOMInjector) InjectIntoDOM(ctx context.Context, request *Conver
 func (inj *CustomDOMInjector) generateCleanupScript(rule CleanupRule) string {
 	// Generate unique variable names to avoid conflicts
 	uniqueId := atomic.AddInt64(&scriptCounter, 1)
-	
+
 	switch rule.Action {
 	case "remove":
 		if rule.Pattern != "" {

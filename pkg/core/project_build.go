@@ -73,7 +73,7 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	}
 
 	updateProgress(15, "Preparing directories")
-	
+
 	// Remove existing directories
 	for _, dir := range []string{"pdf", "abc", "log", "druckdateien", "referenz"} {
 		if err := os.RemoveAll(filepath.Join(outputDir, dir)); err != nil {
@@ -471,45 +471,45 @@ func (s *projectService) buildSongHTML(ctx context.Context, abcFileDir, outputDi
 	// 1. Check if HTML file exists
 	htmlFilename := strings.TrimSuffix(song.Edges.Song.Filename, ".abc") + ".html"
 	htmlPath := filepath.Join(abcFileDir, htmlFilename)
-	
+
 	if _, err := os.Stat(htmlPath); os.IsNotExist(err) {
 		slog.Debug("no HTML file found for song", "song", song.Edges.Song.Title, "expected", htmlFilename)
 		return nil // No error, HTML is optional
 	}
-	
+
 	// 2. Create HTML to PDF converter with DOM injectors
 	converter := htmlpdf.NewChromeDPConverter(
-		htmlpdf.NewTextCleanupInjector("#vb"),           // Remove <text>#vb</text> elements
-		htmlpdf.NewPageNumberInjector("bottom-right"),   // Add page number
+		htmlpdf.NewTextCleanupInjector("#vb"),         // Remove <text>#vb</text> elements
+		htmlpdf.NewPageNumberInjector("bottom-right"), // Add page number
 	)
 	defer converter.Close()
-	
+
 	// 3. Determine output path (same name as ABC file with '_noten.pdf' suffix)
 	abcBasename := strings.TrimSuffix(song.Edges.Song.Filename, ".abc")
 	pdfFilename := abcBasename + "_noten.pdf"
 	outputPath := filepath.Join(outputDir, "pdf", pdfFilename)
-	
+
 	// 4. Perform conversion (original HTML remains unchanged)
 	request := &htmlpdf.ConversionRequest{
-		HTMLFilePath: htmlPath,    // Direct from Zupfnoter-generated HTML file
+		HTMLFilePath: htmlPath, // Direct from Zupfnoter-generated HTML file
 		OutputPath:   outputPath,
 		SongIndex:    songIndex,
 		Song:         song,
-		Project:      project,     // Add project for page number prefix
+		Project:      project, // Add project for page number prefix
 	}
-	
+
 	result, err := converter.ConvertToPDF(ctx, request)
 	if err != nil {
 		return fmt.Errorf("failed to convert HTML to PDF for %s: %w", song.Edges.Song.Title, err)
 	}
-	
-	slog.Info("HTML to PDF conversion completed", 
+
+	slog.Info("HTML to PDF conversion completed",
 		"song", song.Edges.Song.Title,
 		"output", result.OutputPath,
 		"filename", pdfFilename,
 		"duration", result.Duration,
 		"size", result.FileSize)
-	
+
 	// 5. Distribute PDF to print directories (analogous to ABC PDFs)
 	return s.distributeHTMLPDF(project, htmlFilename, outputDir, songIndex)
 }
@@ -519,25 +519,25 @@ func (s *projectService) distributeHTMLPDF(project *ent.Project, htmlFilename st
 	pdfDir := filepath.Join(outputDir, "pdf")
 	// HTML filename corresponds to ABC filename, so we use the same basename
 	baseFilenameWithoutExt := strings.TrimSuffix(htmlFilename, ".html")
-	
+
 	// Search for HTML-generated PDFs with '_noten.pdf' suffix
 	pattern := filepath.Join(pdfDir, baseFilenameWithoutExt+"_noten.pdf")
 	files, err := filepath.Glob(pattern)
 	if err != nil {
 		return fmt.Errorf("failed to glob HTML PDF files: %w", err)
 	}
-	
+
 	// Use HTML-specific folder patterns
 	folderPatterns := s.getHTMLFolderPatterns(project)
-	
+
 	for _, pdfFile := range files {
 		filename := filepath.Base(pdfFile)
 		newFilename := fmt.Sprintf("%02d_%s", songIndex, filename)
-		
+
 		// All HTML PDFs go to the 'noten' directory
 		// (no distinction between A3/A4 like ABC PDFs)
 		targetDir := filepath.Join(outputDir, "druckdateien", "noten")
-		
+
 		// Optional: project-specific pattern mapping
 		for pattern, folder := range folderPatterns {
 			matched, err := filepath.Match(pattern, filename)
@@ -549,21 +549,21 @@ func (s *projectService) distributeHTMLPDF(project *ent.Project, htmlFilename st
 				break
 			}
 		}
-		
+
 		err := os.MkdirAll(targetDir, 0755)
 		if err != nil {
 			return fmt.Errorf("failed to create HTML target directory: %w", err)
 		}
-		
+
 		targetFile := filepath.Join(targetDir, newFilename)
 		err = s.copyFile(pdfFile, targetFile)
 		if err != nil {
 			return fmt.Errorf("failed to copy HTML PDF: %w", err)
 		}
-		
+
 		slog.Info("distributed HTML PDF", "source", pdfFile, "target", targetFile)
 	}
-	
+
 	return nil
 }
 
@@ -574,7 +574,7 @@ func (s *projectService) getHTMLFolderPatterns(project *ent.Project) map[string]
 	patterns := map[string]string{
 		"*_noten.pdf": "noten",
 	}
-	
+
 	// Load project-specific HTML patterns if available
 	if configPatterns, ok := project.Config["htmlFolderPatterns"].(map[string]interface{}); ok {
 		for pattern, folder := range configPatterns {
@@ -583,7 +583,7 @@ func (s *projectService) getHTMLFolderPatterns(project *ent.Project) map[string]
 			}
 		}
 	}
-	
+
 	return patterns
 }
 
@@ -611,6 +611,7 @@ func (s *projectService) getFolderPatterns(project *ent.Project) map[string]stri
 		"*_-O*_a3.pdf": "klein",
 		"*_-B*_a3.pdf": "gross",
 		"*_-X*_a3.pdf": "gross",
+		"*_noten.pdf":  "noten",
 	}
 
 	if configPatterns, ok := project.Config["folderPatterns"].(map[string]interface{}); ok {
