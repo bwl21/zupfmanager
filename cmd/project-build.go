@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"log/slog"
 	"strconv"
 
 	"github.com/bwl21/zupfmanager/internal/database"
@@ -13,9 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	zupfnoterConfigString = "%%%%zupfnoter.config"
-)
+
 
 var (
 	projectBuildOutputDir         string
@@ -39,7 +38,11 @@ var projectBuildCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer client.Close()
+		defer func() {
+			if err := client.Close(); err != nil {
+				slog.Warn("failed to close database client", "error", err)
+			}
+		}()
 
 		// First, get the project to ensure it exists
 		project, err := client.Project.Get(context.Background(), projectID)
@@ -93,7 +96,11 @@ var projectBuildCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		defer services.Close()
+		defer func() {
+			if err := services.Close(); err != nil {
+				slog.Warn("failed to close services", "error", err)
+			}
+		}()
 
 		buildReq := core.BuildProjectRequest{
 			ProjectID:         projectID,
