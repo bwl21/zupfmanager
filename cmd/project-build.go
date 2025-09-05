@@ -9,7 +9,6 @@ import (
 	"github.com/bwl21/zupfmanager/internal/database"
 	"github.com/bwl21/zupfmanager/internal/ent"
 	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
-	"github.com/bwl21/zupfmanager/internal/htmlpdf"
 	"github.com/bwl21/zupfmanager/pkg/core"
 	"github.com/spf13/cobra"
 )
