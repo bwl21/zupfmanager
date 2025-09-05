@@ -174,6 +174,11 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 		return fmt.Errorf("failed to create table of contents: %w", err)
 	}
 
+	updateProgress(82, "Creating HTML table of contents")
+	if err := s.createHTMLToc(context.Background(), project, projectSongs, outputDir); err != nil {
+		return fmt.Errorf("failed to create HTML table of contents: %w", err)
+	}
+
 	updateProgress(85, "Merging PDF files")
 	// Get folder patterns from project config or use defaults
 	folderPatterns = s.getFolderPatterns(project)
@@ -280,6 +285,93 @@ W:{{TOC}}
 		return fmt.Errorf("failed to distribute Zupfnoter output: %w", err)
 	}
 
+	return nil
+}
+
+func (s *projectService) createHTMLToc(ctx context.Context, project *ent.Project, projectSongs []*ent.ProjectSong, outputDir string) error {
+	// Create HTML table of contents
+	var tocHTML strings.Builder
+	
+	// HTML header
+	tocHTML.WriteString(`<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inhaltsverzeichnis</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        h1 { text-align: center; margin-bottom: 40px; }
+        .toc-entry { margin: 8px 0; font-size: 14px; }
+        .toc-number { display: inline-block; width: 30px; font-weight: bold; }
+        .toc-title { font-weight: bold; }
+        .toc-info { color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+    <h1>Inhaltsverzeichnis</h1>
+`)
+
+	// Generate table of contents entries
+	for id, song := range projectSongs {
+		tocHTML.WriteString(fmt.Sprintf(`    <div class="toc-entry">
+        <span class="toc-number">%02d</span>
+        <span class="toc-title">%s</span>`, id+1, song.Edges.Song.Title))
+		
+		if song.Edges.Song.Tocinfo != "" {
+			tocHTML.WriteString(fmt.Sprintf(`<span class="toc-info"> - %s</span>`, song.Edges.Song.Tocinfo))
+		}
+		
+		tocHTML.WriteString(`
+    </div>`)
+	}
+
+	// HTML footer
+	tocHTML.WriteString(`
+</body>
+</html>`)
+
+	// Write HTML file
+	htmlTocFilename := "00_inhaltsverzeichnis.html"
+	htmlTocPath := filepath.Join(outputDir, "html", htmlTocFilename)
+	
+	err := os.MkdirAll(filepath.Join(outputDir, "html"), 0755)
+	if err != nil {
+		return fmt.Errorf("failed to create HTML directory: %w", err)
+	}
+	
+	err = os.WriteFile(htmlTocPath, []byte(tocHTML.String()), 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write HTML TOC file: %w", err)
+	}
+
+	// Convert HTML to PDF using the HTML to PDF converter (if available)
+	converter := htmlpdf.NewChromeDPConverter()
+	
+	request := &htmlpdf.ConversionRequest{
+		HTMLFilePath: htmlTocPath,
+		OutputPath:   filepath.Join(outputDir, "pdf", "00_inhaltsverzeichnis_noten.pdf"),
+		SongIndex:    0, // TOC doesn't need page number
+		Project:      project,
+		DOMInjectors: []htmlpdf.DOMInjector{
+			// No page number injection for TOC
+			htmlpdf.NewTextCleanupInjector(),
+		},
+	}
+	
+	_, err = converter.ConvertToPDF(ctx, request)
+	if err != nil {
+		slog.Warn("failed to convert HTML TOC to PDF (Chrome not available?)", "error", err)
+		// Continue without PDF conversion - HTML file is still created
+	} else {
+		// Distribute the HTML TOC PDF to the noten directory only if conversion succeeded
+		err = s.distributeHTMLPDF(project, "00_inhaltsverzeichnis.html", outputDir, 0)
+		if err != nil {
+			return fmt.Errorf("failed to distribute HTML TOC output: %w", err)
+		}
+	}
+
+	slog.Info("created HTML table of contents", "file", htmlTocFilename)
 	return nil
 }
 
