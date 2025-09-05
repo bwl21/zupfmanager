@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"sync/atomic"
 )
+
+var scriptCounter int64
 
 // PageNumberInjector injects page numbers into HTML documents
 type PageNumberInjector struct {
@@ -166,41 +169,44 @@ func (inj *CustomDOMInjector) InjectIntoDOM(ctx context.Context, request *Conver
 
 // generateCleanupScript generates JavaScript for cleanup rules
 func (inj *CustomDOMInjector) generateCleanupScript(rule CleanupRule) string {
+	// Generate unique variable names to avoid conflicts
+	uniqueId := atomic.AddInt64(&scriptCounter, 1)
+	
 	switch rule.Action {
 	case "remove":
 		if rule.Pattern != "" {
 			return fmt.Sprintf(`
-                const elements = document.querySelectorAll('%s');
-                elements.forEach(element => {
+                const customElements_%d = document.querySelectorAll('%s');
+                customElements_%d.forEach(element => {
                     if (element.textContent && element.textContent.trim() === '%s') {
                         element.remove();
                     }
                 });
-            `, rule.Selector, rule.Pattern)
+            `, uniqueId, rule.Selector, uniqueId, rule.Pattern)
 		} else {
 			return fmt.Sprintf(`
-                const elements = document.querySelectorAll('%s');
-                elements.forEach(element => element.remove());
-            `, rule.Selector)
+                const customElements_%d = document.querySelectorAll('%s');
+                customElements_%d.forEach(element => element.remove());
+            `, uniqueId, rule.Selector, uniqueId)
 		}
 	case "hide":
 		return fmt.Sprintf(`
-            const elements = document.querySelectorAll('%s');
-            elements.forEach(element => {
+            const customElements_%d = document.querySelectorAll('%s');
+            customElements_%d.forEach(element => {
                 if (!element.textContent || element.textContent.trim() === '%s') {
                     element.style.display = 'none';
                 }
             });
-        `, rule.Selector, rule.Pattern)
+        `, uniqueId, rule.Selector, uniqueId, rule.Pattern)
 	case "modify":
 		return fmt.Sprintf(`
-            const elements = document.querySelectorAll('%s');
-            elements.forEach(element => {
+            const customElements_%d = document.querySelectorAll('%s');
+            customElements_%d.forEach(element => {
                 if (element.textContent && element.textContent.trim() === '%s') {
                     element.textContent = '%s';
                 }
             });
-        `, rule.Selector, rule.Pattern, rule.Value)
+        `, uniqueId, rule.Selector, uniqueId, rule.Pattern, rule.Value)
 	default:
 		return ""
 	}
