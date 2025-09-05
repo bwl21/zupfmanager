@@ -51,27 +51,27 @@ func TestPageNumberInjector(t *testing.T) {
 		t.Fatalf("InjectIntoDOM failed: %v", err)
 	}
 
-	if len(request.DOMScripts) != 3 {
-		t.Errorf("Expected 3 DOM scripts, got %d", len(request.DOMScripts))
+	if len(request.DOMScripts) != 2 {
+		t.Errorf("Expected 2 DOM scripts (CSS + element), got %d", len(request.DOMScripts))
 	}
 
-	// Validate that #vb cleanup script is present
-	foundCleanup := false
+	// Validate that page number is present
 	foundPageNumber := false
+	foundCSS := false
 	for _, script := range request.DOMScripts {
-		if strings.Contains(script, "#vb") && strings.Contains(script, "remove") {
-			foundCleanup = true
-		}
 		if strings.Contains(script, "42") {
 			foundPageNumber = true
 		}
+		if strings.Contains(script, "pageStyle") || strings.Contains(script, "druckParagraph") {
+			foundCSS = true
+		}
 	}
 
-	if !foundCleanup {
-		t.Error("#vb cleanup script should be present")
-	}
 	if !foundPageNumber {
 		t.Error("Page number should be injected into DOM scripts")
+	}
+	if !foundCSS {
+		t.Error("CSS or page element should be present")
 	}
 }
 

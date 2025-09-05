@@ -40,33 +40,23 @@ func NewPageNumberInjector(position string) *PageNumberInjector {
 func (inj *PageNumberInjector) InjectIntoDOM(ctx context.Context, request *ConversionRequest) error {
 	pageNumber := fmt.Sprintf("%02d", request.SongIndex)
 
-	// 1. Remove <text> elements with '#vb' content
-	removeVbScript := `
-        const textElements = document.querySelectorAll('text');
-        textElements.forEach(element => {
-            if (element.textContent && element.textContent.trim() === '#vb') {
-                element.remove();
-            }
-        });
-    `
-
-	// 2. Add CSS style to <head>
+	// 1. Add CSS style to <head>
 	styleScript := fmt.Sprintf(`
-        const style = document.createElement('style');
-        style.textContent = %s;
-        document.head.appendChild(style);
+        const pageStyle = document.createElement('style');
+        pageStyle.textContent = %s;
+        document.head.appendChild(pageStyle);
     `, "`"+inj.cssStyle+"`")
 
-	// 3. Add HTML element at the beginning of <body>
+	// 2. Add HTML element at the beginning of <body>
 	elementScript := fmt.Sprintf(`
-        const paragraph = document.createElement('p');
-        paragraph.id = 'druckParagraph';
-        paragraph.textContent = '%s';
-        document.body.insertBefore(paragraph, document.body.firstChild);
+        const pageParagraph = document.createElement('p');
+        pageParagraph.id = 'druckParagraph';
+        pageParagraph.textContent = '%s';
+        document.body.insertBefore(pageParagraph, document.body.firstChild);
     `, pageNumber)
 
 	// All scripts will be executed by ChromeDP
-	request.DOMScripts = append(request.DOMScripts, removeVbScript, styleScript, elementScript)
+	request.DOMScripts = append(request.DOMScripts, styleScript, elementScript)
 
 	return nil
 }
@@ -93,15 +83,15 @@ func NewTextCleanupInjector(patterns ...string) *TextCleanupInjector {
 
 // InjectIntoDOM removes text elements matching the specified patterns
 func (inj *TextCleanupInjector) InjectIntoDOM(ctx context.Context, request *ConversionRequest) error {
-	for _, pattern := range inj.removePatterns {
+	for i, pattern := range inj.removePatterns {
 		removeScript := fmt.Sprintf(`
-            const textElements = document.querySelectorAll('text');
-            textElements.forEach(element => {
+            const cleanupElements_%d = document.querySelectorAll('text');
+            cleanupElements_%d.forEach(element => {
                 if (element.textContent && element.textContent.trim() === '%s') {
                     element.remove();
                 }
             });
-        `, pattern)
+        `, i, i, pattern)
 
 		request.DOMScripts = append(request.DOMScripts, removeScript)
 	}
