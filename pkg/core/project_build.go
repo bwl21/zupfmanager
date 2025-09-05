@@ -710,65 +710,34 @@ func (s *projectService) distributeHTMLPDF(project *ent.Project, htmlFilename st
 		return fmt.Errorf("failed to glob HTML PDF files: %w", err)
 	}
 
-	// Use HTML-specific folder patterns
-	folderPatterns := s.getHTMLFolderPatterns(project)
-
+	slog.Info("distributing HTML PDF files", "pattern", pattern, "found", len(files))
+	
 	for _, pdfFile := range files {
 		filename := filepath.Base(pdfFile)
 		newFilename := fmt.Sprintf("%02d_%s", songIndex, filename)
 
-		// All HTML PDFs go to the 'noten' directory
-		// (no distinction between A3/A4 like ABC PDFs)
+		// HTML PDFs (including TOC) always go to "noten" directory
+		// All HTML PDFs go to "noten" directory
 		targetDir := filepath.Join(outputDir, "druckdateien", "noten")
-
-		// Optional: project-specific pattern mapping
-		for pattern, folder := range folderPatterns {
-			matched, err := filepath.Match(pattern, filename)
-			if err != nil {
-				return fmt.Errorf("failed to match HTML pattern: %w", err)
-			}
-			if matched {
-				targetDir = filepath.Join(outputDir, "druckdateien", folder)
-				break
-			}
-		}
-
+		
 		err := os.MkdirAll(targetDir, 0755)
 		if err != nil {
 			return fmt.Errorf("failed to create HTML target directory: %w", err)
 		}
-
+		
 		targetFile := filepath.Join(targetDir, newFilename)
 		err = s.copyFile(pdfFile, targetFile)
 		if err != nil {
 			return fmt.Errorf("failed to copy HTML PDF: %w", err)
 		}
-
+		
 		slog.Info("distributed HTML PDF", "source", pdfFile, "target", targetFile)
 	}
 
 	return nil
 }
 
-// getHTMLFolderPatterns returns folder patterns for HTML PDFs
-func (s *projectService) getHTMLFolderPatterns(project *ent.Project) map[string]string {
-	// Standard patterns for HTML PDFs - all go to 'noten' directory
-	// (no distinction between A3/A4 like ABC PDFs)
-	patterns := map[string]string{
-		"*_noten.pdf": "noten",
-	}
 
-	// Load project-specific HTML patterns if available
-	if configPatterns, ok := project.Config["htmlFolderPatterns"].(map[string]interface{}); ok {
-		for pattern, folder := range configPatterns {
-			if folderStr, ok := folder.(string); ok {
-				patterns[pattern] = folderStr
-			}
-		}
-	}
-
-	return patterns
-}
 
 func (s *projectService) extractConfigFromABCFile(abcFile []byte) (map[string]any, error) {
 	configLine := bytes.Index(abcFile, []byte(zupfnoterConfigString))

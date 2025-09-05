@@ -29,3 +29,9 @@ x
 
 # Project specific
 MBT-2025
+
+# Test directories
+TEST/
+
+# Temporary build artifacts
+zupfnoter
