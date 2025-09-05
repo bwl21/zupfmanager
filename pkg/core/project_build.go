@@ -881,7 +881,7 @@ func (s *projectService) mergePDFs(dir, dest string) error {
 		return nil
 	}
 
-	slog.Info("merging PDF files", "count", len(files), "from", dir, "to", dest)
+	slog.Info("merging PDF files", "count", len(files), "from", dir, "to", dest, "files", files)
 	err = api.MergeCreateFile(files, dest, false, nil)
 	if err != nil {
 		return fmt.Errorf("failed to merge pdf files: %w", err)
