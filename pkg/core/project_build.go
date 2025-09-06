@@ -3,7 +3,6 @@ package core
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,15 +11,16 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"dario.cat/mergo"
 	"github.com/bwl21/zupfmanager/internal/ent"
-	entprojectsong "github.com/bwl21/zupfmanager/internal/ent/projectsong"
+	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
 	"github.com/bwl21/zupfmanager/internal/htmlpdf"
 	"github.com/bwl21/zupfmanager/internal/zupfnoter"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/pdfcpu/pdfcpu/pkg/api"
+	pdfcpuModel "github.com/pdfcpu/pdfcpu/pkg/pdfcpu/model"
+	"golang.org/x/sync/errgroup"
 )
 
 const (
@@ -46,9 +46,9 @@ func (s *projectService) ExecuteProjectBuildWithProgress(ctx context.Context, re
 	// Then query the project songs separately with the priority filter (like the working version)
 	projectSongs, err := s.db.ProjectSong.Query().
 		Where(
-			entprojectsong.And(
-				entprojectsong.ProjectID(req.ProjectID),
-				entprojectsong.PriorityLTE(req.PriorityThreshold),
+			projectsong.And(
+				projectsong.ProjectID(req.ProjectID),
+				projectsong.PriorityLTE(req.PriorityThreshold),
 			),
 		).
 		WithSong().
@@ -192,7 +192,7 @@ func (s *projectService) buildProject(ctx context.Context, abcFileDir, outputDir
 	for _, targetFolder := range folderPatterns {
 		folderSet[targetFolder] = true
 	}
-	
+
 	// Always include 'noten' folder for HTML PDFs (including TOC)
 	folderSet["noten"] = true
 
@@ -297,29 +297,29 @@ W:{{TOC}}
 
 func (s *projectService) createHTMLToc(ctx context.Context, project *ent.Project, projectSongs []*ent.ProjectSong, outputDir string) error {
 	slog.Info("createHTMLToc called", "project", project.ShortName, "outputDir", outputDir, "songCount", len(projectSongs))
-	
+
 	// Create HTML table of contents using built-in template
 	htmlContent := s.generateHTMLTocContent(project, projectSongs)
-	
+
 	// Write HTML file
 	htmlTocFilename := "00_inhaltsverzeichnis.html"
 	htmlTocPath := filepath.Join(outputDir, "html", htmlTocFilename)
 	htmlDir := filepath.Join(outputDir, "html")
-	
+
 	slog.Info("Creating HTML directory", "path", htmlDir)
 	err := os.MkdirAll(htmlDir, 0755)
 	if err != nil {
 		slog.Error("Failed to create HTML directory", "path", htmlDir, "error", err)
 		return fmt.Errorf("failed to create HTML directory: %w", err)
 	}
-	
+
 	slog.Info("Writing HTML TOC file", "path", htmlTocPath, "size", len(htmlContent))
 	err = os.WriteFile(htmlTocPath, []byte(htmlContent), 0644)
 	if err != nil {
 		slog.Error("Failed to write HTML TOC file", "path", htmlTocPath, "error", err)
 		return fmt.Errorf("failed to write HTML TOC file: %w", err)
 	}
-	
+
 	// Verify file was created
 	if _, err := os.Stat(htmlTocPath); err != nil {
 		slog.Error("HTML TOC file verification failed", "path", htmlTocPath, "error", err)
@@ -329,21 +329,21 @@ func (s *projectService) createHTMLToc(ctx context.Context, project *ent.Project
 
 	// Convert HTML to PDF using the HTML to PDF converter (if available)
 	converter := htmlpdf.NewChromeDPConverter()
-	
+
 	// Ensure we have an absolute path for the HTML file
 	absHTMLPath, err := filepath.Abs(htmlTocPath)
 	if err != nil {
 		slog.Error("Failed to get absolute path for HTML TOC", "path", htmlTocPath, "error", err)
 		return fmt.Errorf("failed to get absolute path for HTML TOC: %w", err)
 	}
-	
+
 	// Ensure we have an absolute path for the output PDF
 	absOutputPath, err := filepath.Abs(filepath.Join(outputDir, "pdf", "00_inhaltsverzeichnis_noten.pdf"))
 	if err != nil {
 		slog.Error("Failed to get absolute path for PDF output", "error", err)
 		return fmt.Errorf("failed to get absolute path for PDF output: %w", err)
 	}
-	
+
 	request := &htmlpdf.ConversionRequest{
 		HTMLFilePath: absHTMLPath,
 		OutputPath:   absOutputPath,
@@ -354,9 +354,9 @@ func (s *projectService) createHTMLToc(ctx context.Context, project *ent.Project
 			htmlpdf.NewTextCleanupInjector(),
 		},
 	}
-	
+
 	slog.Info("Converting HTML TOC to PDF", "htmlPath", absHTMLPath, "outputPath", absOutputPath)
-	
+
 	_, err = converter.ConvertToPDF(ctx, request)
 	if err != nil {
 		slog.Warn("failed to convert HTML TOC to PDF (Chrome not available?)", "error", err)
@@ -378,30 +378,27 @@ func (s *projectService) createHTMLToc(ctx context.Context, project *ent.Project
 func (s *projectService) generateHTMLTocContent(project *ent.Project, projectSongs []*ent.ProjectSong) string {
 	// Try to load custom template first, fall back to built-in template
 	templateContent := s.getHTMLTocTemplate(project)
-	
+
 	// Generate table of contents entries
 	var tocEntries strings.Builder
+	tocEntries.WriteString(`<div class="toc-entries">`)
 	for id, song := range projectSongs {
-		tocEntries.WriteString(fmt.Sprintf(`        <tr class="toc-entry">
-            <td class="toc-number">%02d</td>
-            <td class="toc-title">%s</td>`, id+1, song.Edges.Song.Title))
-		
+		songinfo := ""
 		if song.Edges.Song.Tocinfo != "" {
-			tocEntries.WriteString(fmt.Sprintf(`
-            <td class="toc-info">%s</td>`, song.Edges.Song.Tocinfo))
-		} else {
-			tocEntries.WriteString(`
-            <td class="toc-info"></td>`)
+			songinfo = " - " + song.Edges.Song.Tocinfo
 		}
-		
-		tocEntries.WriteString(`
-        </tr>`)
+		tocEntries.WriteString(fmt.Sprintf(`
+        <p class="toc-entry">
+            <span class="toc-number">%02d</span>
+            <span class="toc-title">%s%s</span>
+        </p>`, id+1, song.Edges.Song.Title, songinfo))
 	}
-	
+
 	// Replace placeholders in template
 	htmlContent := strings.Replace(templateContent, "{{TOC_ENTRIES}}", tocEntries.String(), 1)
-	htmlContent = strings.ReplaceAll(htmlContent, "{{PROJECT_TITLE}}", project.ShortName)
-	
+	htmlContent = strings.ReplaceAll(htmlContent, "{{PROJECT_TITLE}}", project.Title)
+	htmlContent = strings.ReplaceAll(htmlContent, "{{PROJECT_SHORT_NAME}}", project.ShortName)
+
 	return htmlContent
 }
 
@@ -414,14 +411,14 @@ func (s *projectService) getHTMLTocTemplate(project *ent.Project) string {
 		slog.Info("using project-specific HTML TOC template", "path", templateFile)
 		return string(templateBytes)
 	}
-	
+
 	// Try default template
 	defaultTemplateFile := "x/MBT-2025/999_inhaltsverzeichnis_template.html"
 	if templateBytes, err := os.ReadFile(defaultTemplateFile); err == nil {
 		slog.Info("using default HTML TOC template", "path", defaultTemplateFile)
 		return string(templateBytes)
 	}
-	
+
 	// Use built-in template as fallback
 	slog.Info("using built-in HTML TOC template")
 	return s.getBuiltInHTMLTocTemplate()
@@ -442,7 +439,7 @@ func (s *projectService) getBuiltInHTMLTocTemplate() string {
         }
         
         body {
-            font-family: "Times New Roman", serif;
+            font-family: "Arial", sans-serif;
             font-size: 12pt;
             line-height: 1.4;
             margin: 0;
@@ -453,49 +450,41 @@ func (s *projectService) getBuiltInHTMLTocTemplate() string {
         .header {
             text-align: center;
             margin-bottom: 3cm;
-            border-bottom: 2px solid #000;
             padding-bottom: 1cm;
         }
         
         .header h1 {
             font-size: 24pt;
+            font-family: "Arial", sans-serif;
             font-weight: bold;
             margin: 0 0 0.5cm 0;
-            text-transform: uppercase;
         }
         
         .header .subtitle {
             font-size: 14pt;
             font-style: italic;
+            font-family: "Arial", sans-serif;
             margin: 0;
         }
         
-        .toc-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1cm;
-        }
-        
-        .toc-table th {
-            background-color: #f0f0f0;
-            border: 1px solid #000;
-            padding: 8pt;
-            text-align: left;
-            font-weight: bold;
+        .toc-entries {
+            margin: 1cm 0;
             font-size: 11pt;
+            line-height: 1.6;
         }
         
-        .toc-entry td {
-            border: 1px solid #ccc;
-            padding: 6pt 8pt;
-            vertical-align: top;
+        .toc-entry {
+            margin: 0.3em 0;
+            page-break-inside: avoid;
         }
         
         .toc-number {
-            width: 50pt;
+            display: inline-block;
+            width: 2em;
+            margin-right: 0.5em;
+            font-variant-numeric: tabular-nums;
             text-align: center;
             font-weight: bold;
-            background-color: #f8f8f8;
         }
         
         .toc-title {
@@ -512,10 +501,9 @@ func (s *projectService) getBuiltInHTMLTocTemplate() string {
         .footer {
             margin-top: 2cm;
             padding-top: 1cm;
-            border-top: 1px solid #ccc;
+            font-family: arial sans-serif;
             text-align: center;
             font-size: 10pt;
-            color: #666;
         }
         
         /* Print-specific styles */
@@ -537,25 +525,15 @@ func (s *projectService) getBuiltInHTMLTocTemplate() string {
 </head>
 <body>
     <div class="header">
-        <h1>Inhaltsverzeichnis</h1>
-        <p class="subtitle">Notensammlung {{PROJECT_TITLE}}</p>
+        <h1>{{PROJECT_SHORT_NAME}} - {{PROJECT_TITLE}}</h1>
     </div>
     
-    <table class="toc-table">
-        <thead>
-            <tr>
-                <th class="toc-number">Nr.</th>
-                <th class="toc-title">Titel</th>
-                <th class="toc-info">Zusatzinfo</th>
-            </tr>
-        </thead>
-        <tbody>
+    <div class="toc-entries">
 {{TOC_ENTRIES}}
-        </tbody>
-    </table>
+    </div>
     
     <div class="footer">
-        <p>Erstellt mit Zupfmanager</p>
+        <p>{{PROJECT_SHORT_NAME}}</p>
     </div>
 </body>
 </html>`
@@ -714,7 +692,7 @@ func (s *projectService) distributeHTMLPDF(project *ent.Project, htmlFilename st
 	}
 
 	slog.Info("distributing HTML PDF files", "pattern", pattern, "found", len(files))
-	
+
 	for _, pdfFile := range files {
 		filename := filepath.Base(pdfFile)
 		newFilename := fmt.Sprintf("%02d_%s", songIndex, filename)
@@ -722,25 +700,23 @@ func (s *projectService) distributeHTMLPDF(project *ent.Project, htmlFilename st
 		// HTML PDFs (including TOC) always go to "noten" directory
 		// All HTML PDFs go to "noten" directory
 		targetDir := filepath.Join(outputDir, "druckdateien", "noten")
-		
+
 		err := os.MkdirAll(targetDir, 0755)
 		if err != nil {
 			return fmt.Errorf("failed to create HTML target directory: %w", err)
 		}
-		
+
 		targetFile := filepath.Join(targetDir, newFilename)
 		err = s.copyFile(pdfFile, targetFile)
 		if err != nil {
 			return fmt.Errorf("failed to copy HTML PDF: %w", err)
 		}
-		
+
 		slog.Info("distributed HTML PDF", "source", pdfFile, "target", targetFile)
 	}
 
 	return nil
 }
-
-
 
 func (s *projectService) extractConfigFromABCFile(abcFile []byte) (map[string]any, error) {
 	configLine := bytes.Index(abcFile, []byte(zupfnoterConfigString))
@@ -853,12 +829,78 @@ func (s *projectService) copyFile(src, dst string) error {
 	return err
 }
 
+// sanitizePDF cleans and optimizes a PDF file
+func sanitizePDF(inputPath, outputPath string) error {
+	// Log the start of sanitization
+	slog.Info("starting PDF sanitization",
+		"input", inputPath,
+		"output", outputPath,
+		"size_before", getFileSize(inputPath))
+
+	// Create a new configuration with relaxed validation
+	conf := pdfcpuModel.NewDefaultConfiguration()
+	conf.ValidationMode = pdfcpuModel.ValidationRelaxed // More permissive validation
+	conf.WriteObjectStream = true                       // Enable object streams for smaller files
+	conf.WriteXRefStream = true                         // Enable cross-reference streams
+	conf.Eol = "\n"                                     // Use standard newline
+
+	// Log the configuration
+	slog.Info("PDF optimization configuration",
+		"validation_mode", conf.ValidationMode,
+		"write_object_stream", conf.WriteObjectStream,
+		"write_xref_stream", conf.WriteXRefStream)
+
+	// Perform the optimization
+	startTime := time.Now()
+	err := api.OptimizeFile(inputPath, outputPath, conf)
+	duration := time.Since(startTime)
+
+	// Log the result
+	if err != nil {
+		slog.Error("PDF sanitization failed",
+			"input", inputPath,
+			"error", err,
+			"duration", duration)
+	} else {
+		slog.Info("PDF sanitization successful",
+			"input", inputPath,
+			"output", outputPath,
+			"size_before", getFileSize(inputPath),
+			"size_after", getFileSize(outputPath),
+			"duration", duration)
+	}
+
+	return err
+}
+
+// getFileSize returns the size of a file in a human-readable format
+func getFileSize(path string) string {
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return "unknown"
+	}
+	return fmt.Sprintf("%.2f KB", float64(fileInfo.Size())/1024)
+}
+
 func (s *projectService) mergePDFs(dir, dest string) error {
 	slog.Info("merging pdf files", "dir", dir, "dest", dest)
 
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		slog.Warn("directory does not exist, skipping merge", "dir", dir)
 		return nil
+	}
+
+	// Special logging for the problematic TOC file
+	if strings.Contains(dest, "noten") {
+		tocPath := filepath.Join(dir, "00_00_inhaltsverzeichnis_noten.pdf")
+		if _, err := os.Stat(tocPath); err == nil {
+			// File exists, log its size and other details
+			fileInfo, _ := os.Stat(tocPath)
+			slog.Info("TOC file details before merge",
+				"path", tocPath,
+				"size", fileInfo.Size(),
+				"modTime", fileInfo.ModTime())
+		}
 	}
 
 	var files []string
@@ -881,8 +923,27 @@ func (s *projectService) mergePDFs(dir, dest string) error {
 		return nil
 	}
 
-	slog.Info("merging PDF files", "count", len(files), "from", dir, "to", dest, "files", files)
-	err = api.MergeCreateFile(files, dest, false, nil)
+	// Create temporary directory for sanitized PDFs
+	tempDir, err := os.MkdirTemp("", "pdfclean")
+	if err != nil {
+		return fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// Sanitize each PDF before merging
+	sanitizedFiles := make([]string, 0, len(files))
+	for i, file := range files {
+		sanitizedFile := filepath.Join(tempDir, fmt.Sprintf("sanitized_%d.pdf", i))
+		if err := sanitizePDF(file, sanitizedFile); err != nil {
+			slog.Warn("failed to sanitize PDF, using original", "file", file, "error", err)
+			sanitizedFiles = append(sanitizedFiles, file) // Fallback to original on error
+		} else {
+			sanitizedFiles = append(sanitizedFiles, sanitizedFile)
+		}
+	}
+
+	slog.Info("merging PDF files", "count", len(sanitizedFiles), "from", dir, "to", dest, "files", sanitizedFiles)
+	err = api.MergeCreateFile(sanitizedFiles, dest, false, nil)
 	if err != nil {
 		return fmt.Errorf("failed to merge pdf files: %w", err)
 	}
