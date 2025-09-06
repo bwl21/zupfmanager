@@ -38,6 +38,20 @@ func (pc *ProjectCreate) SetConfig(m map[string]interface{}) *ProjectCreate {
 	return pc
 }
 
+// SetAbcFileDirPreference sets the "abc_file_dir_preference" field.
+func (pc *ProjectCreate) SetAbcFileDirPreference(s string) *ProjectCreate {
+	pc.mutation.SetAbcFileDirPreference(s)
+	return pc
+}
+
+// SetNillableAbcFileDirPreference sets the "abc_file_dir_preference" field if the given value is not nil.
+func (pc *ProjectCreate) SetNillableAbcFileDirPreference(s *string) *ProjectCreate {
+	if s != nil {
+		pc.SetAbcFileDirPreference(*s)
+	}
+	return pc
+}
+
 // SetID sets the "id" field.
 func (pc *ProjectCreate) SetID(i int) *ProjectCreate {
 	pc.mutation.SetID(i)
@@ -157,6 +171,10 @@ func (pc *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 	if value, ok := pc.mutation.Config(); ok {
 		_spec.SetField(project.FieldConfig, field.TypeJSON, value)
 		_node.Config = value
+	}
+	if value, ok := pc.mutation.AbcFileDirPreference(); ok {
+		_spec.SetField(project.FieldAbcFileDirPreference, field.TypeString, value)
+		_node.AbcFileDirPreference = value
 	}
 	if nodes := pc.mutation.ProjectSongsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

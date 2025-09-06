@@ -12,5 +12,8 @@ type Project func(*sql.Selector)
 // ProjectSong is the predicate function for projectsong builders.
 type ProjectSong func(*sql.Selector)
 
+// Setting is the predicate function for setting builders.
+type Setting func(*sql.Selector)
+
 // Song is the predicate function for song builders.
 type Song func(*sql.Selector)

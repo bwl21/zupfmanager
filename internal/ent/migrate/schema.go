@@ -14,6 +14,7 @@ var (
 		{Name: "title", Type: field.TypeString},
 		{Name: "short_name", Type: field.TypeString},
 		{Name: "config", Type: field.TypeJSON, Nullable: true},
+		{Name: "abc_file_dir_preference", Type: field.TypeString, Nullable: true},
 	}
 	// ProjectsTable holds the schema information for the "projects" table.
 	ProjectsTable = &schema.Table{
@@ -64,6 +65,18 @@ var (
 			},
 		},
 	}
+	// SettingsColumns holds the columns for the "settings" table.
+	SettingsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "key", Type: field.TypeString, Unique: true},
+		{Name: "value", Type: field.TypeString, Nullable: true},
+	}
+	// SettingsTable holds the schema information for the "settings" table.
+	SettingsTable = &schema.Table{
+		Name:       "settings",
+		Columns:    SettingsColumns,
+		PrimaryKey: []*schema.Column{SettingsColumns[0]},
+	}
 	// SongsColumns holds the columns for the "songs" table.
 	SongsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -100,6 +113,7 @@ var (
 	Tables = []*schema.Table{
 		ProjectsTable,
 		ProjectSongsTable,
+		SettingsTable,
 		SongsTable,
 	}
 )

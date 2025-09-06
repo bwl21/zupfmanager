@@ -1,0 +1,322 @@
+package core
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func setupImportTest(t *testing.T) (*Services, func()) {
+	tempDir := t.TempDir()
+	oldWd, _ := os.Getwd()
+	cleanup := func() {
+		os.Chdir(oldWd)
+	}
+	os.Chdir(tempDir)
+
+	services, err := NewServices()
+	if err != nil {
+		t.Fatalf("Failed to create services: %v", err)
+	}
+
+	return services, func() {
+		services.Close()
+		cleanup()
+	}
+}
+
+func TestImportService_LastImportPath(t *testing.T) {
+	services, err := NewServices()
+	require.NoError(t, err)
+	defer services.Close()
+
+	ctx := context.Background()
+	testPath := "/test/import/path"
+
+	// Test setting and getting last import path
+	err = services.Settings.Set(ctx, "last_import_path", testPath)
+	require.NoError(t, err)
+
+	retrievedPath, err := services.Import.GetLastImportPath(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, testPath, retrievedPath)
+}
+
+func TestImportService_DirectoryImportSavesPath(t *testing.T) {
+	services, err := NewServices()
+	require.NoError(t, err)
+	defer services.Close()
+
+	ctx := context.Background()
+	
+	// Create a temporary directory with test ABC files
+	tempDir := t.TempDir()
+	testFile := filepath.Join(tempDir, "test.abc")
+	
+	abcContent := `X:1
+T:Test Song
+M:4/4
+K:C
+C D E F | G A B c |]`
+	
+	err = os.WriteFile(testFile, []byte(abcContent), 0644)
+	require.NoError(t, err)
+
+	// Import the directory
+	results, err := services.Import.ImportDirectory(ctx, tempDir)
+	require.NoError(t, err)
+	require.Len(t, results, 1)
+
+	// Check that the path was saved
+	savedPath, err := services.Import.GetLastImportPath(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, tempDir, savedPath)
+}
+
+func TestImportService_parseABCMetadata(t *testing.T) {
+	services, cleanup := setupImportTest(t)
+	defer cleanup()
+
+	// Get the import service implementation to test internal method
+	importSvc := services.Import.(*importService)
+
+	tests := []struct {
+		name     string
+		content  string
+		expected ABCMetadata
+	}{
+		{
+			name: "basic metadata",
+			content: `T:Test Song
+Z:genre Folk
+Z:copyright Public Domain
+C:M: Test Info`,
+			expected: ABCMetadata{
+				Title:     "Test Song",
+				Genre:     "Folk",
+				Copyright: "Public Domain",
+				Tocinfo:   "Test Info",
+			},
+		},
+		{
+			name: "minimal metadata",
+			content: `T:Simple Song
+K:C`,
+			expected: ABCMetadata{
+				Title: "Simple Song",
+			},
+		},
+		{
+			name: "various tocinfo patterns",
+			content: `T:Pattern Test
+C:M+T: Mixed Info`,
+			expected: ABCMetadata{
+				Title:   "Pattern Test",
+				Tocinfo: "Mixed Info",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := importSvc.parseABCMetadata([]byte(tt.content))
+			if result.Title != tt.expected.Title {
+				t.Errorf("Expected title %s, got %s", tt.expected.Title, result.Title)
+			}
+			if result.Genre != tt.expected.Genre {
+				t.Errorf("Expected genre %s, got %s", tt.expected.Genre, result.Genre)
+			}
+			if result.Copyright != tt.expected.Copyright {
+				t.Errorf("Expected copyright %s, got %s", tt.expected.Copyright, result.Copyright)
+			}
+			if result.Tocinfo != tt.expected.Tocinfo {
+				t.Errorf("Expected tocinfo %s, got %s", tt.expected.Tocinfo, result.Tocinfo)
+			}
+		})
+	}
+}
+
+func TestImportService_ImportFile(t *testing.T) {
+	services, cleanup := setupImportTest(t)
+	defer cleanup()
+
+	// Create test ABC file
+	testContent := `T:Test Import Song
+Z:genre Test Genre
+Z:copyright Test Copyright
+C:M: Test Tocinfo
+K:C
+CDEF|`
+
+	testFile := "test.abc"
+	err := os.WriteFile(testFile, []byte(testContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to create test file: %v", err)
+	}
+
+	// Test first import (create)
+	result := services.Import.ImportFile(context.Background(), testFile)
+	if result.Error != nil {
+		t.Fatalf("ImportFile() error = %v", result.Error)
+	}
+	if result.Action != "created" {
+		t.Errorf("Expected action 'created', got %s", result.Action)
+	}
+	if result.Title != "Test Import Song" {
+		t.Errorf("Expected title 'Test Import Song', got %s", result.Title)
+	}
+
+	// Test second import (unchanged)
+	result = services.Import.ImportFile(context.Background(), testFile)
+	if result.Error != nil {
+		t.Fatalf("ImportFile() error = %v", result.Error)
+	}
+	if result.Action != "unchanged" {
+		t.Errorf("Expected action 'unchanged', got %s", result.Action)
+	}
+
+	// Test import with changes (update)
+	updatedContent := `T:Updated Import Song
+Z:genre Updated Genre
+Z:copyright Test Copyright
+C:M: Test Tocinfo
+K:C
+CDEF|`
+
+	err = os.WriteFile(testFile, []byte(updatedContent), 0644)
+	if err != nil {
+		t.Fatalf("Failed to update test file: %v", err)
+	}
+
+	result = services.Import.ImportFile(context.Background(), testFile)
+	if result.Error != nil {
+		t.Fatalf("ImportFile() error = %v", result.Error)
+	}
+	if result.Action != "updated" {
+		t.Errorf("Expected action 'updated', got %s", result.Action)
+	}
+	if len(result.Changes) == 0 {
+		t.Error("Expected changes to be recorded")
+	}
+}
+
+func TestImportService_ImportDirectory(t *testing.T) {
+	services, cleanup := setupImportTest(t)
+	defer cleanup()
+
+	// Create test directory with ABC files
+	testDir := "testdir"
+	err := os.MkdirAll(testDir, 0755)
+	if err != nil {
+		t.Fatalf("Failed to create test directory: %v", err)
+	}
+
+	// Create multiple test files
+	files := []struct {
+		name    string
+		content string
+	}{
+		{
+			name: "song1.abc",
+			content: `T:Song One
+K:C`,
+		},
+		{
+			name: "song2.abc",
+			content: `T:Song Two
+Z:genre Folk
+K:G`,
+		},
+	}
+
+	for _, file := range files {
+		err = os.WriteFile(filepath.Join(testDir, file.name), []byte(file.content), 0644)
+		if err != nil {
+			t.Fatalf("Failed to create test file %s: %v", file.name, err)
+		}
+	}
+
+	// Import directory
+	results, err := services.Import.ImportDirectory(context.Background(), testDir)
+	if err != nil {
+		t.Fatalf("ImportDirectory() error = %v", err)
+	}
+
+	if len(results) != len(files) {
+		t.Errorf("Expected %d results, got %d", len(files), len(results))
+	}
+
+	for _, result := range results {
+		if result.Error != nil {
+			t.Errorf("Import result for %s has error: %v", result.Filename, result.Error)
+		}
+		if result.Action != "created" {
+			t.Errorf("Expected action 'created' for %s, got %s", result.Filename, result.Action)
+		}
+	}
+}
+
+func TestImportService_ImportFileErrors(t *testing.T) {
+	services, cleanup := setupImportTest(t)
+	defer cleanup()
+
+	tests := []struct {
+		name        string
+		content     string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:        "missing title",
+			content:     "K:C\nCDEF|",
+			expectError: true,
+			errorMsg:    "no title found in file",
+		},
+		{
+			name:        "valid file",
+			content:     "T:Valid Song\nK:C\nCDEF|",
+			expectError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testFile := tt.name + ".abc"
+			err := os.WriteFile(testFile, []byte(tt.content), 0644)
+			if err != nil {
+				t.Fatalf("Failed to create test file: %v", err)
+			}
+
+			result := services.Import.ImportFile(context.Background(), testFile)
+			
+			if tt.expectError {
+				if result.Error == nil {
+					t.Error("Expected error but got none")
+				} else if !contains(result.Error.Error(), tt.errorMsg) {
+					t.Errorf("Expected error containing '%s', got '%s'", tt.errorMsg, result.Error.Error())
+				}
+			} else {
+				if result.Error != nil {
+					t.Errorf("Expected no error but got: %v", result.Error)
+				}
+			}
+		})
+	}
+}
+
+func contains(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(substr) == 0 || 
+		(len(s) > len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || 
+		func() bool {
+			for i := 0; i <= len(s)-len(substr); i++ {
+				if s[i:i+len(substr)] == substr {
+					return true
+				}
+			}
+			return false
+		}())))
+}

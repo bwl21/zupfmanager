@@ -1,0 +1,181 @@
+basePath: /
+definitions:
+  ErrorResponse:
+    properties:
+      details:
+        additionalProperties:
+          type: string
+        type: object
+      error:
+        example: validation failed
+        type: string
+      message:
+        example: Invalid input provided
+        type: string
+    type: object
+  ImportDirectoryRequest:
+    properties:
+      directory_path:
+        example: /path/to/songs/
+        type: string
+    required:
+    - directory_path
+    type: object
+  ImportFileRequest:
+    properties:
+      file_path:
+        example: /path/to/song.abc
+        type: string
+    required:
+    - file_path
+    type: object
+  ImportResponse:
+    properties:
+      results:
+        items:
+          $ref: '#/definitions/ImportResult'
+        type: array
+      success:
+        example: true
+        type: boolean
+      summary:
+        $ref: '#/definitions/ImportSummary'
+    type: object
+  ImportResult:
+    properties:
+      action:
+        example: created
+        type: string
+      changes:
+        example:
+        - title
+        - genre
+        items:
+          type: string
+        type: array
+      error:
+        example: file not found
+        type: string
+      filename:
+        example: song.abc
+        type: string
+      title:
+        example: Amazing Grace
+        type: string
+    type: object
+  ImportSummary:
+    properties:
+      created:
+        example: 7
+        type: integer
+      errors:
+        example: 0
+        type: integer
+      total:
+        example: 10
+        type: integer
+      unchanged:
+        example: 1
+        type: integer
+      updated:
+        example: 2
+        type: integer
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: REST API for managing music projects and ABC notation files
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Zupfmanager API
+  version: "1.0"
+paths:
+  /api/v1/import/directory:
+    post:
+      consumes:
+      - application/json
+      description: Import all ABC notation files from a specified directory
+      parameters:
+      - description: Import directory request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ImportDirectoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ImportResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: Import ABC files from directory
+      tags:
+      - import
+  /api/v1/import/file:
+    post:
+      consumes:
+      - application/json
+      description: Import a single ABC notation file into the song database
+      parameters:
+      - description: Import file request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/ImportFileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ImportResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/ErrorResponse'
+      summary: Import a single ABC file
+      tags:
+      - import
+  /health:
+    get:
+      description: Check if the API server is running
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Health check
+      tags:
+      - health
+schemes:
+- http
+- https
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

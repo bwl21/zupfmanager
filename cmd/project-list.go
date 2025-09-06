@@ -10,7 +10,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/bwl21/zupfmanager/internal/database"
+	"github.com/bwl21/zupfmanager/pkg/core"
 	"github.com/spf13/cobra"
 )
 
@@ -23,13 +23,14 @@ var listProjectsCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		client, err := database.New()
+		services, err := core.NewServices()
 		if err != nil {
 			return err
 		}
+		defer services.Close()
 
 		// Query all projects
-		projects, err := client.Project.Query().All(context.Background())
+		projects, err := services.Project.List(context.Background())
 		if err != nil {
 			return err
 		}

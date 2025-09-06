@@ -10,9 +10,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/bwl21/zupfmanager/internal/database"
-	"github.com/bwl21/zupfmanager/internal/ent/predicate"
-	"github.com/bwl21/zupfmanager/internal/ent/song"
+	"github.com/bwl21/zupfmanager/pkg/core"
 	"github.com/spf13/cobra"
 )
 
@@ -26,10 +24,11 @@ var songSearchCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		client, err := database.New()
+		services, err := core.NewServices()
 		if err != nil {
 			return err
 		}
+		defer services.Close()
 
 		// Get the search query
 		searchQuery := args[0]
@@ -39,38 +38,25 @@ var songSearchCmd = &cobra.Command{
 		searchFilename, _ := cmd.Flags().GetBool("filename")
 		searchGenre, _ := cmd.Flags().GetBool("genre")
 
-		// If no specific fields are selected, search all fields
+		var songs []*core.Song
+
+		// If no specific search fields are specified, search in title and filename by default
 		if !searchTitle && !searchFilename && !searchGenre {
-			searchTitle = true
-			searchFilename = true
-			searchGenre = true
-		}
-
-		// Build predicates for search
-		var predicates []predicate.Song
-		if searchTitle {
-			predicates = append(predicates,
-				song.TitleContainsFold(searchQuery))
-		}
-		if searchFilename {
-			predicates = append(predicates,
-				song.FilenameContainsFold(searchQuery))
-		}
-		if searchGenre && searchQuery != "" {
-			predicates = append(predicates,
-				song.GenreContainsFold(searchQuery))
-		}
-
-		// Query songs with the search term
-		query := client.Song.Query()
-		if len(predicates) > 0 {
-			query = query.Where(song.Or(predicates...))
-		}
-
-		// Query matching songs
-		songs, err := query.All(context.Background())
-		if err != nil {
-			return err
+			songs, err = services.Song.Search(context.Background(), searchQuery)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Use advanced search with specific options
+			searchOptions := core.SearchOptions{
+				SearchTitle:    searchTitle,
+				SearchFilename: searchFilename,
+				SearchGenre:    searchGenre,
+			}
+			songs, err = services.Song.SearchAdvanced(context.Background(), searchQuery, searchOptions)
+			if err != nil {
+				return err
+			}
 		}
 
 		// Check if no results found

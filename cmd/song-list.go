@@ -10,7 +10,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/bwl21/zupfmanager/internal/database"
+	"github.com/bwl21/zupfmanager/pkg/core"
 	"github.com/spf13/cobra"
 )
 
@@ -23,13 +23,14 @@ var songListCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
 
-		client, err := database.New()
+		services, err := core.NewServices()
 		if err != nil {
 			return err
 		}
+		defer services.Close()
 
 		// Query all songs
-		songs, err := client.Song.Query().All(context.Background())
+		songs, err := services.Song.List(context.Background())
 		if err != nil {
 			return err
 		}

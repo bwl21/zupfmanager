@@ -69,6 +69,26 @@ func (pu *ProjectUpdate) ClearConfig() *ProjectUpdate {
 	return pu
 }
 
+// SetAbcFileDirPreference sets the "abc_file_dir_preference" field.
+func (pu *ProjectUpdate) SetAbcFileDirPreference(s string) *ProjectUpdate {
+	pu.mutation.SetAbcFileDirPreference(s)
+	return pu
+}
+
+// SetNillableAbcFileDirPreference sets the "abc_file_dir_preference" field if the given value is not nil.
+func (pu *ProjectUpdate) SetNillableAbcFileDirPreference(s *string) *ProjectUpdate {
+	if s != nil {
+		pu.SetAbcFileDirPreference(*s)
+	}
+	return pu
+}
+
+// ClearAbcFileDirPreference clears the value of the "abc_file_dir_preference" field.
+func (pu *ProjectUpdate) ClearAbcFileDirPreference() *ProjectUpdate {
+	pu.mutation.ClearAbcFileDirPreference()
+	return pu
+}
+
 // AddProjectSongIDs adds the "project_songs" edge to the ProjectSong entity by IDs.
 func (pu *ProjectUpdate) AddProjectSongIDs(ids ...int) *ProjectUpdate {
 	pu.mutation.AddProjectSongIDs(ids...)
@@ -182,6 +202,12 @@ func (pu *ProjectUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if pu.mutation.ConfigCleared() {
 		_spec.ClearField(project.FieldConfig, field.TypeJSON)
 	}
+	if value, ok := pu.mutation.AbcFileDirPreference(); ok {
+		_spec.SetField(project.FieldAbcFileDirPreference, field.TypeString, value)
+	}
+	if pu.mutation.AbcFileDirPreferenceCleared() {
+		_spec.ClearField(project.FieldAbcFileDirPreference, field.TypeString)
+	}
 	if pu.mutation.ProjectSongsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -286,6 +312,26 @@ func (puo *ProjectUpdateOne) SetConfig(m map[string]interface{}) *ProjectUpdateO
 // ClearConfig clears the value of the "config" field.
 func (puo *ProjectUpdateOne) ClearConfig() *ProjectUpdateOne {
 	puo.mutation.ClearConfig()
+	return puo
+}
+
+// SetAbcFileDirPreference sets the "abc_file_dir_preference" field.
+func (puo *ProjectUpdateOne) SetAbcFileDirPreference(s string) *ProjectUpdateOne {
+	puo.mutation.SetAbcFileDirPreference(s)
+	return puo
+}
+
+// SetNillableAbcFileDirPreference sets the "abc_file_dir_preference" field if the given value is not nil.
+func (puo *ProjectUpdateOne) SetNillableAbcFileDirPreference(s *string) *ProjectUpdateOne {
+	if s != nil {
+		puo.SetAbcFileDirPreference(*s)
+	}
+	return puo
+}
+
+// ClearAbcFileDirPreference clears the value of the "abc_file_dir_preference" field.
+func (puo *ProjectUpdateOne) ClearAbcFileDirPreference() *ProjectUpdateOne {
+	puo.mutation.ClearAbcFileDirPreference()
 	return puo
 }
 
@@ -431,6 +477,12 @@ func (puo *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err e
 	}
 	if puo.mutation.ConfigCleared() {
 		_spec.ClearField(project.FieldConfig, field.TypeJSON)
+	}
+	if value, ok := puo.mutation.AbcFileDirPreference(); ok {
+		_spec.SetField(project.FieldAbcFileDirPreference, field.TypeString, value)
+	}
+	if puo.mutation.AbcFileDirPreferenceCleared() {
+		_spec.ClearField(project.FieldAbcFileDirPreference, field.TypeString)
 	}
 	if puo.mutation.ProjectSongsCleared() {
 		edge := &sqlgraph.EdgeSpec{

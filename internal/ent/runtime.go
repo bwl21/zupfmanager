@@ -6,6 +6,7 @@ import (
 	"github.com/bwl21/zupfmanager/internal/ent/project"
 	"github.com/bwl21/zupfmanager/internal/ent/projectsong"
 	"github.com/bwl21/zupfmanager/internal/ent/schema"
+	"github.com/bwl21/zupfmanager/internal/ent/setting"
 	"github.com/bwl21/zupfmanager/internal/ent/song"
 )
 
@@ -37,6 +38,12 @@ func init() {
 	projectsongDescID := projectsongFields[0].Descriptor()
 	// projectsong.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	projectsong.IDValidator = projectsongDescID.Validators[0].(func(int) error)
+	settingFields := schema.Setting{}.Fields()
+	_ = settingFields
+	// settingDescKey is the schema descriptor for key field.
+	settingDescKey := settingFields[0].Descriptor()
+	// setting.KeyValidator is a validator for the "key" field. It is called by the builders before save.
+	setting.KeyValidator = settingDescKey.Validators[0].(func(string) error)
 	songFields := schema.Song{}.Fields()
 	_ = songFields
 	// songDescTitle is the schema descriptor for title field.

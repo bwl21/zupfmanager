@@ -6,14 +6,21 @@ Zupfmanager is a specialized tool for managing and building music projects for z
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Features
-# Features - This section describes the main features of the Zupfmanager.
 
-- Manage music projects with customizable configurations
-- Organize songs in projects with priority and difficulty settings
-- Import ABC notation files into the song database
-- Build projects to generate sheet music in PDF format
-- Command-line interface (CLI) for automation and scripting
-- Terminal user interface (TUI) for interactive usage
+- **Project Management**: Manage music projects with customizable configurations
+- **Song Organization**: Organize songs in projects with priority and difficulty settings
+- **ABC Import**: Import ABC notation files into the song database with automatic path persistence
+- **Sheet Music Generation**: Build projects to generate sheet music in PDF format
+- **Web Interface**: Modern Vue.js frontend with improved modal dialogs for configuration editing
+- **Command-line Interface (CLI)**: Full automation and scripting support
+- **Terminal User Interface (TUI)**: Interactive usage for quick operations
+
+### Recent Improvements
+
+- **Import Path Persistence**: The application now remembers your last import directory and automatically pre-fills it on subsequent visits. Quick Import feature intelligently shows re-import option for your most recent directory.
+- **Enhanced Project Configuration Modal**: Improved layout with 80% viewport coverage, centered positioning, and expandable textarea for better JSON editing experience
+- **Consistent Button Spacing**: Implemented uniform button spacing across all components using `gap-4` and explicit margins to ensure buttons never touch each other
+- **Fixed Project Configuration Management**: Restored full functionality for loading, editing, and saving project configurations with proper default config loading and JSON persistence
 
 ## Installation
 # Installation - This section describes how to install the Zupfmanager.
@@ -39,7 +46,6 @@ make build
 Download the latest binary for your platform from the [Releases](https://github.com/bwl21/zupfmanager/releases) page.
 
 ## Usage
-# Usage - This section describes how to use the Zupfmanager.
 
 ### Command Line Interface
 
@@ -48,6 +54,15 @@ Zupfmanager provides a comprehensive CLI for managing projects and songs:
 ```bash
 # Show help
 zupfmanager --help
+
+# Start API server only
+zupfmanager api --port 8080
+
+# Start integrated server (API + Frontend)
+zupfmanager api --port 8080 --frontend frontend/dist
+
+# Or use the embedded frontend (after 'make build')
+./dist/zupfmanager api --port 8080
 
 # Project Management
 zupfmanager project list                                # List all projects
@@ -62,14 +77,45 @@ zupfmanager project build <project-id>                  # Build a project
 # Song Management
 zupfmanager song list                                   # List all songs
 zupfmanager song show <song-id>                         # Show song details
-zupfmanager song search <query>                         # Search for songs
+zupfmanager song search <query>                         # Search for songs by title and filename
+zupfmanager song search <query> --title                 # Search only in song titles
+zupfmanager song search <query> --filename              # Search only in filenames
+zupfmanager song search <query> --genre                 # Search only in genres
+zupfmanager song delete <song-id>                       # Delete a song (with confirmation)
+zupfmanager song delete <song-id> --force               # Delete a song without confirmation
 
 # Import ABC Files
 zupfmanager import <directory>                          # Import ABC files from a directory
+                                                        # The last import path is automatically saved
 
 # Interactive Terminal UI
 zupfmanager ui                                          # Launch the terminal UI
 ```
+
+### Web Interface
+
+The web interface provides a modern, user-friendly way to manage your music projects:
+
+**Import Features:**
+- **Smart Path Persistence**: Automatically remembers your last import directory
+- **Quick Re-import**: One-click re-import from your most recent directory
+- **Drag & Drop Support**: Easy file and directory selection
+- **Real-time Progress**: Live feedback during import operations
+
+**Project Management:**
+- **Visual Project Overview**: See all projects and their songs at a glance
+- **Inline Configuration Editing**: Edit project configurations with syntax highlighting
+- **Build Status Tracking**: Monitor build progress and view results
+- **Song Assignment**: Easily add/remove songs from projects with priority and difficulty settings
+
+**Song Management:**
+- **Full CRUD Operations**: Create (import), read, update, and delete songs
+- **Advanced Search**: Search by title, filename, or genre with flexible filtering options
+- **Smart Delete Protection**: Prevents deletion of songs used in projects
+- **Dependency Checking**: Shows which projects use a song before deletion
+- **Confirmation Dialogs**: Safe deletion with user confirmation
+
+Access the web interface by starting the API server and opening http://localhost:8080 in your browser.
 
 ### Terminal User Interface
 
@@ -206,6 +252,119 @@ make install
 
 # Run with debug logging
 DEBUG=1 ./bin/zupfmanager --log-level=debug
+```
+
+### Testing
+
+Comprehensive test suite using Go's built-in testing framework:
+
+```bash
+# Run all tests
+go test -v ./...
+
+# Run tests with coverage
+go test -v -cover ./...
+
+# Run specific package tests
+go test -v ./pkg/core
+go test -v ./pkg/api/handlers
+
+# Run integration tests (requires build)
+make build
+go test -v -tags=integration ./...
+
+# Run tests with race detection
+go test -v -race ./...
+
+# Generate coverage report
+go test -coverprofile=coverage.out ./...
+go tool cover -html=coverage.out -o coverage.html
+```
+
+#### Test Categories
+
+- **Unit Tests**: Individual component testing (`*_test.go` files)
+  - `pkg/core/*_test.go`: Core business logic
+  - `pkg/api/handlers/*_test.go`: API endpoint handlers
+- **Integration Tests**: End-to-end workflow testing (`integration_test.go`)
+  - Full application workflows
+  - CLI command testing
+  - Performance benchmarks
+- **API Tests**: HTTP endpoint testing using `httptest`
+  - REST API functionality
+  - Error handling
+  - Request/response validation
+
+#### Test Structure
+
+```
+├── pkg/core/
+│   ├── import_test.go      # Import service tests
+│   ├── project_test.go     # Project service tests
+│   ├── song_test.go        # Song service tests
+│   └── services_test.go    # Service integration tests
+├── pkg/api/handlers/
+│   ├── import_test.go      # Import API tests
+│   └── api_test.go         # Complete API test suite
+└── integration_test.go     # Full integration tests
+```
+
+#### Test Requirements
+
+- Go 1.23+
+- Built application for integration tests: `make build`
+- Temporary directory access for test databases
+
+#### Writing Tests
+
+Follow Go testing conventions:
+
+```go
+func TestServiceFunction(t *testing.T) {
+    // Setup
+    services, err := core.NewServices()
+    require.NoError(t, err)
+    defer services.Close()
+    
+    ctx := context.Background()
+    
+    // Test cases
+    t.Run("success_case", func(t *testing.T) {
+        result, err := services.SomeService.DoSomething(ctx)
+        assert.NoError(t, err)
+        assert.Equal(t, expected, result)
+    })
+    
+    t.Run("error_case", func(t *testing.T) {
+        _, err := services.SomeService.DoSomethingInvalid(ctx)
+        assert.Error(t, err)
+    })
+}
+```
+
+#### Test Features
+
+- **Automatic Database Setup**: Each test gets a fresh, isolated database
+- **Resource Management**: Automatic cleanup with `defer services.Close()`
+- **Concurrent Testing**: Tests can run in parallel safely
+- **Coverage Analysis**: Built-in coverage reporting with HTML output
+- **Race Detection**: Built-in race condition detection
+- **Benchmarking**: Performance testing with `go test -bench`
+
+#### Continuous Integration
+
+The test suite integrates seamlessly with CI/CD pipelines:
+
+```yaml
+# GitHub Actions example
+- name: Run tests
+  run: make test
+
+- name: Run tests with coverage
+  run: make test-coverage
+
+- name: Run race detection
+  run: make test-race
 ```
 
 ### Debugging

@@ -18,6 +18,8 @@ const (
 	FieldShortName = "short_name"
 	// FieldConfig holds the string denoting the config field in the database.
 	FieldConfig = "config"
+	// FieldAbcFileDirPreference holds the string denoting the abc_file_dir_preference field in the database.
+	FieldAbcFileDirPreference = "abc_file_dir_preference"
 	// EdgeProjectSongs holds the string denoting the project_songs edge name in mutations.
 	EdgeProjectSongs = "project_songs"
 	// Table holds the table name of the project in the database.
@@ -37,6 +39,7 @@ var Columns = []string{
 	FieldTitle,
 	FieldShortName,
 	FieldConfig,
+	FieldAbcFileDirPreference,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -74,6 +77,11 @@ func ByTitle(opts ...sql.OrderTermOption) OrderOption {
 // ByShortName orders the results by the short_name field.
 func ByShortName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldShortName, opts...).ToFunc()
+}
+
+// ByAbcFileDirPreference orders the results by the abc_file_dir_preference field.
+func ByAbcFileDirPreference(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAbcFileDirPreference, opts...).ToFunc()
 }
 
 // ByProjectSongsCount orders the results by project_songs count.

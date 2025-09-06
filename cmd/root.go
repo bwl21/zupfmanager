@@ -31,7 +31,17 @@ Zupfmanager unterstützt:
 - Hinzufügen, Entfernen und Verwalten von Lieder innerhalb von Projekten
 - Erstellen von Notenblättern
 - Importieren von ABC-Dateien
-- Interaktion mit einer Terminalbenutzeroberfläche`,
+- Interaktion mit einer Terminalbenutzeroberfläche
+
+Beispiele:
+  # API-Server mit Frontend starten (nach 'make build')
+  ./dist/zupfmanager api --port 8080 --frontend dist/frontend
+  
+  # Entwicklungsserver starten
+  make dev
+  
+  # Projekt erstellen
+  zupfmanager project create "Mein Projekt"`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		version, _ := cmd.Flags().GetBool("version")
 		if version {

@@ -48,6 +48,12 @@
           "limit_a3": false
         }
       }
+    },
+    "folderPatterns": {
+      "*_-*_a3.pdf": "klein",
+      "*_-*_a4.pdf": "gross",
+      "*_partitur.pdf": "partituren",
+      "*_sammlung*.pdf": "sammlungen",
+      "*.pdf": "alle_anderen"
     }
   }
-  
