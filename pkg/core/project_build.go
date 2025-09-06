@@ -449,7 +449,7 @@ func (s *projectService) getBuiltInHTMLTocTemplate() string {
         
         .header {
             text-align: center;
-            margin-bottom: 3cm;
+            margin-bottom: 1cm;
             padding-bottom: 1cm;
         }
         
@@ -530,10 +530,6 @@ func (s *projectService) getBuiltInHTMLTocTemplate() string {
     
     <div class="toc-entries">
 {{TOC_ENTRIES}}
-    </div>
-    
-    <div class="footer">
-        <p>{{PROJECT_SHORT_NAME}}</p>
     </div>
 </body>
 </html>`

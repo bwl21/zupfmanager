@@ -32,7 +32,7 @@
               Directory where build outputs will be generated
             </p>
           </div>
-          
+
           <!-- ABC File Directory -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -73,13 +73,13 @@
               <option :value="1">1 - Only highest priority songs</option>
               <option :value="2">2 - High priority and above</option>
               <option :value="3">3 - Medium priority and above</option>
-              <option :value="4">4 - All songs (default)</option>
+              <option :value="4">4 - All songs</option>
             </select>
             <p class="mt-1 text-xs text-gray-500">
               Only include songs with priority equal to or higher than this threshold
             </p>
           </div>
-          
+
           <!-- Sample ID -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -116,7 +116,7 @@
             </svg>
             <div class="ml-3">
               <p class="text-sm text-orange-700">
-                <strong>Path may be incomplete:</strong> Please ensure you enter the complete absolute path to the ABC files directory 
+                <strong>Path may be incomplete:</strong> Please ensure you enter the complete absolute path to the ABC files directory
                 (e.g., <code class="bg-orange-100 px-1 rounded">/home/user/music/abc</code> or <code class="bg-orange-100 px-1 rounded">C:\Users\User\Music\ABC</code>).
               </p>
             </div>
@@ -196,7 +196,7 @@ const startBuild = async () => {
     }
     if (buildConfig.value.abc_file_dir?.trim()) {
       config.abc_file_dir = buildConfig.value.abc_file_dir.trim()
-      
+
       // Save the abc_file_dir as preference if it's a valid path (not a placeholder)
       if (!config.abc_file_dir.startsWith('[Enter full path to:')) {
         await saveAbcFileDirPreference(config.abc_file_dir)
@@ -251,12 +251,12 @@ const saveAbcFileDirPreference = async (directoryPath: string) => {
 const isValidPath = (path: string) => {
   if (!path || path.trim() === '') return true // Empty is valid (uses defaults)
   if (path.startsWith('[Enter full path to:')) return false // Placeholder text
-  
+
   // Check for common path patterns
   const hasAbsolutePath = path.startsWith('/') || // Unix/Linux/Mac
                          /^[A-Za-z]:\\/.test(path) || // Windows (C:\)
                          path.startsWith('\\\\') // UNC path (\\server\share)
-  
+
   return hasAbsolutePath && path.length > 3 // Must be more than just root
 }
 
