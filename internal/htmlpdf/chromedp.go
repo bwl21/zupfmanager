@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/chromedp/cdproto/page"
@@ -61,8 +63,15 @@ func (c *ChromeDPConverter) ConvertToPDF(ctx context.Context, request *Conversio
 	defer cancel()
 
 	// Create ChromeDP actions
+	absPath, err := filepath.Abs(request.HTMLFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("Creating PDF-URL  %s failed: %w", request.HTMLFilePath, err)
+	}
+	// Slashes für Windows anpassen
+	fileUrl := "file:///" + strings.ReplaceAll(absPath, "\\", "/")
+
 	actions := []chromedp.Action{
-		chromedp.Navigate("file://" + request.HTMLFilePath),
+		chromedp.Navigate(fileUrl),
 		chromedp.WaitReady("body"),
 	}
 
@@ -90,7 +99,7 @@ func (c *ChromeDPConverter) ConvertToPDF(ctx context.Context, request *Conversio
 		return err
 	}))
 
-	err := chromedp.Run(taskCtx, actions...)
+	err = chromedp.Run(taskCtx, actions...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate PDF: %w", err)
 	}

@@ -419,7 +419,7 @@ func (h *ProjectHandler) GetBuildDefaults(c *gin.Context) {
 	defaults := models.BuildDefaultsResponse{
 		OutputDir:         project.ShortName,
 		AbcFileDir:        "",
-		PriorityThreshold: 4,
+		PriorityThreshold: 1,
 		SampleID:          "",
 	}
 
